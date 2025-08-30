@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+sqlmodel
+alembic
+python-dotenv
+passlib[bcrypt]
+python-jose[cryptography]
+pydantic[email]
+httpx
+black
+PyJWT
+requests
+fastapi_mail

@@ -1,0 +1,27 @@
+from pydantic import BaseModel
+
+class TokenOut(BaseModel):
+    acc_jwt: str
+    ref_jwt: str
+    token_type: str
+
+class AccessTokenOut(BaseModel):
+    acc_jwt: str
+    token_type: str
+
+class LoginIn(BaseModel):
+    email: str
+    password: str
+
+class GoogleLoginIn(BaseModel):
+    id_token: str
+
+class UserCreate(BaseModel):
+    email: str
+    password: str
+
+class AccountCreate(BaseModel):
+    user_id: str
+    name: str
+    type: str
+    currency: str = "USD"
