@@ -10,10 +10,42 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
-  runApp(
-    MaterialApp(home: Home(), theme: ThemeData(primaryColor: Colors.amber)),
-  );
+  runApp(const FinanceTracker());
 }
+
+
+class FinanceTracker extends StatelessWidget {
+  const FinanceTracker({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const MaterialApp(
+      
+    );
+  }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 class Home extends StatefulWidget {
   const Home({super.key});

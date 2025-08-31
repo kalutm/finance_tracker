@@ -5,7 +5,7 @@ from sqlmodel import Session, select
 from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 from ...db.session import get_session
-from ...auth.jwt import create_access_token, verify_access_token
+from ...auth.jwt import create_access_token, verify_access_token, create_refresh_token, verify_refresh_token
 from ...auth.verification import send_verification_email
 from ...models.validation_models import TokenOut, AccessTokenOut, UserCreate, LoginIn, GoogleLoginIn
 from ...models.enums import Provider
@@ -60,7 +60,7 @@ async def register(user_data: UserCreate, session: Session = Depends(get_session
         user_email = existing_google.email
         user_info = {"id": str(existing_google.id), "email": user_email}
         jw_token = create_access_token(user_info, timedelta(minutes=ACCESS_TOKEN_EXPIRE_TIME_MIN))
-        refr_jwt = create_access_token(user_info, timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
+        refr_jwt = create_refresh_token(user_info, timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
         ver_jwt = create_access_token(user_data={"sub": user_email}, delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_TIME_MIN))
 
         await send_verification_email(email=user_email, token=ver_jwt)
@@ -78,10 +78,10 @@ async def register(user_data: UserCreate, session: Session = Depends(get_session
     new_user_email = new_user.email
     new_user_info = {"id": str(new_user.id), "email": new_user.email}
     jw_token = create_access_token(new_user_info, timedelta(minutes=ACCESS_TOKEN_EXPIRE_TIME_MIN))
-    refre_token = create_access_token(new_user_info, timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
+    refre_token = create_refresh_token(new_user_info, timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
     ver_token = create_access_token(user_data={"sub": new_user_email}, delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_TIME_MIN))
 
-    await send_verification_email(email=new_user_email, token=ver_token)
+    #await send_verification_email(email=new_user_email, token=ver_token)
     return TokenOut(acc_jwt=jw_token,ref_jwt=refre_token, token_type="bearer")
 
 
@@ -121,7 +121,7 @@ def login_local(user_data: LoginIn, session: Session = Depends(get_session)) -> 
 
     user_info = {"id": str(user.id), "email": user.email}
     token = create_access_token(user_info, timedelta(minutes=ACCESS_TOKEN_EXPIRE_TIME_MIN))
-    ref_token = create_access_token(user_info, timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
+    ref_token = create_refresh_token(user_info, timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
     return TokenOut(acc_jwt=token, ref_jwt=ref_token, token_type="bearer")
 
 
@@ -143,7 +143,7 @@ def login_google(user_data: GoogleLoginIn, session: Session = Depends(get_sessio
     if user:
         user_info = {"id": str(user.id), "email": user.email}
         token = create_access_token(user_info, timedelta(minutes=ACCESS_TOKEN_EXPIRE_TIME_MIN))
-        refresh = create_access_token(user_info, timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
+        refresh = create_refresh_token(user_info, timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
         return TokenOut(acc_jwt=token, ref_jwt=refresh, token_type="bearer")
 
     existing_local = session.exec(
@@ -159,7 +159,7 @@ def login_google(user_data: GoogleLoginIn, session: Session = Depends(get_sessio
 
             user_info = {"id": str(existing_local.id), "email": existing_local.email}
             token = create_access_token(user_info, timedelta(minutes=ACCESS_TOKEN_EXPIRE_TIME_MIN))
-            refresh = create_access_token(user_info, timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
+            refresh = create_refresh_token(user_info, timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
             return TokenOut(acc_jwt=token, ref_jwt=refresh, token_type="bearer")
 
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
@@ -172,13 +172,15 @@ def login_google(user_data: GoogleLoginIn, session: Session = Depends(get_sessio
 
     user_info = {"id": str(new_user.id), "email": new_user.email}
     token = create_access_token(user_info, timedelta(minutes=ACCESS_TOKEN_EXPIRE_TIME_MIN))
-    refresh = create_access_token(user_info, timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
+    refresh = create_refresh_token(user_info, timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
     return TokenOut(acc_jwt=token, ref_jwt=refresh, token_type="bearer")
 
 @router.get("/verify")
 async def verify_email(token: str, session: Session = Depends(get_session)):
     try:
         payload = verify_access_token(jw_token=token)
+        if payload is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
         email: str = payload.get("sub")
         if email is None:
             raise HTTPException(status_code=400, detail="Invalid token")
@@ -219,7 +221,9 @@ async def resend_verification(email: str, session: Session = Depends(get_session
 @router.post("/refresh")
 def refresh_token(refresh_token: str) -> AccessTokenOut:
     try:
-        payload = verify_access_token(refresh_token)
+        payload = verify_refresh_token(refresh_token)
+        if payload is None:
+            raise HTTPException(status_code=401, detail="Invalid refresh token")
         user_id: str = payload.get("id")
         if user_id is None:
             raise HTTPException(status_code=401, detail="Invalid refresh token")
