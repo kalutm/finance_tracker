@@ -25,3 +25,8 @@ class AccountCreate(BaseModel):
     name: str
     type: str
     currency: str = "USD"
+
+class UserOut(BaseModel):
+    id: str
+    email: str
+    is_verified: bool

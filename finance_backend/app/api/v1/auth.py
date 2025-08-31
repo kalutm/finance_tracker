@@ -7,7 +7,8 @@ from sqlalchemy.exc import IntegrityError
 from ...db.session import get_session
 from ...auth.jwt import create_access_token, verify_access_token, create_refresh_token, verify_refresh_token
 from ...auth.verification import send_verification_email
-from ...models.validation_models import TokenOut, AccessTokenOut, UserCreate, LoginIn, GoogleLoginIn
+from ...auth.dependencies import get_current_user
+from ...models.validation_models import TokenOut, UserOut, AccessTokenOut, UserCreate, LoginIn, GoogleLoginIn
 from ...models.enums import Provider
 from ...auth.security import hash_password, verify_password
 from jose import JWTError
@@ -232,3 +233,14 @@ def refresh_token(refresh_token: str) -> AccessTokenOut:
 
     new_access_token = create_access_token(payload, timedelta(minutes=15))
     return AccessTokenOut(acc_jwt=new_access_token, token_type="bearer")
+
+# protected routes
+@router.get("/me")
+def get_me(user: Users = Depends(get_current_user)) -> UserOut:
+    return UserOut(id=str(user.id), email=user.email, is_verified=user.is_verified)
+
+@router.delete("/me")
+async def delete_my_account(current_user: Users = Depends(get_current_user), session: Session = Depends(get_session)):
+    session.delete(current_user)
+    session.commit()
+    return {"detail": "Your account has been deleted"}

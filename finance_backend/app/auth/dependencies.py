@@ -1,11 +1,21 @@
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
-from auth.jwt import verify_access_token
+from app.auth.jwt import verify_access_token
+from app.db.session import get_session, Session
+from sqlmodel import select
+from app.models.user import Users
 
 oauth2shceme = OAuth2PasswordBearer(tokenUrl="/login")
 
-def get_current_user(token: str = Depends(oauth2shceme)):
+def get_current_user(
+    session: Session = Depends(get_session),
+    token: str = Depends(oauth2shceme),
+) -> Users:
     payload = verify_access_token(token)
-    if payload is None:
-        return HTTPException(status_code=401, detail="Invalid or expired token")
-    return payload
+    if not payload or "id" not in payload:
+        raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+    current_user = session.exec(select(Users).where(Users.id == payload.get("id")))
+    if not current_user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return current_user
