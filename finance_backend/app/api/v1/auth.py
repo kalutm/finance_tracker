@@ -8,7 +8,7 @@ from ...db.session import get_session
 from ...auth.jwt import create_access_token, verify_access_token, create_refresh_token, verify_refresh_token
 from ...auth.verification import send_verification_email
 from ...auth.dependencies import get_current_user
-from ...models.validation_models import TokenOut, UserOut, AccessTokenOut, UserCreate, LoginIn, GoogleLoginIn
+from ...models.validation_models import TokenOut, UserOut, AccessTokenOut, UserCreate, LoginIn, GoogleLoginIn, EmailIn
 from ...models.enums import Provider
 from ...auth.security import hash_password, verify_password
 from jose import JWTError
@@ -37,7 +37,7 @@ async def register(user_data: UserCreate, session: Session = Depends(get_session
         )
     ).first()
     if existing_local:
-        raise HTTPException(status_code=400, detail="Email already registered with email and password")
+        raise HTTPException(status_code=400, detail="This email is already registered")
 
     hashed = hash_password(user_data.password)
 
@@ -82,7 +82,7 @@ async def register(user_data: UserCreate, session: Session = Depends(get_session
     refre_token = create_refresh_token(new_user_info, timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS))
     ver_token = create_access_token(user_data={"sub": new_user_email}, delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_TIME_MIN))
 
-    #await send_verification_email(email=new_user_email, token=ver_token)
+    await send_verification_email(email=new_user_email, token=ver_token)
     return TokenOut(acc_jwt=jw_token,ref_jwt=refre_token, token_type="bearer")
 
 
@@ -118,7 +118,7 @@ def login_local(user_data: LoginIn, session: Session = Depends(get_session)) -> 
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Incorrect email or password")
     
     if not user.is_verified:
-        raise HTTPException(status_code=403, detail="Email not verified")
+        raise HTTPException(status_code=403, detail="Email not verified. Please verify before you log in")
 
     user_info = {"id": str(user.id), "email": user.email}
     token = create_access_token(user_info, timedelta(minutes=ACCESS_TOKEN_EXPIRE_TIME_MIN))
@@ -192,23 +192,23 @@ async def verify_email(token: str, session: Session = Depends(get_session)):
 
         user.is_verified = True
         session.commit()
-        return {"message": "Email verified successfully!"}
+        return {"message": "Email verified successfully! Please return to the app and login"}
     except JWTError:
         raise HTTPException(status_code=400, detail="Invalid or expired token")
     
 @router.post("/resend-verification")
-async def resend_verification(email: str, session: Session = Depends(get_session)):
-    user = session.exec(select(Users).where(Users.email == email)).first()
+async def resend_verification(email_in: EmailIn, session: Session = Depends(get_session)):
+    user = session.exec(select(Users).where(Users.email == email_in.email)).first()
     if not user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=404, detail="User not found! please register before you verify")
     if user.is_verified:
-        raise HTTPException(status_code=400, detail="User already verified")
+        raise HTTPException(status_code=400, detail="User has already been verified")
 
     if user.last_verification_email:
         cooldown = timedelta(seconds=60)
         now = datetime.now()
         if now - user.last_verification_email < cooldown:
-            raise HTTPException(status_code=429, detail="Please wait before resending")
+            raise HTTPException(status_code=429, detail="Please wait before resending again")
 
     token = create_access_token({"sub": user.email}, timedelta(minutes=ACCESS_TOKEN_EXPIRE_TIME_MIN))
 
@@ -237,7 +237,7 @@ def refresh_token(refresh_token: str) -> AccessTokenOut:
 # protected routes
 @router.get("/me")
 def get_me(user: Users = Depends(get_current_user)) -> UserOut:
-    return UserOut(id=str(user.id), email=user.email, is_verified=user.is_verified)
+    return UserOut(id=str(user.id), email=user.email, is_verified=user.is_verified, provider=user.provider.value)
 
 @router.delete("/me")
 async def delete_my_account(current_user: Users = Depends(get_current_user), session: Session = Depends(get_session)):

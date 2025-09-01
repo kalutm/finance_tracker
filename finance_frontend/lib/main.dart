@@ -1,10 +1,7 @@
 import 'package:finance_frontend/features/auth/data/services/finance_auth_service.dart';
 import 'package:finance_frontend/features/auth/data/services/finance_secure_storage_service.dart';
-import 'package:finance_frontend/features/auth/domain/exceptions/auth_exceptions.dart';
 import 'package:finance_frontend/features/auth/presentation/cubits/auth_cubit.dart';
-import 'package:finance_frontend/features/auth/presentation/cubits/auth_state.dart';
-import 'package:finance_frontend/features/auth/presentation/views/first_auth_wrappr.dart';
-import 'package:finance_frontend/features/auth/presentation/views/home_view.dart';
+import 'package:finance_frontend/features/auth/presentation/views/app_wrapper.dart';
 import 'package:finance_frontend/themes/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -22,40 +19,18 @@ class FinanceTracker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider<AuthCubit>(
-      create: (context) => AuthCubit(FinanceAuthService(FinanceSecureStorageService()))..checkStatus(),
+      create:
+          (context) =>
+              AuthCubit(FinanceAuthService(FinanceSecureStorageService()))
+                ..checkStatus(),
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
-        home: BlocConsumer<AuthCubit, AuthState>(
-          builder: (context, state) {
-            if (state is Authenticated){
-              return Home();
-            } else if (state is AuthNeedsVerification){
-              return FirstAuthWrappr(toVerify: true);
-            } else if (state is Unauthenticated){
-              return FirstAuthWrappr(toVerify: false);
-            } else {
-              return Scaffold(
-                body: CircularProgressIndicator()
-              );
-            }
-
-          },
-          listener: (context, state) {
-            if (state is AuthError){
-              if(state.exception is CouldnotGetUser){
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("Couldnot get user credentials please log in agian")));
-            } else{
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.exception.toString())));
-            }
-            }
-
-          },
-          ),
-          theme: AppTheme.lightTheme,
-          darkTheme: AppTheme.darkTheme,
-          themeMode: ThemeMode.dark,
+        home: AppWrapper(),
+        theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
+        themeMode: ThemeMode.dark,
       ),
-      );
+    );
   }
 }
 

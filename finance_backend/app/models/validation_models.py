@@ -9,6 +9,12 @@ class AccessTokenOut(BaseModel):
     acc_jwt: str
     token_type: str
 
+class TokenIn(BaseModel):
+    token: str
+
+class EmailIn(BaseModel):
+    email: str
+
 class LoginIn(BaseModel):
     email: str
     password: str
@@ -30,3 +36,4 @@ class UserOut(BaseModel):
     id: str
     email: str
     is_verified: bool
+    provider: str

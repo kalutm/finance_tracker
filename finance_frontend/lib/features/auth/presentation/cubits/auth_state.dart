@@ -11,7 +11,10 @@ class Authenticated extends AuthState {
   Authenticated(this.user);
 }
 
-class AuthNeedsVerification extends AuthState {}
+class AuthNeedsVerification extends AuthState {
+  final String email;
+  AuthNeedsVerification(this.email);
+}
 
 class Unauthenticated extends AuthState {}
 

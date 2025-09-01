@@ -1,5 +1,7 @@
 import 'package:finance_frontend/features/auth/presentation/components/auth_field.dart';
+import 'package:finance_frontend/features/auth/presentation/cubits/auth_cubit.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 class LoginView extends StatefulWidget {
   final void Function() toogleView;
@@ -26,9 +28,7 @@ class _LoginViewState extends State<LoginView> {
   void _login() {
     // Validate the form
     if (_formKey.currentState!.validate()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Logging in...')),
-      );
+      context.read<AuthCubit>().login(_emailController.text, _passwordController.text);
     }
   }
 
@@ -133,7 +133,9 @@ class _LoginViewState extends State<LoginView> {
 
                 // --- Google Login Button ---
                 OutlinedButton.icon(
-                  onPressed: () { /* Handle Google Sign-In */ },
+                  onPressed: () {
+                    context.read<AuthCubit>().loginWithGoogle();
+                  },
                   icon: Image.asset('assets/google_logo.png', height: 20.0),
                   label: const Text('Sign in with Google'),
                   style: OutlinedButton.styleFrom(

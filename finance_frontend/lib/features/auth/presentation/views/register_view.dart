@@ -1,5 +1,7 @@
 import 'package:finance_frontend/features/auth/presentation/components/auth_field.dart';
+import 'package:finance_frontend/features/auth/presentation/cubits/auth_cubit.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
 class RegisterView extends StatefulWidget {
   final void Function() toogleLogin;
@@ -21,12 +23,10 @@ class _RegisterViewState extends State<RegisterView> {
     super.dispose();
   }
 
-  void _login() {
+  void _register() {
     // Validate the form 
     if (_formKey.currentState!.validate()) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Registering ...')),
-      );
+      context.read<AuthCubit>().register(_emailController.text, _passwordController.text);
     }
   }
 
@@ -88,7 +88,7 @@ class _RegisterViewState extends State<RegisterView> {
 
                 // --- Login Button ---
                 ElevatedButton(
-                  onPressed: _login,
+                  onPressed: _register,
                   child: const Text('REGISTER'),
                 ),
                 const SizedBox(height: 24),

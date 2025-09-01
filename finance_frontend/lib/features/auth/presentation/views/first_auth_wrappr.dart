@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 
 class FirstAuthWrappr extends StatefulWidget {
   final bool toVerify;
-  const FirstAuthWrappr({super.key, required this.toVerify});
+  final String? email;
+  const FirstAuthWrappr({super.key, required this.toVerify, this.email});
 
   @override
   State<FirstAuthWrappr> createState() => _FirstAuthWrapprState();
@@ -28,7 +29,7 @@ class _FirstAuthWrapprState extends State<FirstAuthWrappr> {
   @override
   Widget build(BuildContext context) {
     if(showVerificationView){
-      return VerificationView(toogleView: toogleView,);
+      return VerificationView(toogleView: toogleView);
     } else {
       return SecondAuthWrapper(toogleView: toogleView);
     }
