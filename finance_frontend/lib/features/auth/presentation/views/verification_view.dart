@@ -43,11 +43,10 @@ class _VerificationViewState extends State<VerificationView> {
     });
   }
 
-  // This is a placeholder for the resend email function.
   void _resendEmail() {
     if (_secondsRemaining == 0) {
       context.read<AuthCubit>().sendVerificationEmail();
-      _startTimer(); // Restart the timer
+      _startTimer(); 
     }
   }
 
@@ -120,7 +119,7 @@ class _VerificationViewState extends State<VerificationView> {
                 ),
                 const SizedBox(height: 24),
 
-                // --- Log Out Button ---
+                // --- Go to Login Button ---
                 TextButton(
                   onPressed: () => widget.toogleView(),
                   child: Text(

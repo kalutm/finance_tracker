@@ -63,7 +63,7 @@ class _RegisterViewState extends State<RegisterView> {
                 ),
                 const SizedBox(height: 48),
 
-                // --- Login Form ---
+                // --- Register Form ---
                 Form(
                   key: _formKey,
                   child: Column(
@@ -86,14 +86,14 @@ class _RegisterViewState extends State<RegisterView> {
                 ),
                 const SizedBox(height: 24),
 
-                // --- Login Button ---
+                // --- Register button ---
                 ElevatedButton(
                   onPressed: _register,
                   child: const Text('REGISTER'),
                 ),
                 const SizedBox(height: 24),
 
-                // --- Helper Actions: Register & Verification ---
+                // --- Go to login button ---
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
