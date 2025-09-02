@@ -1,5 +1,4 @@
 import 'package:finance_frontend/features/auth/domain/entities/auth_user.dart';
-import 'package:finance_frontend/features/auth/domain/entities/provider_enum.dart';
 import 'package:finance_frontend/features/auth/domain/exceptions/auth_exceptions.dart';
 import 'package:finance_frontend/features/auth/domain/services/auth_service.dart';
 import 'package:finance_frontend/features/auth/presentation/cubits/auth_state.dart';
@@ -95,7 +94,7 @@ class AuthCubit extends Cubit<AuthState> {
         await financeAuthService.sendVerificationEmail(user.email);
         emit(AuthNeedsVerification(user.email));
       } else{
-        
+
         throw CouldnotSendEmailVerificatonLink("User not found please register before you log in.");
       }
     } on Exception catch (e) {
