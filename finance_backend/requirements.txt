@@ -11,3 +11,4 @@ black
 PyJWT
 requests
 fastapi_mail
+pytest

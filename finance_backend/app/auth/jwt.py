@@ -1,6 +1,7 @@
 import jwt, os
 from dotenv import load_dotenv
 from datetime import datetime, timedelta
+from typing import Dict
 
 load_dotenv()
 
@@ -22,7 +23,7 @@ def create_refresh_token(user_data: dict, delta: timedelta) -> str:
     ref_jwt = jwt.encode(payload=encode, key=REFRESH_SECRET_KEY, algorithm=ALGORITHM)
     return ref_jwt
 
-def verify_access_token(jw_token: str):
+def verify_access_token(jw_token: str) -> Dict:
     try:
         payload = jwt.decode(jwt=jw_token, key=SECRET_KEY, algorithms=[ALGORITHM])
         return payload
@@ -31,7 +32,7 @@ def verify_access_token(jw_token: str):
     except jwt.InvalidTokenError:
         return None
 
-def verify_refresh_token(ref_jwt: str):
+def verify_refresh_token(ref_jwt: str) -> Dict:
     try:
         payload = jwt.decode(jwt=ref_jwt, key=REFRESH_SECRET_KEY, algorithms=[ALGORITHM])
         return payload

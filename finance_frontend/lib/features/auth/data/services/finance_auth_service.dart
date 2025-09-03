@@ -14,7 +14,7 @@ class FinanceAuthService implements AuthService {
 
   FinanceAuthService(this.secureStorageService);
 
-  final baseUrl = dotenv.env["API_BASE_URL_MOBILE"];
+  final baseUrl = "${dotenv.env["API_BASE_URL_MOBILE"]}/auth";
   final clientServerId = dotenv.env["GOOGLE_SERVER_CLIENT_ID_WEB"]!;
   final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
 
@@ -155,12 +155,8 @@ class FinanceAuthService implements AuthService {
   Future<AuthUser?> loginWithGoogle() async {
     try {
       await _googleSignIn.initialize(serverClientId: clientServerId);
-      final GoogleSignInAccount? googleUser = await _googleSignIn.authenticate();
+      final GoogleSignInAccount googleUser = await _googleSignIn.authenticate();
 
-    if (googleUser == null) {
-      // User cancelled the sign-in
-      return null;
-    }
     final GoogleSignInAuthentication googleAuth = googleUser.authentication;
     final String? idToken = googleAuth.idToken;
 
@@ -195,6 +191,10 @@ class FinanceAuthService implements AuthService {
     return await _getUserCridentials(accessToken);
     } on AuthException catch (_) {
       rethrow;
+    } on GoogleSignInException catch (e){
+      if(e.code != GoogleSignInExceptionCode.canceled){
+        throw Exception("Login with Google Fialed: $e");
+      }
     } catch(e){
       throw Exception("Login with Google Fialed: $e");
     }
@@ -281,6 +281,8 @@ class FinanceAuthService implements AuthService {
         dev_tool.log("EERROORR, EERROORR: $errorDetail");
         throw CouldnotDeleteUser();
       }
+
+      await secureStorageService.deleteAll();
     } on AuthException catch (_) {
       rethrow;
     } catch(e) {

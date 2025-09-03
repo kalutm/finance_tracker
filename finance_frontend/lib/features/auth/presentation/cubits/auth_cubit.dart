@@ -94,8 +94,7 @@ class AuthCubit extends Cubit<AuthState> {
         await financeAuthService.sendVerificationEmail(user.email);
         emit(AuthNeedsVerification(user.email));
       } else{
-
-        throw CouldnotSendEmailVerificatonLink("User not found please register before you log in.");
+        throw CouldnotSendEmailVerificatonLink("User not found please register before you verify.");
       }
     } on Exception catch (e) {
       emit(AuthError(e));
@@ -131,6 +130,4 @@ class AuthCubit extends Cubit<AuthState> {
       emit(Unauthenticated());
     }
   }
-
-
 }

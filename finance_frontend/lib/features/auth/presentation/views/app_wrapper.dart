@@ -60,11 +60,11 @@ class _AppWrapperState extends State<AppWrapper> {
               );
             } else if (state.exception is CouldnotLogIn) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(state.exception.toString())),
+                SnackBar(content: Text("Login Failed: ${state.exception.toString()}")),
               );
             } else if (state.exception is CouldnotRegister){
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(state.exception.toString())),
+                SnackBar(content: Text("Register Failed: ${state.exception.toString()}")),
               );
             } else if (state.exception is CouldnotLogInWithGoogle) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -72,7 +72,7 @@ class _AppWrapperState extends State<AppWrapper> {
               );
             } else if(state.exception is CouldnotSendEmailVerificatonLink){
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(state.exception.toString())),
+                SnackBar(content: Text("Couldnot send Email verification: ${state.exception.toString()}")),
               );
             } else if(state.exception is NoUserToDelete){
               ScaffoldMessenger.of(context).showSnackBar(
