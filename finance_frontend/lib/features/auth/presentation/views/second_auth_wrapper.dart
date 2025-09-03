@@ -3,8 +3,7 @@ import 'package:finance_frontend/features/auth/presentation/views/register_view.
 import 'package:flutter/material.dart';
 
 class SecondAuthWrapper extends StatefulWidget {
-  final void Function() toogleView;
-  const SecondAuthWrapper({super.key, required this.toogleView});
+  const SecondAuthWrapper({super.key});
 
   @override
   State<SecondAuthWrapper> createState() => _SecondAuthWrapperState();
@@ -23,7 +22,7 @@ class _SecondAuthWrapperState extends State<SecondAuthWrapper> {
   @override
   Widget build(BuildContext context) {
     if (showLogin) {
-      return LoginView(toogleLogin: toogleView, toogleView: widget.toogleView,);
+      return LoginView(toogleLogin: toogleView);
     } else{
       return RegisterView(toogleLogin: toogleView);
     }

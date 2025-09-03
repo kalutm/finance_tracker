@@ -97,8 +97,14 @@ class AuthCubit extends Cubit<AuthState> {
         throw CouldnotSendEmailVerificatonLink("User not found please register before you verify.");
       }
     } on Exception catch (e) {
-      emit(AuthError(e));
-      emit(Unauthenticated());
+      final user = _currentUser;
+      if(user != null){
+        emit(AuthError(e));
+        emit(AuthNeedsVerification(user.email));
+      } else{
+        emit(AuthError(e));
+        emit(Unauthenticated());
+      }
     }
   }
 

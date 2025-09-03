@@ -31,7 +31,7 @@ class _FirstAuthWrapprState extends State<FirstAuthWrappr> {
     if(showVerificationView){
       return VerificationView(toogleView: toogleView);
     } else {
-      return SecondAuthWrapper(toogleView: toogleView);
+      return SecondAuthWrapper();
     }
   }
 }

@@ -4,9 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class LoginView extends StatefulWidget {
-  final void Function() toogleView;
   final void Function() toogleLogin;
-  const LoginView({super.key, required this.toogleView, required this.toogleLogin});
+  const LoginView({super.key, required this.toogleLogin});
 
 
   @override
@@ -106,16 +105,16 @@ class _LoginViewState extends State<LoginView> {
                     ),
                   ],
                 ),
-                 Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text("Email not verified?", style: textTheme.bodyMedium),
-                    TextButton(
-                      onPressed: () => widget.toogleView(),
-                      child: Text('VERIFY', style: textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold, color: theme.primaryColor)),
-                    ),
-                  ],
-                ),
+                //  Row(
+                //   mainAxisAlignment: MainAxisAlignment.center,
+                //   children: [
+                //     Text("Email not verified?", style: textTheme.bodyMedium),
+                //     TextButton(
+                //       onPressed: () => widget.toogleView(),
+                //       child: Text('VERIFY', style: textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold, color: theme.primaryColor)),
+                //     ),
+                //   ],
+                // ),
                 const SizedBox(height: 24),
                 
                 // --- "OR" Separator ---
