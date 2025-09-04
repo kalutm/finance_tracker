@@ -74,7 +74,7 @@ class VerificationView extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
 
-                // --- Go to Login Button ---
+                // --- Go to LoGin Button ---
                 TextButton(
                   onPressed: () => toogleView(),
                   child: Text(
