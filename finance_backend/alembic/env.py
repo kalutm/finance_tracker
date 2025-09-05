@@ -8,19 +8,23 @@ from alembic import context
 from app.models.account import Account
 from app.models.transaction import Transactions
 from app.models.user import Users
-from app.models.enums import Provider
+from app.models.categories import Categories
+from app.models.budget import Budgets
+from app.models.enums import Provider, AccountType, CategoryType, BudgetPeriod, TransactionType
 
-import os
-from dotenv import load_dotenv
+from app.auth.settings import settings
+# import os
+# # from dotenv import load_dotenv
 
-load_dotenv()
+# # load_dotenv()
 
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
 
-DATABASEURL = os.getenv("DATABASE_URL")
+DATABASEURL = settings.DATABASE_URL
+# os.getenv("DATABASE_URL")
 
 config.set_main_option("sqlalchemy.url", DATABASEURL)
 # Interpret the config file for Python logging.
