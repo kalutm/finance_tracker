@@ -2,10 +2,11 @@ from sqlmodel import SQLModel, Field, Relationship, UniqueConstraint
 from typing import Optional
 from uuid import UUID
 from datetime import datetime
-from ..models.common import now_utc
-from ..models.enums import CategoryType
+from .common import now_utc
+from .enums import CategoryType
 
-class Categories(SQLModel, table=True):
+class Category(SQLModel, table=True):
+    __tablename__ = "categories"
     __table_args__ = (
         UniqueConstraint("user_id", "name", name="uq_category_user_name"),
     )

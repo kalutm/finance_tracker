@@ -7,7 +7,8 @@ from uuid import uuid4, UUID
 from ..models.common import now_utc
 from ..models.enums import BudgetPeriod
 
-class Budgets(SQLModel, table=True):
+class Budget(SQLModel, table=True):
+    __tablename__ = "budgets"
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: UUID = Field(nullable=False, foreign_key="users.id", index=True)
     category_id: int = Field(nullable=False, foreign_key="categories.id", index=True)

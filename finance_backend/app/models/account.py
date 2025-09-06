@@ -8,6 +8,7 @@ from ..models.common import now_utc
 from ..models.enums import AccountType
 
 class Account(SQLModel, table=True):
+    __tablename__ = "accounts"
     __table_args__ = (
         UniqueConstraint("user_id", "name", name="uq_account_user_name"),
     )

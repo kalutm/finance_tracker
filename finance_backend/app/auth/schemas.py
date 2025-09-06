@@ -1,5 +1,4 @@
 # migrated from models.validation_models
-
 from pydantic import BaseModel
 
 class TokenOut(BaseModel):
@@ -27,12 +26,6 @@ class GoogleLoginIn(BaseModel):
 class UserCreate(BaseModel):
     email: str
     password: str
-
-class AccountCreate(BaseModel):
-    user_id: str
-    name: str
-    type: str
-    currency: str = "USD"
 
 class UserOut(BaseModel):
     id: str

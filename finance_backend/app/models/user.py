@@ -5,7 +5,8 @@ from uuid import uuid4, UUID
 from ..models.common import now_utc
 from app.models.enums import Provider 
 
-class Users(SQLModel, table=True):
+class User(SQLModel, table=True):
+    __tablename__ = "users"
     id: UUID = Field(default_factory=uuid4, primary_key=True)
     email: str = Field(nullable=False, unique=True, index=True)
     password_hash: Optional[str] = Field(nullable=True)

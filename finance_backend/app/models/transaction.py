@@ -7,10 +7,11 @@ from datetime import datetime
 from ..models.common import now_utc
 from ..models.enums import TransactionType
 
-class Transactions(SQLModel, table=True):
+class Transaction(SQLModel, table=True):
+    __tablename__ = "transactions"
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: UUID = Field(nullable=False, foreign_key="users.id", index=True)
-    account_id: int = Field(nullable=False, foreign_key="account.id", index=True)
+    account_id: int = Field(nullable=False, foreign_key="accounts.id", index=True)
     category_id: Optional[int] = Field(nullable=True, foreign_key="categories.id", index=True)
     amount: Decimal = Field(sa_column=Column(Numeric(18, 4), nullable=False))
     merchant: Optional[str] = Field(nullable=True)

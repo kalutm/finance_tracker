@@ -6,17 +6,13 @@ from sqlmodel import SQLModel
 from alembic import context
 
 from app.models.account import Account
-from app.models.transaction import Transactions
-from app.models.user import Users
-from app.models.categories import Categories
-from app.models.budget import Budgets
+from app.models.transaction import Transaction
+from app.models.user import User
+from app.models.category import Category
+from app.models.budget import Budget
 from app.models.enums import Provider, AccountType, CategoryType, BudgetPeriod, TransactionType
 
 from app.auth.settings import settings
-# import os
-# # from dotenv import load_dotenv
-
-# # load_dotenv()
 
 
 # this is the Alembic Config object, which provides
@@ -24,7 +20,6 @@ from app.auth.settings import settings
 config = context.config
 
 DATABASEURL = settings.DATABASE_URL
-# os.getenv("DATABASE_URL")
 
 config.set_main_option("sqlalchemy.url", DATABASEURL)
 # Interpret the config file for Python logging.

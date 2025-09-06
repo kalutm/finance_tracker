@@ -3,7 +3,7 @@ from datetime import timedelta, datetime
 from jose import JWTError
 from sqlalchemy.exc import IntegrityError
 from sqlmodel import Session
-from ..models.user import Users
+from ..models.user import User
 from ..models.enums import Provider
 from ..auth.schemas import UserOut
 from ..auth.exceptions import (
@@ -65,7 +65,7 @@ def register_user(
         )
 
     # Case 2 no existing google user -> create a new local user
-    user = Users(email=email, password_hash=hashed, provider=Provider.LOCAL)
+    user = User(email=email, password_hash=hashed, provider=Provider.LOCAL)
     try:
         save_user(session, user)
     except IntegrityError:
@@ -131,7 +131,7 @@ def login_google(
         raise AccountExistsWithDifferentProvider()
 
     # Case 3: New Google user
-    new_user = Users(email=email, provider=Provider.GOOGLE, provider_id=google_sub)
+    new_user = User(email=email, provider=Provider.GOOGLE, provider_id=google_sub)
     save_user(session, new_user)
 
     return create_tokens_for_user(
@@ -188,7 +188,7 @@ def refresh(refresh_token: str, access_min: int):
 
     return create_access_token(payload, timedelta(minutes=access_min))
 
-def get_current_user_info(user: Users) -> UserOut:
+def get_current_user_info(user: User) -> UserOut:
     return UserOut(
         id=str(user.id),
         email=user.email,
@@ -196,6 +196,6 @@ def get_current_user_info(user: Users) -> UserOut:
         provider=user.provider.value,
     )
 
-def delete_current_user(session: Session, user: Users) -> str:
+def delete_current_user(session: Session, user: User) -> str:
     delete_user(session, user)
     return "Your account has been deleted"

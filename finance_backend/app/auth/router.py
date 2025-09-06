@@ -83,7 +83,6 @@ def login_google(user_data: GoogleLoginIn, session: Session = Depends(get_sessio
 
         return TokenOut(acc_jwt=access, ref_jwt=refresh, token_type="bearer")
     except service.GoogleTokenInvalid as e:
-        print()
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except service.AccountExistsWithDifferentProvider:
         raise HTTPException(
@@ -144,13 +143,13 @@ def refresh_token(refresh_token: str) -> AccessTokenOut:
 
 # protected routes
 @router.get("/me")
-def get_me(user: service.Users = Depends(get_current_user)) -> UserOut:
+def get_me(user: service.User = Depends(get_current_user)) -> UserOut:
     return service.get_current_user_info(user)
 
 
 @router.delete("/me")
 def delete_my_account(
-    current_user: service.Users = Depends(get_current_user),
+    current_user: service.User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
     message = service.delete_current_user(session, current_user)

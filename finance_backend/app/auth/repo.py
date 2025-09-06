@@ -1,39 +1,39 @@
 from sqlmodel import select, Session
 from sqlalchemy import or_
-from ..models.user import Users
+from ..models.user import User
 from ..models.enums import Provider
 
-def get_user_by_email(session: Session, email: str) -> Users | None:
-    return session.exec(select(Users).where(Users.email == email)).first()
+def get_user_by_email(session: Session, email: str) -> User | None:
+    return session.exec(select(User).where(User.email == email)).first()
 
-def get_local_user_by_email(session: Session, email: str) -> Users | None:
+def get_local_user_by_email(session: Session, email: str) -> User | None:
     return session.exec(
-        select(Users).where(
-            Users.email == email,
-            or_(Users.provider == Provider.LOCAL, Users.provider == Provider.LOCAL_GOOGLE)
+        select(User).where(
+            User.email == email,
+            or_(User.provider == Provider.LOCAL, User.provider == Provider.LOCAL_GOOGLE)
         )
     ).first()
 
-def get_google_user_by_provider_id(session: Session, provider_id: str) -> Users | None:
-    return session.exec(select(Users).where(Users.provider_id == provider_id)).first()
+def get_google_user_by_provider_id(session: Session, provider_id: str) -> User | None:
+    return session.exec(select(User).where(User.provider_id == provider_id)).first()
 
-def get_google_only_user_by_email(session: Session, email: str) -> Users | None:
+def get_google_only_user_by_email(session: Session, email: str) -> User | None:
     return session.exec(
-        select(Users).where(
-            Users.email == email,
-            Users.provider == Provider.GOOGLE
+        select(User).where(
+            User.email == email,
+            User.provider == Provider.GOOGLE
         )
     ).first()
     
-def get_user_by_id(session: Session, user_id: str) -> Users | None:
-    return session.exec(select(Users).where(Users.id == user_id)).first()
+def get_user_by_id(session: Session, user_id: str) -> User | None:
+    return session.exec(select(User).where(User.id == user_id)).first()
 
-def save_user(session: Session, user: Users):
+def save_user(session: Session, user: User):
     session.add(user)
     session.commit()
     session.refresh(user)
     return user
 
-def delete_user(session: Session, user: Users):
+def delete_user(session: Session, user: User):
     session.delete(user)
     session.commit()
