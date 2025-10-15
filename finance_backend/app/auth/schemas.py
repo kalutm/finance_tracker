@@ -1,4 +1,3 @@
-# migrated from models.validation_models
 from pydantic import BaseModel
 
 class TokenOut(BaseModel):

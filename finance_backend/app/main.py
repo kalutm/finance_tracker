@@ -1,9 +1,5 @@
 from fastapi import FastAPI
-from app.auth.router import router as auth_route
-app = FastAPI()
+from app.api.v1 import api_router
+app = FastAPI(title="Finance Tracker")
 
-app.include_router(router=auth_route)
-
-@app.get("/")
-def welcome():
-    return {"welcome": "welcome To Finance Tracker"}
+app.include_router(router=api_router)

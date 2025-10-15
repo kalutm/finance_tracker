@@ -1,13 +1,11 @@
-import jwt, os
-from dotenv import load_dotenv
+import jwt
 from datetime import datetime, timedelta
 from typing import Dict
+from app.core.settings import settings
 
-load_dotenv()
-
-SECRET_KEY = os.getenv("SECRET_KEY")
-REFRESH_SECRET_KEY = os.getenv("REFRESH_SECRET_KEY")
-ALGORITHM = os.getenv("ALGORITHM")
+SECRET_KEY = settings.SECRET_KEY
+REFRESH_SECRET_KEY = settings.REFRESH_SECRET_KEY
+ALGORITHM = settings.ALGORITHM
 
 def create_access_token(user_data: dict, delta: timedelta) -> str:
     encode = user_data.copy()

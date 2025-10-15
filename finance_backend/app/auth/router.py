@@ -1,6 +1,6 @@
 from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
-from ..db.session import get_session, Session
+from ..db.session import Session, get_session
 from ..auth import service
 from ..auth.dependencies import get_current_user
 from ..auth.emailer import send_verification_email
@@ -14,7 +14,7 @@ from ..auth.schemas import (
     AccessTokenOut,
     UserOut
 )
-from ..auth.settings import settings
+from ..core.settings import settings
 
 
 router = APIRouter(prefix="/auth", tags=["auth"])
