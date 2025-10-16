@@ -9,11 +9,15 @@ client = TestClient(app)
 
 
 def test_register_success(monkeypatch):
-    # Mock the service.register_user to return fake tokens
+    # mock the service.register_user to return fake tokens
     def mock_register_user(session, email, password, access_exp, refresh_exp):
         return "fake_access", "fake_refresh"
-    
+    # mock the emailer.send verification email to do nothing
+    def mock_send_email_verificatoin(email, token):
+        pass
+
     monkeypatch.setattr(service, "register_user", mock_register_user)
+    monkeypatch.setattr("app.auth.router.send_verification_email", mock_send_email_verificatoin)
 
     # Prepare payload
     payload = {
@@ -145,3 +149,189 @@ def test_login_google_account_exists_with_different_provider(monkeypatch):
     # assert that the router handled it properly
     assert response.status_code == 400
     assert response.json()["detail"] == "Account email already exists with different provider. Contact support."
+
+
+def test_verify_email_success(monkeypatch):
+    # mock service.verify_email to return fake successful message
+    def mock_verify_email(session, token):
+        return "Email verified successfully"
+    
+    monkeypatch.setattr(service, "verify_email", mock_verify_email)
+
+    payload = {"token": "fake verification token"}
+    response = client.get("v1/auth/verify", params=payload)
+
+    # assert response
+    assert response.status_code == 200
+    assert response.json()["message"] == "Email verified successfully"
+
+
+def test_verify_email_invalid_verification_token(monkeypatch):
+    # mock service.verfy_email to raise an error
+    def mock_verify_email(session, token):
+        raise service.InvalidVerificationToken("Invalid Token")
+    
+    monkeypatch.setattr(service, "verify_email", mock_verify_email)
+
+    payload = {"token": "Invalid Verification Token"}
+    response = client.get("v1/auth/verify", params=payload)
+
+    # assert that the router handles the exception properly
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Invalid Token"
+
+
+def test_verify_email_user_not_found(monkeypatch):
+    # mock service.verfy_email to raise an error
+    def mock_verify_email(session, token):
+        raise service.UserNotFound()
+    
+    monkeypatch.setattr(service, "verify_email", mock_verify_email)
+
+    payload = {"token": "user not found in db sent a verification email"}
+    response = client.get("v1/auth/verify", params=payload)
+
+    # assert that the router handles the exception properly
+    assert response.status_code == 404
+    assert response.json()["detail"] == "User not found! please register before you verify"
+
+
+def test_resend_verification_success(monkeypatch):
+    # mock service.resend_email to return fake successful resent email message
+    def mock_resend_email(session, email, acc, cooldown):
+        return "fake verification token"
+    # mock the emailer.send verification email to do nothing
+    def mock_send_email_verificatoin(email, token):
+        pass
+    
+    monkeypatch.setattr(service, "resend_email", mock_resend_email)
+    monkeypatch.setattr("app.auth.router.send_verification_email", mock_send_email_verificatoin)
+
+    payload = {"email": "resendverificationemail@example.com"}
+    response = client.post("v1/auth/resend-verification", json=payload)
+
+    # assert response
+    assert response.status_code == 200
+    assert response.json()["message"] == "Verification email resent"
+
+
+def test_resend_verification_account_already_verified(monkeypatch):
+    # mock service.resend_email to raise exception
+    def mock_resend_email(session, email, acc, cooldown):
+        raise service.AccountAlreadyVerified()
+    
+    monkeypatch.setattr(service, "resend_email", mock_resend_email)
+    
+    payload = {"email": "emailalreadyverified@example.com"}
+    response = client.post("v1/auth/resend-verification", json=payload)
+
+    # assert that the endpoint handles the exception properly
+    assert response.status_code == 400
+    assert response.json()["detail"] == "User has already been verified"
+
+
+def test_resend_verification_rate_limit_exceeded(monkeypatch):
+    # mock service.resend_email to raise exception
+    def mock_resend_email(session, email, acc, cooldown):
+        raise service.RateLimitExceeded()
+    
+    monkeypatch.setattr(service, "resend_email", mock_resend_email)
+    
+    payload = {"email": "ratelimitexceeded@example.com"}
+    response = client.post("v1/auth/resend-verification", json=payload)
+
+    # assert that the endpoint handles the exception properly
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Please wait before resending again"
+
+
+def test_resend_verification_user_not_found(monkeypatch):
+    # mock service.resend_email to raise exception
+    def mock_resend_email(session, email, acc, cooldown):
+        raise service.UserNotFound()
+    
+    monkeypatch.setattr(service, "resend_email", mock_resend_email)
+    
+    payload = {"email": "usernotfound@example.com"}
+    response = client.post("v1/auth/resend-verification", json=payload)
+
+    # assert that the endpoint handles the exception properly
+    assert response.status_code == 404
+    assert response.json()["detail"] == "User not found! please register before you verify"
+
+
+def test_refresh_success(monkeypatch):
+    # mock service.refresh to return fake access token
+    def mock_refresh(ref, acc_exp):
+        return "new fake access token"
+
+    monkeypatch.setattr(service, "refresh", mock_refresh)
+
+    payload = {"refresh_token": "fake refresh token"}
+    response = client.post("/v1/auth/refresh", params=payload)
+
+    # assert response
+    assert response.status_code == 200
+    data = response.json()
+    assert data["acc_jwt"] == "new fake access token"
+    assert data["token_type"] == "bearer"
+
+
+def test_refresh_invalid_refresh_token(monkeypatch):
+    # mock service.refresh to raise exception
+    def mock_refresh(ref, acc_exp):
+        raise service.InvalidRefreshToken()
+
+    monkeypatch.setattr(service, "refresh", mock_refresh)
+    
+    payload = {"refresh_token": "fake refresh token"}
+    response = client.post("/v1/auth/refresh", params=payload)
+
+    # assert that the router handles the exception properly
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Invalid refresh token"
+
+
+def test_get_me_success(monkeypatch):
+    # Mock get_current_user dependency
+    fake_user = service.User(id=1, email="test@example.com", is_verified=True)
+
+    def mock_get_current_user():
+        return fake_user
+
+    # Mock the service.get_user_info to return fake user
+    def mock_get_user_info(user):
+        return {"id": user.id, "email": user.email, "is_verified": user.is_verified}
+
+    # Apply monkeypatches
+    monkeypatch.setattr("app.auth.router.get_current_user", mock_get_current_user)
+    monkeypatch.setattr(service, "get_current_user_info", mock_get_user_info)
+
+    response = client.get("/v1/auth/me")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["email"] == "test@example.com"
+    assert data["is_verified"] is True
+
+
+def test_delete_my_account_success(monkeypatch):
+    # Mock dependencies
+    fake_user = service.User(id=1, email="test@example.com", is_verified=True)
+
+    def mock_get_current_user():
+        return fake_user
+
+    def mock_delete_user(session, user):
+        assert user.email == "test@example.com"  # sanity check
+        return "Account deleted successfully"
+
+    # Apply monkeypatches
+    monkeypatch.setattr("app.auth.router.get_current_user", mock_get_current_user)
+    monkeypatch.setattr(service, "delete_current_user", mock_delete_user)
+
+    response = client.delete("/v1/auth/me")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["detail"] == "Account deleted successfully"
