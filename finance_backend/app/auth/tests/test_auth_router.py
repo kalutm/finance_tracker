@@ -2,7 +2,8 @@ import pytest
 from fastapi.testclient import TestClient
 from app.main import app
 from app.auth import service
-
+from app.auth.dependencies import get_current_user
+from app.models.enums import Provider
 
 
 client = TestClient(app)
@@ -294,17 +295,17 @@ def test_refresh_invalid_refresh_token(monkeypatch):
 
 def test_get_me_success(monkeypatch):
     # Mock get_current_user dependency
-    fake_user = service.User(id=1, email="test@example.com", is_verified=True)
+    fake_user = service.User(id="1", email="test@example.com", provider=Provider.GOOGLE, is_verified=True)
 
     def mock_get_current_user():
         return fake_user
 
     # Mock the service.get_user_info to return fake user
     def mock_get_user_info(user):
-        return {"id": user.id, "email": user.email, "is_verified": user.is_verified}
+        return {"id": user.id,"provider":user.provider, "email": user.email, "is_verified": user.is_verified}
 
     # Apply monkeypatches
-    monkeypatch.setattr("app.auth.router.get_current_user", mock_get_current_user)
+    app.dependency_overrides[get_current_user] = mock_get_current_user
     monkeypatch.setattr(service, "get_current_user_info", mock_get_user_info)
 
     response = client.get("/v1/auth/me")

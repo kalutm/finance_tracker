@@ -5,7 +5,7 @@ from app.db.session import get_session, Session
 from sqlmodel import select
 from app.models.user import User
 
-oauth2shceme = OAuth2PasswordBearer(tokenUrl="/login")
+oauth2shceme = OAuth2PasswordBearer(tokenUrl="v1/auth/login")
 
 def get_current_user(
     session: Session = Depends(get_session),
