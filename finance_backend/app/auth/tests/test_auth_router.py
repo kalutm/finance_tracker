@@ -2,8 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 from app.main import app
 from app.auth import service
-from app.auth.dependencies import get_current_user
-from app.models.enums import Provider
+from app.tests.conftest import override_get_current_user
 
 
 client = TestClient(app)
@@ -293,42 +292,29 @@ def test_refresh_invalid_refresh_token(monkeypatch):
     assert response.json()["detail"] == "Invalid refresh token"
 
 
-def test_get_me_success(monkeypatch):
-    # Mock get_current_user dependency
-    fake_user = service.User(id="1", email="test@example.com", provider=Provider.GOOGLE, is_verified=True)
-
-    def mock_get_current_user():
-        return fake_user
-
+def test_get_me_success(monkeypatch, override_get_current_user):
     # Mock the service.get_user_info to return fake user
     def mock_get_user_info(user):
-        return {"id": user.id,"provider":user.provider, "email": user.email, "is_verified": user.is_verified}
+        return {"id": user.id, "email": user.email, "provider": user.provider, "is_verified": user.is_verified}
 
     # Apply monkeypatches
-    app.dependency_overrides[get_current_user] = mock_get_current_user
     monkeypatch.setattr(service, "get_current_user_info", mock_get_user_info)
 
     response = client.get("/v1/auth/me")
 
     assert response.status_code == 200
     data = response.json()
-    assert data["email"] == "test@example.com"
+    assert data["email"] == "fake@user.com"
     assert data["is_verified"] is True
 
 
-def test_delete_my_account_success(monkeypatch):
-    # Mock dependencies
-    fake_user = service.User(id=1, email="test@example.com", is_verified=True)
-
-    def mock_get_current_user():
-        return fake_user
-
+def test_delete_my_account_success(monkeypatch, override_get_current_user):
+    # mock service.delete_user to return fake message
     def mock_delete_user(session, user):
-        assert user.email == "test@example.com"  # sanity check
+        assert user.email == "fake@user.com"
         return "Account deleted successfully"
 
     # Apply monkeypatches
-    monkeypatch.setattr("app.auth.router.get_current_user", mock_get_current_user)
     monkeypatch.setattr(service, "delete_current_user", mock_delete_user)
 
     response = client.delete("/v1/auth/me")
@@ -336,3 +322,32 @@ def test_delete_my_account_success(monkeypatch):
     assert response.status_code == 200
     data = response.json()
     assert data["detail"] == "Account deleted successfully"
+
+
+def test_get_me_unauthorized(monkeypatch):
+    # Mock the service.get_user_info to return fake user
+    def mock_get_user_info(user):
+        return {"id": user.id, "email": user.email, "provider": user.provider, "is_verified": user.is_verified}
+
+    # Apply monkeypatches
+    monkeypatch.setattr(service, "get_current_user_info", mock_get_user_info)
+
+    response = client.get("/v1/auth/me")
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Not authenticated"
+    
+
+def test_delete_my_account_unauthorized(monkeypatch):
+     # mock service.delete_user to return fake message
+    def mock_delete_user(session, user):
+        assert user.email == "fake@user.com"
+        return "Account deleted successfully"
+
+    # Apply monkeypatches
+    monkeypatch.setattr(service, "delete_current_user", mock_delete_user)
+
+    response = client.delete("/v1/auth/me")
+
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Not authenticated"
