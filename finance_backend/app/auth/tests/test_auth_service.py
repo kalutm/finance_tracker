@@ -9,7 +9,6 @@ from app.auth.exceptions import (
 
 
 def test_register_user_creates_new_local_user(monkeypatch, db_session: Session):
-    """Should create new user and return tokens."""
     # mock dependencies
     monkeypatch.setattr(repo, "get_local_user_by_email", lambda s, e: None)
     monkeypatch.setattr(repo, "get_google_only_user_by_email", lambda s, e: None)
@@ -24,7 +23,7 @@ def test_register_user_creates_new_local_user(monkeypatch, db_session: Session):
 
 
 def test_register_user_raises_if_user_exists(monkeypatch, db_session: Session):
-    
+    # mock dependencies
     monkeypatch.setattr(repo, "get_local_user_by_email", lambda s, e: User(id=1, email=e))
     with pytest.raises(UserAlreadyExists):
         service.register_user(db_session, "exists@example.com", "pw", 15, 30)
@@ -32,6 +31,7 @@ def test_register_user_raises_if_user_exists(monkeypatch, db_session: Session):
 
 
 def test_login_local_success(monkeypatch, db_session: Session):
+    # mock dependencies
     fake_user = User(id=1, email="x@test.com", password_hash="hashed", is_verified=True)
     monkeypatch.setattr(repo, "get_local_user_by_email", lambda s, e: fake_user)
     monkeypatch.setattr(service, "verify_password", lambda p, h: True)
@@ -76,3 +76,61 @@ def test_verify_email_invalid_token(monkeypatch, db_session: Session):
     monkeypatch.setattr(service, "verify_access_token", lambda jw_token: (_ for _ in ()).throw(JWTError()))
     with pytest.raises(InvalidVerificationToken):
         service.verify_email(db_session, "bad_token")
+
+
+def test_resend_email_success(monkeypatch, db_session: Session):
+    from datetime import datetime
+    fake_user = User(id=1, email="u@test.com", is_verified=False)
+
+    monkeypatch.setattr(repo, "get_user_by_email", lambda s, e: fake_user)
+    now = datetime.now()
+    monkeypatch.setattr(repo, "save_user", lambda s, u: setattr(u, "last_verification_email", now))
+    monkeypatch.setattr(service, "create_access_token", lambda u, d: "acc")
+
+    token = service.resend_email(db_session, "u@test.com", 15, 1)
+    assert token == "acc"
+    assert fake_user.last_verification_email == now
+
+
+def test_resend_email_user_not_found(monkeypatch, db_session: Session):
+    monkeypatch.setattr(repo, "get_user_by_email", lambda s, e: None)
+    with pytest.raises(service.UserNotFound):
+        service.resend_email(db_session, "notfound@email.com", 15, 1)
+
+
+def test_resend_email_account_already_verified(monkeypatch, db_session: Session):
+    fake_user = User(id=1, email="notfound@email.com", is_verified=True)
+    monkeypatch.setattr(repo, "get_user_by_email", lambda s, e: fake_user)
+    with pytest.raises(service.AccountAlreadyVerified):
+        service.resend_email(db_session, "notfound@email.com", 15, 1)
+
+
+def test_resend_email_rate_limit_exceeded(monkeypatch, db_session: Session):
+    from datetime import datetime
+    fake_user = User(id=1, email="notfound@email.com", last_verification_email=datetime.now() ,is_verified=False)
+    monkeypatch.setattr(repo, "get_user_by_email", lambda s, e: fake_user)
+    with pytest.raises(service.RateLimitExceeded):
+        service.resend_email(db_session, "notfound@email.com", 15, 1)
+
+
+def test_refresh_success(monkeypatch, db_session: Session):
+    payload = {"id": 1, "email": "user@example.com", "exp": 30}
+    monkeypatch.setattr(service, "verify_refresh_token", lambda ref: payload)
+    monkeypatch.setattr(service, "create_access_token", lambda p, d: "acc")
+
+    token = service.refresh("ref", 15)
+
+    assert token == "acc"
+
+
+def test_refresh_invalid_refresh_token(monkeypatch, db_session: Session):
+    from jose import JWTError
+    monkeypatch.setattr(service, "verify_access_token", lambda jw_token: (_ for _ in ()).throw(JWTError()))
+    with pytest.raises(service.InvalidRefreshToken):
+        service.refresh("ref", 15)
+
+
+def test_refresh_invalid_refresh_token_payload_none(monkeypatch, db_session: Session):
+    monkeypatch.setattr(service, "verify_access_token", lambda jw_token: None)
+    with pytest.raises(service.InvalidRefreshToken):
+        service.refresh("ref", 15)
