@@ -28,7 +28,7 @@ def create_test_database():
 
 
 @pytest.fixture(scope="function")
-def db_session():
+def db_session(create_test_database):
     """Start a transaction per test and roll it back after."""
     connection = test_engine.connect()
     transaction = connection.begin()

@@ -26,14 +26,7 @@ from ..auth.utils import (
     validate_google_token,
 )
 from ..auth.jwt import create_access_token, verify_access_token, verify_refresh_token
-from ..auth.repo import (
-    get_local_user_by_email,
-    get_user_by_email,
-    get_google_user_by_provider_id,
-    get_google_only_user_by_email,
-    save_user,
-    delete_user
-)
+from ..auth import repo
 from typing import Tuple
 
 
@@ -41,13 +34,13 @@ def register_user(
     session: Session, email: str, password: str, access_min: int, refresh_days: int
 ) -> Tuple[str, str]:
     email = email.strip().lower()
-    existing_local = get_local_user_by_email(session, email)
+    existing_local = repo.get_local_user_by_email(session, email)
     if existing_local:
         raise UserAlreadyExists(email)
 
     hashed = hash_password(password)
 
-    existing_google = get_google_only_user_by_email(session, email)
+    existing_google = repo.get_google_only_user_by_email(session, email)
 
     # Case 1 existing google user
     if existing_google:
@@ -67,7 +60,7 @@ def register_user(
     # Case 2 no existing google user -> create a new local user
     user = User(email=email, password_hash=hashed, provider=Provider.LOCAL)
     try:
-        save_user(session, user)
+        repo.save_user(session, user)
     except IntegrityError:
         session.rollback()
         raise UserAlreadyExists(email)
@@ -81,9 +74,9 @@ def login_local(
     email = email.strip().lower()
 
     # check if user already registerd
-    user = get_local_user_by_email(session, email)
+    user = repo.get_local_user_by_email(session, email)
     if not user:
-        google_only = get_google_only_user_by_email(session, email)
+        google_only = repo.get_google_only_user_by_email(session, email)
         # if logged in with google before, suggest the user to do it again
         if google_only:
             raise InvalidCredentials("Use Google Sign-In for this account or register with the email")
@@ -112,18 +105,18 @@ def login_google(
     email = info.get("email", "").strip().lower()
 
     # Case 1: Existing Google user
-    user = get_google_user_by_provider_id(session, google_sub)
+    user = repo.get_google_user_by_provider_id(session, google_sub)
     if user:
         return create_tokens_for_user(str(user.id), email, access_min, refresh_days)
 
     # Case 2: Existing local user → upgrade
-    existing_local = get_local_user_by_email(session, email)
+    existing_local = repo.get_local_user_by_email(session, email)
 
     if existing_local:
         if existing_local.provider == Provider.LOCAL:
             existing_local.provider = Provider.LOCAL_GOOGLE
             existing_local.provider_id = google_sub
-            save_user(session, existing_local)
+            repo.save_user(session, existing_local)
             return create_tokens_for_user(
                 str(existing_local.id), existing_local.email, access_min, refresh_days
             )
@@ -132,7 +125,7 @@ def login_google(
 
     # Case 3: New Google user
     new_user = User(email=email, provider=Provider.GOOGLE, provider_id=google_sub)
-    save_user(session, new_user)
+    repo.save_user(session, new_user)
 
     return create_tokens_for_user(
         str(new_user.id), new_user.email, access_min, refresh_days
@@ -149,18 +142,18 @@ def verify_email(session: Session, token: str) -> str:
     if not email:
         raise InvalidVerificationToken("Invalid verification token")
 
-    user = get_user_by_email(session, email)
+    user = repo.get_user_by_email(session, email)
     if not user:
         raise UserNotFound()
 
     user.is_verified = True
-    save_user(session, user)
+    repo.save_user(session, user)
 
     return "Email verified successfully"
 
 
 def resend_email(session: Session, email: str, access_min: int, cooldown: int) -> str:
-    user = get_user_by_email(session, email)
+    user = repo.get_user_by_email(session, email)
     if not user:
         raise UserNotFound()
     if user.is_verified:
@@ -171,7 +164,7 @@ def resend_email(session: Session, email: str, access_min: int, cooldown: int) -
         if now - user.last_verification_email < timedelta(seconds=cooldown):
             raise RateLimitExceeded()
     user.last_verification_email = datetime.now()
-    save_user(session, user)
+    repo.save_user(session, user)
 
     return create_access_token({"sub": user.email}, timedelta(minutes=access_min))
 
@@ -197,5 +190,5 @@ def get_current_user_info(user: User) -> UserOut:
     )
 
 def delete_current_user(session: Session, user: User) -> str:
-    delete_user(session, user)
+    repo.delete_user(session, user)
     return "Your account has been deleted"
