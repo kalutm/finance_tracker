@@ -77,7 +77,21 @@ def override_get_current_user():
 
 
 @pytest.fixture(scope="function")
-def client(override_get_session, override_get_current_user):
+def client(override_get_session):
     """Test client with dependencies overridden (auth + db)."""
     with TestClient(app) as c:
         yield c
+
+
+# ------------- Helpers -------------
+
+def create_test_user(session: Session, email="test@example.com", password_hash="hashed"):
+    user = models.user.User(
+        email=email,
+        hashed_password=password_hash,
+        provider=models.enums.Provider.LOCAL,
+    )
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+    return user
