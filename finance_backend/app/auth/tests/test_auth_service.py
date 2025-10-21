@@ -1,6 +1,6 @@
 import pytest
 from sqlmodel import Session
-from app.tests.conftest import override_get_session, db_session, create_test_database
+from app.tests.conftest import db_session, create_test_database
 from app.auth import repo, service
 from app.models.user import User
 from app.auth.exceptions import (
@@ -8,7 +8,7 @@ from app.auth.exceptions import (
 )
 
 
-def test_register_user_creates_new_local_user(monkeypatch, db_session: Session):
+def test_register_user_success(monkeypatch, db_session: Session):
     # mock dependencies
     monkeypatch.setattr(repo, "get_local_user_by_email", lambda s, e: None)
     monkeypatch.setattr(repo, "get_google_only_user_by_email", lambda s, e: None)
@@ -22,7 +22,7 @@ def test_register_user_creates_new_local_user(monkeypatch, db_session: Session):
     assert ref == "ref"
 
 
-def test_register_user_raises_if_user_exists(monkeypatch, db_session: Session):
+def test_register_user_user_already_exists(monkeypatch, db_session: Session):
     # mock dependencies
     monkeypatch.setattr(repo, "get_local_user_by_email", lambda s, e: User(id=1, email=e))
     with pytest.raises(UserAlreadyExists):
