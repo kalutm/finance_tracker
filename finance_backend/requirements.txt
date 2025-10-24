@@ -12,3 +12,4 @@ PyJWT
 requests
 fastapi_mail
 pytest
+python-multipart

@@ -1,5 +1,6 @@
 from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
+from fastapi.security import OAuth2PasswordRequestForm
 from ..db.session import Session, get_session
 from ..auth import service
 from ..auth.dependencies import get_current_user
@@ -48,6 +49,19 @@ def register(
         return TokenOut(acc_jwt=access, ref_jwt=refresh, token_type="bearer")
     except service.UserAlreadyExists as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/login_form")
+def login_form(data: OAuth2PasswordRequestForm = Depends(), session: Session = Depends(get_session)):
+    access, refresh = service.login_local(
+        session,
+        data.username,  # treat username as email
+        data.password,
+        ACCESS_TOKEN_EXPIRE_MINUTES,
+        REFRESH_TOKEN_EXPIRE_DAYS,
+    )
+    return {"access_token": access, "token_type": "bearer"}
+
 
 
 @router.post("/login", response_model=TokenOut)
