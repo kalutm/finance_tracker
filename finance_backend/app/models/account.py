@@ -24,4 +24,4 @@ class Account(SQLModel, table=True):
     currency: str = Field(default="USD", nullable=False, max_length=3, description="ISO 4217 code")
     active: bool = Field(default=True)
     created_at: datetime = Field(default_factory=now_utc)
-    updated_at: Optional[datetime] = Field(default=None, nullable=True)
+    updated_at: Optional[datetime] = Field(default_factory=now_utc, sa_column=Column(onupdate=now_utc))
