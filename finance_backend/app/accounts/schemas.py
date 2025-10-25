@@ -5,9 +5,22 @@ from typing import List, Optional
 from decimal import Decimal
 from datetime import datetime
 
+
+class AccountOut(BaseModel):
+    id: int
+    name: str
+    type: AccountType
+    currency: str
+    balance: Decimal
+    active: bool
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+    
 class AccountsOut(BaseModel):
-    accounts: List[Account]
+    accounts: List[AccountOut]
     total: int
+
 
 class AccountCreate(BaseModel):
     name: str

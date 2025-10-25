@@ -13,8 +13,8 @@ from ..accounts import repo
 from typing import List
 
 
-def get_user_accounts(session: Session, user_id, limit, offset, active) -> List[Account]:
-    return repo.get_accounts_by_user_id(session, user_id)
+def get_user_accounts(session: Session, user_id, limit, offset, active) -> tuple[List[Account], int]:
+    return repo.list_user_accounts(session, user_id, limit, offset, active)
 
 def create_account(session: Session, user_id, name, type, currency) -> Account:    
     account = Account(user_id=user_id, name=name, type=type, currency=currency)
@@ -50,8 +50,8 @@ def delete_account(session: Session, id, user_id):
     account = repo.get_account_for_user(session, id, user_id)
     if not account:
         raise AccountNotFound("couldnot find account")
-    if repo.count_transactions_for_account(session, id) > 0:
-        raise AccountError("Cannot hard-delete account with transactions. Consider deactivating.")
+    # if repo.count_transactions_for_account(session, id) > 0:
+    #     raise AccountError("Cannot hard-delete account with transactions. Consider deactivating.")
     repo.delete_account(session, account)
     session.commit()
 

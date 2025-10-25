@@ -1,5 +1,5 @@
 from sqlmodel import select, Session
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 from ..models.account import Account
 from typing import List, Optional
 
@@ -8,10 +8,12 @@ def get_accounts_by_user_id(session: Session, user_id) -> List[Account]:
     return session.exec(select(Account).where(Account.user_id == user_id))
 
 
-def list_user_accounts(session: Session, user_id, limit, offset, active):
-    accounts = session.exec(
-        select(Account).where(Account.user_id == user_id, Account.active == active).limit(limit).offset(offset)
-    ).all()
+def list_user_accounts(session: Session, user_id, limit, offset, active) -> tuple[List[Account], int]:
+    total_stmt = select(func.count()).select_from(Account).where(Account.user_id == user_id, Account.active == active if active is not None else True)
+    total = session.exec(total_stmt).one()
+    stmt = select(Account).where(Account.user_id == user_id, Account.active == active if active is not None else True).order_by(Account.created_at.desc()).limit(limit).offset(offset)
+    results = session.exec(stmt).all()
+    return results, int(total)
 
 
 def get_account_for_user(session, account_id, user_id) -> Optional[Account]:
@@ -35,5 +37,3 @@ def get_account_by_id(session: Session, id) -> Account:
 def delete_account(session: Session, account: Account):
     session.delete(account)
     session.flush()
-    session.refresh(account)
-    return account

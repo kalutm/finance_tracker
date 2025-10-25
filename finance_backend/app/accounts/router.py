@@ -6,30 +6,35 @@ from app.api.deps import get_current_user
 from typing import Annotated, Optional
 
 router = APIRouter(
-    prefix="/accounts", dependencies=[Depends(get_current_user)], tags=["account"]
+    prefix="/accounts", tags=["account"]
 )
 
 
 @router.get("/", response_model=AccountsOut)
 def get_user_accounts(
-    limit = Annotated[
-        int,
-        Query(50, ge=1, le=500, title="limit", description="amount of result per page"),
-    ],
-    offset = Annotated[
-        int,
-        Query(0, ge=0, title="offset", description="position compared to 0th result"),
-    ],
-    active = Annotated[
-        bool,
-        Query(True, title="active", description="describes if the account is deleted or not (can be Undone)")
-    ],
+    limit: int = Query(
+        50, ge=1, le=500, title="limit", description="amount of result per page"
+    ),
+    offset: int = Query(
+        0, ge=0, title="offset", description="position compared to 0th result"
+    ),
+    active: Optional[bool] = Query(
+        None,
+        title="active",
+        description="describes if the account is deleted or not (can be Undone)",
+    ),
     current_user: service.User = Depends(get_current_user),
     session: Session = Depends(get_session),
 ):
-    accounts, total = service.get_user_accounts(session, current_user.id, limit, offset, active)
+    accounts, total = service.get_user_accounts(
+        session, current_user.id, limit, offset, active
+    )
 
-    return AccountsOut(accounts=accounts, total=total)
+    account_outs = []
+    for account in accounts:
+        account_outs.append(AccountOut.model_validate(account))
+
+    return AccountsOut(accounts=account_outs, total=total)
 
 
 @router.post("/", response_model=AccountOut, status_code=status.HTTP_201_CREATED)
@@ -42,19 +47,10 @@ def create_account(
         account = service.create_account(
             session,
             current_user.id,
-            account_data.name,
-            account_data.type,
-            account_data.currency,
+            **account_data.model_dump()
         )
-        return AccountOut(
-            id=account.id,
-            name=account.name,
-            type=account.type,
-            currency=account.currency,
-            balance=account.balance,
-            active=account.active,
-            created_at=account.created_at,
-        )
+        account_out = AccountOut.model_validate(account)
+        return account_out
     except service.AccountNameAlreadyTaken as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
@@ -75,15 +71,8 @@ def get_account(
 ):
     try:
         account = service.get_account(session, id, current_user.id)
-        return AccountOut(
-            id=account.id,
-            name=account.name,
-            type=account.type,
-            currency=account.currency,
-            balance=account.balance,
-            active=account.active,
-            created_at=account.created_at,
-        )
+        account_out = AccountOut.model_validate(account)
+        return account_out
     except service.AccountNotFound as e:
         raise HTTPException(status_code=404, detail=str(e))
 
@@ -108,21 +97,17 @@ def update_account(
         updated_account = service.update_account(
             session, id, update_data, current_user.id
         )
-        return AccountOut(
-            id=updated_account.id,
-            name=updated_account.name,
-            type=updated_account.type,
-            currency=updated_account.currency,
-            balance=updated_account.balance,
-            active=updated_account.active,
-            created_at=updated_account.created_at,
-        )
+        account_out = AccountOut.model_validate(updated_account)
+        return account_out
     except service.AccountNotFound as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except service.AccountNameAlreadyTaken as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
-@router.patch("/{id}/deactivate", response_model=AccountOut, status_code=status.HTTP_200_OK)
+
+@router.patch(
+    "/{id}/deactivate", response_model=AccountOut, status_code=status.HTTP_200_OK
+)
 def deactivate_account(
     id: Annotated[
         int,
@@ -138,17 +123,11 @@ def deactivate_account(
 ):
     try:
         deactivated_account = service.deactivate_account(session, id, current_user.id)
-        return AccountOut(
-            id=deactivated_account.id,
-            name=deactivated_account.name,
-            type=deactivated_account.type,
-            currency=deactivated_account.currency,
-            balance=deactivated_account.balance,
-            active=deactivated_account.active,
-            created_at=deactivated_account.created_at,
-        )
+        account_out = AccountOut.model_validate(deactivated_account)
+        return account_out
     except service.AccountNotFound as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
 
 @router.delete("/{id}", response_model=None, status_code=status.HTTP_204_NO_CONTENT)
 def delete_account(
@@ -187,14 +166,7 @@ def restore_account(
 
     try:
         restored_account = service.restore_account(session, id, current_user.id)
-        return AccountOut(
-            id=restored_account.id,
-            name=restored_account.name,
-            type=restored_account.type,
-            currency=restored_account.currency,
-            balance=restored_account.balance,
-            active=restored_account.active,
-            created_at=restored_account.created_at,
-        )
+        account_out = AccountOut.model_validate(restored_account)
+        return account_out
     except service.AccountNotFound as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
