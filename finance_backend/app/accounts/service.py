@@ -44,6 +44,7 @@ def update_account(session: Session, id, update_data, user_id) -> Account:
         session.commit()
         return updated_account
     except IntegrityError:
+        session.rollback()
         raise AccountNameAlreadyTaken("please use a different Account name")
 
 def delete_account(session: Session, id, user_id):
