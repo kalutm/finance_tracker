@@ -14,8 +14,8 @@ abstract class AuthService {
   Future<AuthUser> registerWithEmailAndPassword(String email, String password);
 
   Future<void> sendVerificationEmail(String email);
-  
+
   Future<void> deleteCurrentUser();
-  
+
   Future<void> logout();
 }

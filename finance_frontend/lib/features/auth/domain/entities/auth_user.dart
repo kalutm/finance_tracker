@@ -1,12 +1,12 @@
 import 'package:finance_frontend/features/auth/domain/entities/provider_enum.dart';
 
 class AuthUser {
-  String uid;
-  String email;
-  bool isVerified;
-  Provider provider;
+  final String uid;
+  final String email;
+  final bool isVerified;
+  final Provider provider;
   
-  AuthUser({required this.uid, required this.email, this.isVerified = false, required this.provider});
+  const AuthUser({required this.uid, required this.email, this.isVerified = false, required this.provider});
   
   factory AuthUser.fromFinance(Map<String, dynamic> json){
     final userProvider = json["provider"] as String;

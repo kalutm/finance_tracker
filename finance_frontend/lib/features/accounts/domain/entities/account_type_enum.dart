@@ -1,0 +1,1 @@
+enum AccountType { CASH, WALLET, BANK, CREDIT_CARD, CRYPTO }

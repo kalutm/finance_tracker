@@ -105,16 +105,6 @@ class _LoginViewState extends State<LoginView> {
                     ),
                   ],
                 ),
-                //  Row(
-                //   mainAxisAlignment: MainAxisAlignment.center,
-                //   children: [
-                //     Text("Email not verified?", style: textTheme.bodyMedium),
-                //     TextButton(
-                //       onPressed: () => widget.toogleView(),
-                //       child: Text('VERIFY', style: textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold, color: theme.primaryColor)),
-                //     ),
-                //   ],
-                // ),
                 const SizedBox(height: 24),
                 
                 // --- "OR" Separator ---
