@@ -1,0 +1,1 @@
+enum AccountOperationType {create, read, update, restore, deactivate}

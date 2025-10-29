@@ -5,15 +5,15 @@ import 'package:finance_frontend/features/accounts/domain/entities/dtos/account_
 abstract class AccountService {
   Future<List<Account>> getUserAccounts();
 
-  Future<Account> createAccount({AccountCreate create});
+  Future<Account> createAccount(AccountCreate create);
 
   Future<Account> getAccount(String id);
 
-  Future<Account> updateAccount({required String id, AccountPatch patch});
+  Future<Account> updateAccount(String id, AccountPatch patch);
 
   Future<Account> deactivateAccount(String id);
 
   Future<void> deleteAccount(String id);
 
-  Future<void> restoreAccount(String id);
+  Future<Account> restoreAccount(String id);
 }
