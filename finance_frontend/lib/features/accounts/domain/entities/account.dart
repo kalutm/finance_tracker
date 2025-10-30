@@ -24,7 +24,7 @@ class Account {
 
   factory Account.fromFinance(Map<String, dynamic> json) {
     return Account(
-      id: json['id'] as String,
+      id: (json['id'] as int).toString(),
       balance: json['balance'] as String,
       name: json['name'] as String,
       type: AccountType.values.byName(json['type'] as String),

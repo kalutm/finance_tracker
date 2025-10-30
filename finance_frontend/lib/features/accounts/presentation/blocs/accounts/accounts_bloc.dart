@@ -112,7 +112,6 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
   }
 
   String _mapErrorToMessage(Object e) {
-    // TODO: map different exception types to friendly messages or use a Failure class.
     // Example:
     // if (e is NetworkException) return 'No internet connection';
     // if (e is UnauthorizedException) return 'Session expired';
