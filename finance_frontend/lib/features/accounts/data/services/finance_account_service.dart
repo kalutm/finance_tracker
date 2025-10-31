@@ -10,104 +10,200 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'dart:developer' as dev_tool show log;
 
-class FinanceAccountService implements AccountService{
+class FinanceAccountService implements AccountService {
   final FinanceSecureStorageService financeSecureStorageService;
 
   FinanceAccountService(this.financeSecureStorageService);
 
   final baseUrl = "${dotenv.env["API_BASE_URL_MOBILE"]}/accounts";
 
-
   @override
   Future<Account> createAccount(AccountCreate create) async {
     try {
-      final accessToken = await financeSecureStorageService.readString(key: "access_token");
+      final accessToken = await financeSecureStorageService.readString(
+        key: "access_token",
+      );
       final res = await http.post(
         headers: {
-            "Authorization": "Bearer $accessToken",
-          },
+          "Authorization": "Bearer $accessToken",
+          "Content-Type": "application/json",
+        },
+        Uri.parse("$baseUrl/"),
+        body: jsonEncode(create.toJson()),
+      );
+
+      final json = jsonDecode(res.body) as Map<String, dynamic>;
+      if (res.statusCode != 201) {
+        dev_tool.log("EERROORR, EERROORR: ${json["detail"]}");
+        throw CouldnotCreateAccount();
+      }
+      // request was successful -> return the created account
+      return Account.fromFinance(json);
+    } on AccountException catch (_) {
+      rethrow;
+    } catch (e) {
+      throw Exception("Account Creation Failed: $e");
+    }
+  }
+
+  @override
+  Future<Account> deactivateAccount(String id) async {
+    try {
+      final accessToken = await financeSecureStorageService.readString(
+        key: "access_token",
+      );
+      final res = await http.patch(
+        headers: {"Authorization": "Bearer $accessToken"},
+        Uri.parse("$baseUrl/$id/deactivate"),
+      );
+
+      final json = jsonDecode(res.body) as Map<String, dynamic>;
+      if (res.statusCode != 200) {
+        dev_tool.log("EERROORR, EERROORR: ${json["detail"]}");
+        throw CouldnotDeactivateAccount();
+      }
+      // request was successful -> return the deactivated account
+      return Account.fromFinance(json);
+    } on AccountException catch (_) {
+      rethrow;
+    } catch (e) {
+      throw Exception("Account deactivation Failed: $e");
+    }
+  }
+
+  @override
+  Future<void> deleteAccount(String id) async {
+    try {
+      final accessToken = await financeSecureStorageService.readString(
+        key: "access_token",
+      );
+      final res = await http.delete(
+        headers: {"Authorization": "Bearer $accessToken"},
+        Uri.parse("$baseUrl/$id"),
+      );
+
+      final json = jsonDecode(res.body) as Map<String, dynamic>;
+      if (res.statusCode != 204) {
+        dev_tool.log("EERROORR, EERROORR: ${json["detail"]}");
+        throw CouldnotDeleteAccount();
+      }
+    } on AccountException catch (_) {
+      rethrow;
+    } catch (e) {
+      throw Exception("Account deletion Failed: $e");
+    }
+  }
+
+  @override
+  Future<Account> getAccount(String id) async {
+    try {
+      final accessToken = await financeSecureStorageService.readString(
+        key: "access_token",
+      );
+      final resp = await http.get(
+        Uri.parse("$baseUrl/$id"),
+        headers: {"Authorization": "Bearer $accessToken"},
+      );
+
+      final resBody = jsonDecode(resp.body) as Map<String, dynamic>;
+      if (resp.statusCode != 200) {
+        dev_tool.log("EERROORR, EERROORR: ${resBody["detail"]}");
+        throw CouldnotGetAccont();
+      }
+      // request successful -> return the fetched account
+      return Account.fromFinance(resBody);
+    } on AccountException catch (_) {
+      rethrow;
+    } catch (e) {
+      throw Exception("Couldnot Get account: $e");
+    }
+  }
+
+  @override
+  Future<List<Account>> getUserAccounts() async {
+    try {
+      final accessToken = await financeSecureStorageService.readString(
+        key: "access_token",
+      );
+      final resp = await http.get(
         Uri.parse(baseUrl),
-        body: jsonEncode({"name": create.name, "type": create.type.name, "currency": create.currency}),
+        headers: {"Authorization": "Bearer $accessToken"},
+      );
+
+      final resBody = jsonDecode(resp.body) as Map<String, dynamic>;
+      if (resp.statusCode != 200) {
+        dev_tool.log("EERROORR, EERROORR: ${resBody["detail"]}");
+        throw CouldnotFetchAccounts();
+      }
+      // request successful -> return the fetched convert to and return the fetched data as List<Account>
+
+      final accountsMap = resBody["accounts"] as List<dynamic>;
+      final List<Account> accounts = [];
+      for (final account in accountsMap) {
+        accounts.add(Account.fromFinance(account as Map<String, dynamic>));
+      }
+
+      return accounts;
+    } on AccountException catch (_) {
+      rethrow;
+    } catch (e) {
+      throw Exception("Couldnot fetch accounts: $e");
+    }
+  }
+
+  @override
+  Future<Account> restoreAccount(String id) async {
+    try {
+      final accessToken = await financeSecureStorageService.readString(
+        key: "access_token",
+      );
+      final res = await http.patch(
+        headers: {"Authorization": "Bearer $accessToken"},
+        Uri.parse("$baseUrl/$id/restore"),
       );
 
       final json = jsonDecode(res.body) as Map<String, dynamic>;
       if (res.statusCode != 200) {
         final errorDetail = json["detail"] as String;
         dev_tool.log("EERROORR, EERROORR: $errorDetail");
-        throw CouldnotCreateAccount();
+        throw CouldnotRestoreAccount();
       }
-      // request was successful -> return the created account
+      // request was successful -> return the restored account
       return Account.fromFinance(json);
-
     } on AccountException catch (_) {
       rethrow;
-    } catch(e){
-      throw Exception("Creating account Failed: $e");
+    } catch (e) {
+      throw Exception("Account Restoration Failed: $e");
     }
   }
 
   @override
-  Future<Account> deactivateAccount(String id) {
-    // TODO: implement deactivateAccount
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<void> deleteAccount(String id) {
-    // TODO: implement deleteAccount
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<Account> getAccount(String id) {
-    // TODO: implement getAccount
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<List<Account>> getUserAccounts() async {
+  Future<Account> updateAccount(String id, AccountPatch patch) async {
     try {
-        final accessToken = await financeSecureStorageService.readString(key: "access_token");
-        final resp = await http.get(
-          Uri.parse(baseUrl),
-          headers: {
-            "Authorization": "Bearer $accessToken",
-          },
-        );
+      final accessToken = await financeSecureStorageService.readString(
+        key: "access_token",
+      );
+      final res = await http.patch(
+        headers: {
+          "Authorization": "Bearer $accessToken",
+          "Content-Type": "application/json",
+        },
+        Uri.parse("$baseUrl/$id"),
+        body: jsonEncode(patch.toJson()),
+      );
 
-        final resBody = jsonDecode(resp.body) as Map<String, dynamic>;
-        if (resp.statusCode != 200) {
-          dev_tool.log(
-            "EERROORR, EERROORR: ${resBody["detail"]}",
-          );
-          throw CouldnotFetchAccounts();
-        }
-        // request successful -> return the fetched convert to and return the fetched data as List<Account>
-
-        final accountsMap = resBody["accounts"] as List<dynamic>;
-        final List<Account> accounts = [];
-        for (final account in accountsMap){
-          accounts.add(Account.fromFinance(account as Map<String, dynamic>));
-        }
-
-        return accounts;
-      } on AccountException catch (_) {
-        rethrow;
-      } catch (e) {
-        throw Exception("Couldnot fetch accounts: $e");
+      final json = jsonDecode(res.body) as Map<String, dynamic>;
+      if (res.statusCode != 200) {
+        final errorDetail = json["detail"] as String;
+        dev_tool.log("EERROORR, EERROORR: $errorDetail");
+        throw CouldnotUpdateAccount();
       }
+      // request was successful -> return the updated account
+      return Account.fromFinance(json);
+    } on AccountException catch (_) {
+      rethrow;
+    } catch (e) {
+      throw Exception("Updating account Failed: $e");
+    }
   }
-
-  @override
-  Future<Account> restoreAccount(String id) {
-    // TODO: implement restoreAccount
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<Account> updateAccount(String id, AccountPatch patch) {
-    // TODO: implement updateAccount
-    throw UnimplementedError();
-  }
-
 }

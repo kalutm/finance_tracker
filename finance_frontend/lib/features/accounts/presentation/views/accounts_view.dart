@@ -2,6 +2,7 @@ import 'package:finance_frontend/features/accounts/data/services/finance_account
 import 'package:finance_frontend/features/accounts/presentation/blocs/account_form/account_form_bloc.dart';
 import 'package:finance_frontend/features/accounts/presentation/blocs/accounts/accounts_bloc.dart';
 import 'package:finance_frontend/features/accounts/presentation/blocs/accounts/accounts_state.dart';
+import 'package:finance_frontend/features/accounts/presentation/views/create_update_account_view.dart';
 import 'package:finance_frontend/features/auth/data/services/finance_secure_storage_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -35,30 +36,93 @@ class _AccountsViewState extends State<AccountsView> {
         appBar: AppBar(title: Text("Accounts")),
         body: BlocConsumer<AccountsBloc, AccountsState>(
           listener: (context, state) {
-            if(state is AccountOperationFailure){
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message)));
+            if (state is AccountOperationFailure) {
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text(state.message)));
             }
           },
           builder: (context, state) {
-            if(state is AccountsLoaded){
+            if (state is AccountsLoaded) {
               final accounts = state.accounts;
-              return ListView.builder(itemCount: accounts.length, itemBuilder: (context, index) {
-                final account = accounts[index];
-                return ListTile(
-                  leading: Text(account.currency),
-                  title: Text(account.name),
-                  subtitle: Text(account.balance),
-                  trailing: Text(account.type.name),
-                );
-              });
-            } else if (state is AccountOperationFailure){
-              return Text("error in fetching accounts");
-            } else{
-              return Center(
-                child: CircularProgressIndicator(),
+              return ListView.builder(
+                itemCount: accounts.length,
+                itemBuilder: (context, index) {
+                  final account = accounts[index];
+                  return ListTile(
+                    leading: Text(account.currency),
+                    title: Text(account.name),
+                    subtitle: Text(account.balance),
+                    trailing: Text(account.type.name),
+                    onTap:
+                        () => Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder:
+                                (context) => MultiBlocProvider(
+                                  providers: [
+                                    BlocProvider<AccountsBloc>(
+                                      create:
+                                          (context) => AccountsBloc(
+                                            FinanceAccountService(
+                                              FinanceSecureStorageService(),
+                                            ),
+                                          ),
+                                    ),
+                                    BlocProvider<AccountFormBloc>(
+                                      create:
+                                          (context) => AccountFormBloc(
+                                            FinanceAccountService(
+                                              FinanceSecureStorageService(),
+                                            ),
+                                          ),
+                                    ),
+                                  ],
+                                  child: CreateUpdateAccountView(
+                                    isUpdate: true,
+                                    account: account,
+                                  ),
+                                ),
+                          ),
+                        ),
+                  );
+                },
               );
+            } else if (state is AccountOperationFailure) {
+              return Text("error in fetching accounts");
+            } else {
+              return Center(child: CircularProgressIndicator());
             }
           },
+        ),
+        floatingActionButton: FloatingActionButton(
+          onPressed:
+              () => Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder:
+                      (context) => MultiBlocProvider(
+                        providers: [
+                          BlocProvider<AccountsBloc>(
+                            create:
+                                (context) => AccountsBloc(
+                                  FinanceAccountService(
+                                    FinanceSecureStorageService(),
+                                  ),
+                                ),
+                          ),
+                          BlocProvider<AccountFormBloc>(
+                            create:
+                                (context) => AccountFormBloc(
+                                  FinanceAccountService(
+                                    FinanceSecureStorageService(),
+                                  ),
+                                ),
+                          ),
+                        ],
+                        child: CreateUpdateAccountView(isUpdate: false),
+                      ),
+                ),
+              ),
+          child: Icon(Icons.add),
         ),
       ),
     );
