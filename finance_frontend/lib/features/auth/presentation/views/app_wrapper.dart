@@ -1,3 +1,6 @@
+import 'package:finance_frontend/features/accounts/data/services/finance_account_service.dart';
+import 'package:finance_frontend/features/accounts/presentation/blocs/accounts/accounts_bloc.dart';
+import 'package:finance_frontend/features/auth/data/services/finance_secure_storage_service.dart';
 import 'package:finance_frontend/features/auth/domain/exceptions/auth_exceptions.dart';
 import 'package:finance_frontend/features/auth/presentation/cubits/auth_cubit.dart';
 import 'package:finance_frontend/features/auth/presentation/cubits/auth_state.dart';
@@ -33,11 +36,22 @@ class _AppWrapperState extends State<AppWrapper> {
       child: BlocConsumer<AuthCubit, AuthState>(
         builder: (context, state) {
           if (state is Authenticated) {
-            return Home();
+            return MultiBlocProvider(
+              providers: [
+                BlocProvider<AccountsBloc>(
+                  create:
+                      (_) => AccountsBloc(
+                        FinanceAccountService(FinanceSecureStorageService()),
+                      ),
+                ),
+                // i will later addBudgetsBloc, TransactionsBloc here
+              ],
+              child: const Home(),
+            );
           } else if (state is AuthNeedsVerification) {
-            return FirstAuthWrappr(toVerify: true, email: state.email,);
+            return FirstAuthWrappr(toVerify: true, email: state.email);
           } else if (state is Unauthenticated) {
-            return FirstAuthWrappr(toVerify: false, );
+            return FirstAuthWrappr(toVerify: false);
           } else {
             return Scaffold(
               body: Center(
@@ -51,36 +65,60 @@ class _AppWrapperState extends State<AppWrapper> {
             if (state.exception is CouldnotLoadUser) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text("Couldnot Load User please log in agian",),
+                  content: Text("Couldnot Load User please log in agian"),
                 ),
               );
-            } else if (state.exception is CouldnotGetUser){
+            } else if (state.exception is CouldnotGetUser) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text("Couldnot get User Cridentials please try again later"))
+                SnackBar(
+                  content: Text(
+                    "Couldnot get User Cridentials please try again later",
+                  ),
+                ),
               );
             } else if (state.exception is CouldnotLogIn) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text("Login Failed: ${state.exception.toString()}")),
+                SnackBar(
+                  content: Text("Login Failed: ${state.exception.toString()}"),
+                ),
               );
-            } else if (state.exception is CouldnotRegister){
+            } else if (state.exception is CouldnotRegister) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text("Register Failed: ${state.exception.toString()}")),
+                SnackBar(
+                  content: Text(
+                    "Register Failed: ${state.exception.toString()}",
+                  ),
+                ),
               );
             } else if (state.exception is CouldnotLogInWithGoogle) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text("Couldnot login with google please try again later")),
+                SnackBar(
+                  content: Text(
+                    "Couldnot login with google please try again later",
+                  ),
+                ),
               );
-            } else if(state.exception is CouldnotSendEmailVerificatonLink){
+            } else if (state.exception is CouldnotSendEmailVerificatonLink) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text("Couldnot send Email verification: ${state.exception.toString()}")),
+                SnackBar(
+                  content: Text(
+                    "Couldnot send Email verification: ${state.exception.toString()}",
+                  ),
+                ),
               );
-            } else if(state.exception is NoUserToDelete){
+            } else if (state.exception is NoUserToDelete) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text("No user to delete or some unexpected problem try reinstalling then deleting again")),
+                SnackBar(
+                  content: Text(
+                    "No user to delete or some unexpected problem try reinstalling then deleting again",
+                  ),
+                ),
               );
-            } else if(state.exception is CouldnotDeleteUser){
+            } else if (state.exception is CouldnotDeleteUser) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text("Couldnot delete user please try again later")),
+                SnackBar(
+                  content: Text("Couldnot delete user please try again later"),
+                ),
               );
             } else {
               ScaffoldMessenger.of(context).showSnackBar(

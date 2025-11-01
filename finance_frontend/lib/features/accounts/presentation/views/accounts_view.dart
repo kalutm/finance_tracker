@@ -55,28 +55,17 @@ class _AccountsViewState extends State<AccountsView> {
                     subtitle: Text(account.balance),
                     trailing: Text(account.type.name),
                     onTap:
-                        () => Navigator.of(context).push(
+                        () => Navigator.push(
+                          context,
                           MaterialPageRoute(
                             builder:
-                                (context) => MultiBlocProvider(
-                                  providers: [
-                                    BlocProvider<AccountsBloc>(
-                                      create:
-                                          (context) => AccountsBloc(
-                                            FinanceAccountService(
-                                              FinanceSecureStorageService(),
-                                            ),
-                                          ),
-                                    ),
-                                    BlocProvider<AccountFormBloc>(
-                                      create:
-                                          (context) => AccountFormBloc(
-                                            FinanceAccountService(
-                                              FinanceSecureStorageService(),
-                                            ),
-                                          ),
-                                    ),
-                                  ],
+                                (_) => BlocProvider(
+                                  create:
+                                      (_) => AccountFormBloc(
+                                        FinanceAccountService(
+                                          FinanceSecureStorageService(),
+                                        ),
+                                      ),
                                   child: CreateUpdateAccountView(
                                     isUpdate: true,
                                     account: account,
@@ -96,29 +85,18 @@ class _AccountsViewState extends State<AccountsView> {
         ),
         floatingActionButton: FloatingActionButton(
           onPressed:
-              () => Navigator.of(context).push(
+              () => Navigator.push(
+                context,
                 MaterialPageRoute(
                   builder:
-                      (context) => MultiBlocProvider(
-                        providers: [
-                          BlocProvider<AccountsBloc>(
-                            create:
-                                (context) => AccountsBloc(
-                                  FinanceAccountService(
-                                    FinanceSecureStorageService(),
-                                  ),
-                                ),
-                          ),
-                          BlocProvider<AccountFormBloc>(
-                            create:
-                                (context) => AccountFormBloc(
-                                  FinanceAccountService(
-                                    FinanceSecureStorageService(),
-                                  ),
-                                ),
-                          ),
-                        ],
-                        child: CreateUpdateAccountView(isUpdate: false),
+                      (_) => BlocProvider(
+                        create:
+                            (_) => AccountFormBloc(
+                              FinanceAccountService(
+                                FinanceSecureStorageService(),
+                              ),
+                            ),
+                        child: const CreateUpdateAccountView(isUpdate: false),
                       ),
                 ),
               ),
