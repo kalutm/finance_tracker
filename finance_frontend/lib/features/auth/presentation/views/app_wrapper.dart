@@ -1,6 +1,3 @@
-import 'package:finance_frontend/features/accounts/data/services/finance_account_service.dart';
-import 'package:finance_frontend/features/accounts/presentation/blocs/accounts/accounts_bloc.dart';
-import 'package:finance_frontend/features/auth/data/services/finance_secure_storage_service.dart';
 import 'package:finance_frontend/features/auth/domain/exceptions/auth_exceptions.dart';
 import 'package:finance_frontend/features/auth/presentation/cubits/auth_cubit.dart';
 import 'package:finance_frontend/features/auth/presentation/cubits/auth_state.dart';
@@ -36,18 +33,7 @@ class _AppWrapperState extends State<AppWrapper> {
       child: BlocConsumer<AuthCubit, AuthState>(
         builder: (context, state) {
           if (state is Authenticated) {
-            return MultiBlocProvider(
-              providers: [
-                BlocProvider<AccountsBloc>(
-                  create:
-                      (_) => AccountsBloc(
-                        FinanceAccountService(FinanceSecureStorageService()),
-                      ),
-                ),
-                // i will later addBudgetsBloc, TransactionsBloc here
-              ],
-              child: const Home(),
-            );
+            return const Home();
           } else if (state is AuthNeedsVerification) {
             return FirstAuthWrappr(toVerify: true, email: state.email);
           } else if (state is Unauthenticated) {

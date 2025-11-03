@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:finance_frontend/features/auth/data/services/finance_secure_storage_service.dart';
 import 'package:finance_frontend/features/auth/domain/entities/auth_user.dart';
 import 'package:finance_frontend/features/auth/domain/exceptions/auth_exceptions.dart';
 import 'package:finance_frontend/features/auth/domain/services/auth_service.dart';
@@ -12,7 +13,9 @@ import 'dart:developer' as dev_tool show log;
 class FinanceAuthService implements AuthService {
   final SecureStorageService secureStorageService;
 
-  FinanceAuthService(this.secureStorageService);
+  FinanceAuthService._internal(this.secureStorageService);
+  static final FinanceAuthService _instance = FinanceAuthService._internal(FinanceSecureStorageService());
+  factory FinanceAuthService() => _instance;
 
   final baseUrl = "${dotenv.env["API_BASE_URL_MOBILE"]}/auth";
   final clientServerId = dotenv.env["GOOGLE_SERVER_CLIENT_ID_WEB"]!;
@@ -39,9 +42,9 @@ class FinanceAuthService implements AuthService {
               final res = await http.post(
                 Uri.parse("$baseUrl/refresh"),
                 headers: <String, String>{
-                  'Content-Type': 'application/json; charset=UTF-8',
+                  'Content-Type': 'application/json',
                 },
-                body: jsonEncode({"refresh_token": refreshToken}),
+                body: jsonEncode({"token": refreshToken}),
               );
               
               final json = jsonDecode(res.body) as Map<String, dynamic>;

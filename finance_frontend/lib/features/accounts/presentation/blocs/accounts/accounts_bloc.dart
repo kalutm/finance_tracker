@@ -1,17 +1,17 @@
 import 'dart:developer' as developer;
 import 'package:bloc_concurrency/bloc_concurrency.dart';
-import 'package:finance_frontend/features/accounts/data/services/finance_account_service.dart';
 import 'package:finance_frontend/features/accounts/domain/entities/account.dart';
+import 'package:finance_frontend/features/accounts/domain/service/account_service.dart';
 import 'package:finance_frontend/features/accounts/presentation/blocs/accounts/accounts_event.dart';
 import 'package:finance_frontend/features/accounts/presentation/blocs/accounts/accounts_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
-  final FinanceAccountService financeAccountService;
+  final AccountService accountService;
 
   List<Account> _cachedAccounts = [];
 
-  AccountsBloc(this.financeAccountService) : super(const AccountsInitial()) {
+  AccountsBloc(this.accountService) : super(const AccountsInitial()) {
     on<LoadAccounts>(_onLoadAccounts, transformer: droppable());
     on<RefreshAccounts>(_onRefreshAccounts, transformer: droppable());
     on<AccountCreatedInForm>(_onCreatedAccount);
@@ -29,7 +29,7 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
   ) async {
     emit(const AccountsLoading());
     try {
-      final accounts = await financeAccountService.getUserAccounts();
+      final accounts = await accountService.getUserAccounts();
       _cachedAccounts = accounts;
       emit(AccountsLoaded(List.unmodifiable(_cachedAccounts)));
     } catch (e) {
@@ -43,7 +43,7 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
   ) async {
     emit(AccountsLoaded(List.unmodifiable(_cachedAccounts)));
     try {
-      final accounts = await financeAccountService.getUserAccounts();
+      final accounts = await accountService.getUserAccounts();
       _cachedAccounts = accounts;
       emit(AccountsLoaded(List.unmodifiable(_cachedAccounts)));
     } catch (e, st) {

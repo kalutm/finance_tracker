@@ -1,11 +1,11 @@
-import 'package:finance_frontend/features/accounts/data/services/finance_account_service.dart';
+import 'package:finance_frontend/features/accounts/domain/service/account_service.dart';
 import 'package:finance_frontend/features/accounts/presentation/blocs/account_form/account_form_event.dart';
 import 'package:finance_frontend/features/accounts/presentation/blocs/account_form/account_form_state.dart';
 import 'package:finance_frontend/features/accounts/presentation/blocs/entities/operation_type_enum.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class AccountFormBloc extends Bloc<AccountFormEvent, AccountFormState> {
-  final FinanceAccountService service;
+  final AccountService service;
 
   AccountFormBloc(this.service) : super(AccountFormInitial()) {
     on<CreateAccount>(_onCreate);

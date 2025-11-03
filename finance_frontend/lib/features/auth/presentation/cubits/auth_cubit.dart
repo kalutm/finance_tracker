@@ -5,18 +5,18 @@ import 'package:finance_frontend/features/auth/presentation/cubits/auth_state.da
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class AuthCubit extends Cubit<AuthState> {
-  final AuthService financeAuthService;
+  final AuthService authService;
   AuthUser? _currentUser;
 
   AuthUser? get currentUser => _currentUser;
 
-  AuthCubit(this.financeAuthService) : super(AuthInitial());
+  AuthCubit(this.authService) : super(AuthInitial());
 
   Future<void> checkStatus() async {
     try {
       emit(AuthLoading());
 
-      final currentUser = await financeAuthService.getCurrentUser();
+      final currentUser = await authService.getCurrentUser();
 
       if (currentUser != null){
         _currentUser = currentUser;
@@ -43,7 +43,7 @@ class AuthCubit extends Cubit<AuthState> {
     try {
       emit(AuthLoading());
 
-      final user = await financeAuthService.loginWithEmailAndPassword(email, password);
+      final user = await authService.loginWithEmailAndPassword(email, password);
       _currentUser = user;
 
       emit(Authenticated(user));
@@ -57,7 +57,7 @@ class AuthCubit extends Cubit<AuthState> {
     try {
       emit(AuthLoading());
 
-      final user = await financeAuthService.loginWithGoogle();
+      final user = await authService.loginWithGoogle();
       _currentUser = user;
 
       if(user != null){
@@ -75,7 +75,7 @@ class AuthCubit extends Cubit<AuthState> {
     try {
       emit(AuthLoading());
 
-      final user = await financeAuthService.registerWithEmailAndPassword(email, password);
+      final user = await authService.registerWithEmailAndPassword(email, password);
       _currentUser = user;
 
       emit(AuthNeedsVerification(user.email));
@@ -91,7 +91,7 @@ class AuthCubit extends Cubit<AuthState> {
       final user = _currentUser;
 
       if(user != null){
-        await financeAuthService.sendVerificationEmail(user.email);
+        await authService.sendVerificationEmail(user.email);
         emit(AuthNeedsVerification(user.email));
       } else{
         throw CouldnotSendEmailVerificatonLink("User not found please register before you verify.");
@@ -116,7 +116,7 @@ class AuthCubit extends Cubit<AuthState> {
       emit(AuthError(Exception("Couldnot logout: no user found")));
       emit(Unauthenticated());
     } else{
-      await financeAuthService.logout();
+      await authService.logout();
       emit(Unauthenticated());
     }
   }
@@ -128,7 +128,7 @@ class AuthCubit extends Cubit<AuthState> {
       if(user == null){
         throw NoUserToDelete();
       } else {
-        await financeAuthService.deleteCurrentUser();
+        await authService.deleteCurrentUser();
         emit(Unauthenticated());
       }
     } on Exception catch (e) {

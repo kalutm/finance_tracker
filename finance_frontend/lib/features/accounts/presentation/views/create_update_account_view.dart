@@ -59,6 +59,11 @@ class _CreateUpdateAccountViewState extends State<CreateUpdateAccountView>
     return Scaffold(
         appBar: AppBar(
           title: Text(isUpdate ? "Update Account" : "Create Account"),
+          actions: [
+            isUpdate ? (IconButton(onPressed: () {
+              context.read<AccountFormBloc>().add(account.active ? DeactivateAccount(account.id) : RestoreAccount(account.id));
+            }, icon: Icon(account!.active ? Icons.delete : Icons.restore))) : Text("")
+          ],
         ),
         body: BlocListener<AccountFormBloc, AccountFormState>(
           listener: (context, state) {

@@ -6,21 +6,25 @@ import 'package:finance_frontend/features/accounts/domain/entities/dtos/account_
 import 'package:finance_frontend/features/accounts/domain/exceptions/account_exceptions.dart';
 import 'package:finance_frontend/features/accounts/domain/service/account_service.dart';
 import 'package:finance_frontend/features/auth/data/services/finance_secure_storage_service.dart';
+import 'package:finance_frontend/features/auth/domain/services/secure_storage_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'dart:developer' as dev_tool show log;
 
 class FinanceAccountService implements AccountService {
-  final FinanceSecureStorageService financeSecureStorageService;
+  final SecureStorageService secureStorageService;
 
-  FinanceAccountService(this.financeSecureStorageService);
+  FinanceAccountService._internal(this.secureStorageService);
+  static final FinanceAccountService _instance = FinanceAccountService._internal(FinanceSecureStorageService());
+  factory FinanceAccountService() => _instance;
+
 
   final baseUrl = "${dotenv.env["API_BASE_URL_MOBILE"]}/accounts";
 
   @override
   Future<Account> createAccount(AccountCreate create) async {
     try {
-      final accessToken = await financeSecureStorageService.readString(
+      final accessToken = await secureStorageService.readString(
         key: "access_token",
       );
       final res = await http.post(
@@ -49,7 +53,7 @@ class FinanceAccountService implements AccountService {
   @override
   Future<Account> deactivateAccount(String id) async {
     try {
-      final accessToken = await financeSecureStorageService.readString(
+      final accessToken = await secureStorageService.readString(
         key: "access_token",
       );
       final res = await http.patch(
@@ -74,7 +78,7 @@ class FinanceAccountService implements AccountService {
   @override
   Future<void> deleteAccount(String id) async {
     try {
-      final accessToken = await financeSecureStorageService.readString(
+      final accessToken = await secureStorageService.readString(
         key: "access_token",
       );
       final res = await http.delete(
@@ -97,7 +101,7 @@ class FinanceAccountService implements AccountService {
   @override
   Future<Account> getAccount(String id) async {
     try {
-      final accessToken = await financeSecureStorageService.readString(
+      final accessToken = await secureStorageService.readString(
         key: "access_token",
       );
       final resp = await http.get(
@@ -122,7 +126,7 @@ class FinanceAccountService implements AccountService {
   @override
   Future<List<Account>> getUserAccounts() async {
     try {
-      final accessToken = await financeSecureStorageService.readString(
+      final accessToken = await secureStorageService.readString(
         key: "access_token",
       );
       final resp = await http.get(
@@ -154,7 +158,7 @@ class FinanceAccountService implements AccountService {
   @override
   Future<Account> restoreAccount(String id) async {
     try {
-      final accessToken = await financeSecureStorageService.readString(
+      final accessToken = await secureStorageService.readString(
         key: "access_token",
       );
       final res = await http.patch(
@@ -180,7 +184,7 @@ class FinanceAccountService implements AccountService {
   @override
   Future<Account> updateAccount(String id, AccountPatch patch) async {
     try {
-      final accessToken = await financeSecureStorageService.readString(
+      final accessToken = await secureStorageService.readString(
         key: "access_token",
       );
       final res = await http.patch(
@@ -191,7 +195,7 @@ class FinanceAccountService implements AccountService {
         Uri.parse("$baseUrl/$id"),
         body: jsonEncode(patch.toJson()),
       );
-
+  
       final json = jsonDecode(res.body) as Map<String, dynamic>;
       if (res.statusCode != 200) {
         final errorDetail = json["detail"] as String;

@@ -1,4 +1,4 @@
-import 'package:finance_frontend/features/accounts/presentation/views/accounts_view.dart';
+import 'package:finance_frontend/features/accounts/presentation/views/accounts_wrapper.dart';
 import 'package:finance_frontend/features/auth/presentation/cubits/auth_cubit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -15,14 +15,7 @@ class _HomeState extends State<Home> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        /*title: DropdownButton(
-          items: [
-            DropdownMenuItem(child: Text("All Accounts")),
-            DropdownMenuItem(child: Text("cbe")),
-            DropdownMenuItem(child: Text("dashen")),
-          ],
-          onChanged: (value) {},
-        ),*/
+        title: Text("Transactions"),
         actions: [
           PopupMenuButton(
             itemBuilder: (context) {
@@ -44,7 +37,7 @@ class _HomeState extends State<Home> {
       drawer: Drawer(child: ListView(children: [
         ListTile(
           title: Text("Accounts"),
-          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => AccountsView(),)),
+          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => AccountsWrapper(),)),
         )
       ])),
     );

@@ -7,6 +7,7 @@ from ..auth.dependencies import get_current_user
 from ..auth.emailer import send_verification_email
 from ..auth.jwt import create_access_token
 from ..auth.schemas import (
+    TokenIn,
     UserCreate,
     LoginIn,
     GoogleLoginIn,
@@ -147,9 +148,9 @@ def resend_verification(
 
 
 @router.post("/refresh")
-def refresh_token(refresh_token: str) -> AccessTokenOut:
+def refresh_token(ref_in: TokenIn) -> AccessTokenOut:
     try:
-        new_access_token = service.refresh(refresh_token, ACCESS_TOKEN_EXPIRE_MINUTES)
+        new_access_token = service.refresh(ref_in.token, ACCESS_TOKEN_EXPIRE_MINUTES)
         return AccessTokenOut(acc_jwt=new_access_token, token_type="bearer")
     except service.InvalidRefreshToken:
         raise HTTPException(status_code=401, detail="Invalid refresh token")

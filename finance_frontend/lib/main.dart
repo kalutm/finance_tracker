@@ -21,7 +21,7 @@ class FinanceTracker extends StatelessWidget {
     return BlocProvider<AuthCubit>(
       create:
           (context) =>
-              AuthCubit(FinanceAuthService(FinanceSecureStorageService()))
+              AuthCubit(FinanceAuthService())
                 ..checkStatus(),
       child: MaterialApp(
         debugShowCheckedModeBanner: false,
