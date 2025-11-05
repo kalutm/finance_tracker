@@ -1,3 +1,4 @@
+import 'package:finance_frontend/features/accounts/domain/exceptions/account_exceptions.dart';
 import 'package:finance_frontend/features/accounts/domain/service/account_service.dart';
 import 'package:finance_frontend/features/accounts/presentation/blocs/account_form/account_form_event.dart';
 import 'package:finance_frontend/features/accounts/presentation/blocs/account_form/account_form_state.dart';
@@ -96,9 +97,12 @@ class AccountFormBloc extends Bloc<AccountFormEvent, AccountFormState> {
   }
 
   String _mapErrorToMessage(Object e) {
-    // Example:
-    // if (e is NetworkException) return 'No internet connection';
-    // if (e is UnauthorizedException) return 'Session expired';
+    if (e is CouldnotCreateAccount) return 'Couldnot create account, please try using another account name';
+    if (e is CouldnotGetAccont) return 'Couldnot get account or Account not found';
+    if (e is CouldnotUpdateAccount) return 'Couldnot Update account, please try using another account name';
+    if (e is CouldnotDeactivateAccount) return 'Couldnot Deactivate account, please try again';
+    if (e is CouldnotRestoreAccount) return 'Couldnot Restore account, please try again';
+    if (e is CouldnotDeleteAccount) return 'Couldnot Delete account, please try again';
     return e.toString();
   }
 }

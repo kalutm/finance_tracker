@@ -26,8 +26,9 @@ class AccountsLoaded extends AccountsState {
 } // when the service has finished loading the current user's accounts (List<Account>)
 
 class AccountOperationFailure extends AccountsState {
+  final List<Account> accounts;
   final String message;
-  const AccountOperationFailure(this.message);
+  const AccountOperationFailure(this.message, this.accounts);
 
   @override
   List<Object?> get props => [message];

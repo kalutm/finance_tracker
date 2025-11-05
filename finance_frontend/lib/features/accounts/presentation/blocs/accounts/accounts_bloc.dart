@@ -1,6 +1,7 @@
 import 'dart:developer' as developer;
 import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:finance_frontend/features/accounts/domain/entities/account.dart';
+import 'package:finance_frontend/features/accounts/domain/exceptions/account_exceptions.dart';
 import 'package:finance_frontend/features/accounts/domain/service/account_service.dart';
 import 'package:finance_frontend/features/accounts/presentation/blocs/accounts/accounts_event.dart';
 import 'package:finance_frontend/features/accounts/presentation/blocs/accounts/accounts_state.dart';
@@ -33,7 +34,7 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
       _cachedAccounts = accounts;
       emit(AccountsLoaded(List.unmodifiable(_cachedAccounts)));
     } catch (e) {
-      emit(AccountOperationFailure(_mapErrorToMessage(e)));
+      emit(AccountOperationFailure(_mapErrorToMessage(e), _cachedAccounts));
     }
   }
 
@@ -48,7 +49,7 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
       emit(AccountsLoaded(List.unmodifiable(_cachedAccounts)));
     } catch (e, st) {
       developer.log('LoadAccounts error', error: e, stackTrace: st);
-      emit(AccountOperationFailure(_mapErrorToMessage(e)));
+      emit(AccountOperationFailure(_mapErrorToMessage(e), _cachedAccounts));
     }
   }
 
@@ -112,9 +113,8 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
   }
 
   String _mapErrorToMessage(Object e) {
-    // Example:
-    // if (e is NetworkException) return 'No internet connection';
-    // if (e is UnauthorizedException) return 'Session expired';
+    if (e is CouldnotFetchAccounts) return 'Couldnot fetch accounts, please try reloading the page';
     return e.toString();
+    
   }
 }

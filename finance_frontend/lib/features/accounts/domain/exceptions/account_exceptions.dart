@@ -1,6 +1,6 @@
 class AccountException implements Exception {}
 
-class CouldnotFetchAccounts implements Exception {}
+class CouldnotFetchAccounts implements AccountException {}
 
 class CouldnotCreateAccount implements AccountException {}
 

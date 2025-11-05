@@ -2,6 +2,7 @@ import 'package:finance_frontend/features/accounts/data/services/finance_account
 import 'package:finance_frontend/features/accounts/presentation/blocs/account_form/account_form_bloc.dart';
 import 'package:finance_frontend/features/accounts/presentation/blocs/accounts/accounts_bloc.dart';
 import 'package:finance_frontend/features/accounts/presentation/blocs/accounts/accounts_state.dart';
+import 'package:finance_frontend/features/accounts/presentation/components/accounts_list.dart';
 import 'package:finance_frontend/features/accounts/presentation/views/create_update_account_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -29,40 +30,9 @@ class _AccountsViewState extends State<AccountsView> {
         builder: (context, state) {
           if (state is AccountsLoaded) {
             final accounts = state.accounts;
-            return ListView.builder(
-              itemCount: accounts.length,
-              itemBuilder: (context, index) {
-                final account = accounts[index];
-                return ListTile(
-                  leading: Text(account.active ? "active" : "deleted"),
-                  title: Text(account.name),
-                  subtitle: Text(account.balance),
-                  trailing: Text(account.type.name),
-                  onTap:
-                      () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder:
-                              (_) => BlocProvider.value(
-                                value: context.read<AccountsBloc>(),
-                                child: BlocProvider<AccountFormBloc>(
-                                  create:
-                                      (context) => AccountFormBloc(
-                                        FinanceAccountService(),
-                                      ),
-                                  child: CreateUpdateAccountView(
-                                    isUpdate: true,
-                                    account: account,
-                                  ),
-                                ),
-                              ),
-                        ),
-                      ),
-                );
-              },
-            );
+            return AccountsList(accounts: accounts);
           } else if (state is AccountOperationFailure) {
-            return Text("error in fetching accounts");
+            return AccountsList(accounts: state.accounts);
           } else {
             return Center(child: CircularProgressIndicator());
           }
