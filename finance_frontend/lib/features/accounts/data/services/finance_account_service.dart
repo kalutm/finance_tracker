@@ -15,9 +15,9 @@ class FinanceAccountService implements AccountService {
   final SecureStorageService secureStorageService;
 
   FinanceAccountService._internal(this.secureStorageService);
-  static final FinanceAccountService _instance = FinanceAccountService._internal(FinanceSecureStorageService());
+  static final FinanceAccountService _instance =
+      FinanceAccountService._internal(FinanceSecureStorageService());
   factory FinanceAccountService() => _instance;
-
 
   final baseUrl = "${dotenv.env["API_BASE_URL_MOBILE"]}/accounts";
 
@@ -86,10 +86,16 @@ class FinanceAccountService implements AccountService {
         Uri.parse("$baseUrl/$id"),
       );
 
-      final json = jsonDecode(res.body) as Map<String, dynamic>;
-      if (res.statusCode != 204) {
-        dev_tool.log("EERROORR, EERROORR: ${json["detail"]}");
-        throw CouldnotDeleteAccount();
+      if (res.body.isNotEmpty) {
+        final json = jsonDecode(res.body) as Map<String, dynamic>;
+        if (res.statusCode != 204) {
+          dev_tool.log("EERROORR: ${json["detail"]}");
+          throw CouldnotDeleteAccount();
+        }
+      } else {
+        if (res.statusCode != 204) {
+          throw CouldnotDeleteAccount();
+        }
       }
     } on AccountException catch (_) {
       rethrow;
@@ -195,7 +201,7 @@ class FinanceAccountService implements AccountService {
         Uri.parse("$baseUrl/$id"),
         body: jsonEncode(patch.toJson()),
       );
-  
+
       final json = jsonDecode(res.body) as Map<String, dynamic>;
       if (res.statusCode != 200) {
         final errorDetail = json["detail"] as String;
