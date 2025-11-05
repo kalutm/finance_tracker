@@ -5,7 +5,9 @@ abstract class SettingsState{
   const SettingsState();
 }
 
-
+class SettingsInitial extends SettingsState{
+  const SettingsInitial();
+}
 
 class SettingsStateDark extends SettingsState{
   const SettingsStateDark();

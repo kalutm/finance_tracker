@@ -1,4 +1,5 @@
 import 'package:finance_frontend/features/settings/presentation/cubits/settings_cubit.dart';
+import 'package:finance_frontend/features/settings/presentation/cubits/settings_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -8,15 +9,20 @@ class SettingsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text("Settings")
-      ),
-      body: SwitchListTile(
+      appBar: AppBar(title: Text("Settings")),
+      body: BlocSelector<SettingsCubit, SettingsState, bool>(
+        selector: (state) => state is SettingsStateDark,
+        builder: (context, isDarkMode) {
+          return SwitchListTile(
             title: const Text('Dark Mode'),
-            value: context.read<SettingsCubit>().darkMode,
-            onChanged: (dark) => context.read<SettingsCubit>().changeTheme(),
-            secondary: Icon(context.read<SettingsCubit>().darkMode ? Icons.brightness_2 : Icons.brightness_7),
-          ),
+            value: isDarkMode,
+            onChanged: (_) => context.read<SettingsCubit>().changeTheme(),
+            secondary: Icon(
+              isDarkMode ? Icons.brightness_2 : Icons.brightness_7,
+            ),
+          );
+        },
+      ),
     );
   }
 }
