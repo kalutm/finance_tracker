@@ -1,0 +1,1 @@
+enum CategoryOperationType {create, read, update, restore, deactivate, delete}
