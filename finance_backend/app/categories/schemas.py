@@ -6,6 +6,7 @@ from typing import Optional, List
 class CategoryOut(BaseModel):
     id: int
     name: str
+    active: bool
     type: CategoryType
     created_at: datetime
 

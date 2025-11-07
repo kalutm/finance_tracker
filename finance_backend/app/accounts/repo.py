@@ -8,10 +8,28 @@ def get_accounts_by_user_id(session: Session, user_id) -> List[Account]:
     return session.exec(select(Account).where(Account.user_id == user_id))
 
 
-def list_user_accounts(session: Session, user_id, limit, offset, active) -> tuple[List[Account], int]:
-    total_stmt = select(func.count()).select_from(Account).where(Account.user_id == user_id, Account.active == active if active is not None else True)
+def list_user_accounts(
+    session: Session, user_id, limit, offset, active
+) -> tuple[List[Account], int]:
+    total_stmt = (
+        select(func.count())
+        .select_from(Account)
+        .where(
+            Account.user_id == user_id,
+            Account.active == active if active is not None else True,
+        )
+    )
     total = session.exec(total_stmt).one()
-    stmt = select(Account).where(Account.user_id == user_id, Account.active == active if active is not None else True).order_by(Account.created_at.desc()).limit(limit).offset(offset)
+    stmt = (
+        select(Account)
+        .where(
+            Account.user_id == user_id,
+            Account.active == active if active is not None else True,
+        )
+        .order_by(Account.created_at.desc())
+        .limit(limit)
+        .offset(offset)
+    )
     results = session.exec(stmt).all()
     return results, int(total)
 

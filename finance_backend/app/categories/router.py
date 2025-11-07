@@ -16,13 +16,18 @@ def get_user_categories(
     offset: int = Query(
         0, ge=0, title="offset", description="position compared to 0th result"
     ),
+    active: Optional[bool] = Query(
+        None,
+        title="active",
+        description="describes if the category is deleted or not (can be Undone)",
+    ),
     type: Optional[CategoryType] = Query(
         None, title="Category Type", description="Type of the category i.e INCOME, EXPENSE or BOTH"
     ),
     session: Session = Depends(get_session),
     current_user: service.User = Depends(get_current_user)
 ):
-    categories, total = service.get_user_categories(session, current_user.id, limit, offset, type)
+    categories, total = service.get_user_categories(session, current_user.id, limit, offset, type, active)
 
     category_outs = []
     for category in categories:
@@ -92,9 +97,57 @@ def update_category(
         category_out = CategoryOut.model_validate(updated_category)
         return category_out
     except service.CategoryNameAlreadyTaken as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST)
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except service.CategoryNotFound as e:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
+@router.patch(
+    "/{id}/deactivate", response_model=CategoryOut, status_code=status.HTTP_200_OK
+)
+def deactivate_category(
+    id: Annotated[
+        int,
+        Path(
+            title="Category-id",
+            description="The id of a Category",
+            ge=1,
+            examples=[1, 2, 3, 4, 5, 6, 7],
+        ),
+    ],
+    session: Session = Depends(get_session),
+    current_user: service.User = Depends(get_current_user),
+):
+    try:
+        deactivated_category = service.deactivate_category(session, id, current_user.id)
+        category_out = CategoryOut.model_validate(deactivated_category)
+        return category_out
+    except service.CategoryNotFound as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+
+
+@router.patch("/{id}/restore", response_model=CategoryOut)
+def restore_category(
+    id: Annotated[
+        int,
+        Path(
+            title="Category-id",
+            description="The id of a Category",
+            ge=1,
+            examples=[1, 2, 3, 4, 5, 6, 7],
+        ),
+    ],
+    session: Session = Depends(get_session),
+    current_user: service.User = Depends(get_current_user),
+):
+
+    try:
+        restored_category = service.restore_category(session, id, current_user.id)
+        category_out = CategoryOut.model_validate(restored_category)
+        return category_out
+    except service.CategoryNotFound as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    
 
 @router.delete("/{id}", response_model=None, status_code=status.HTTP_204_NO_CONTENT)
 def delete_category(
@@ -104,7 +157,7 @@ def delete_category(
             title="Category-id",
             description="The id of a Category",
             ge=1,
-            examples=[1, 2, 3, 4, 5, 6, 7],
+            exampes=[1, 2, 3, 4, 5, 6, 7],
         ),
     ],
     session: Session = Depends(get_session),

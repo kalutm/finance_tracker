@@ -12,7 +12,7 @@ from app.models.category import Category
 from app.models.budget import Budget
 from app.models.enums import Provider, AccountType, CategoryType, BudgetPeriod, TransactionType
 
-from finance_backend.app.core.settings import settings
+from app.core.settings import settings
 
 
 # this is the Alembic Config object, which provides

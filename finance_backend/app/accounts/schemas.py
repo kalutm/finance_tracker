@@ -30,16 +30,3 @@ class AccountCreate(BaseModel):
 class AccountUpdate(BaseModel):
     name: Optional[str] = None
     type: Optional[AccountType] = None 
-
-class AccountOut(BaseModel):
-    id: int
-    name: str
-    type: AccountType
-    currency: str
-    balance: Decimal
-    active: bool
-    created_at: datetime
-
-    class Config:
-        from_attributes = True
-    

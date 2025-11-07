@@ -14,5 +14,6 @@ class Category(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     user_id: UUID = Field(foreign_key="users.id", nullable=False, index=True)
     name: str = Field(nullable=False)
+    active: bool = Field(default=True)
     type: CategoryType = Field(nullable=False)
     created_at: datetime = Field(default_factory=now_utc)
