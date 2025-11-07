@@ -147,7 +147,7 @@ class FinanceAccountService implements AccountService {
       }
       // request successful -> return the fetched convert to and return the fetched data as List<Account>
 
-      final accountsMap = resBody["accounts"] as List<dynamic>;
+      final accountsMap = (resBody["accounts"] ?? []) as List<dynamic>;
       final List<Account> accounts = [];
       for (final account in accountsMap) {
         accounts.add(Account.fromFinance(account as Map<String, dynamic>));

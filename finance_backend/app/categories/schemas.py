@@ -9,6 +9,7 @@ class CategoryOut(BaseModel):
     active: bool
     type: CategoryType
     created_at: datetime
+    description: str
 
     model_config = {"from_attributes": True}
 
@@ -19,7 +20,9 @@ class CategoriesOut(BaseModel):
 class CategoryCreate(BaseModel):
     name: str
     type: CategoryType
+    description: str
 
 class CategoryUpdate(BaseModel):
     name: Optional[str] = None
     type: Optional[CategoryType] = None
+    description: str = None

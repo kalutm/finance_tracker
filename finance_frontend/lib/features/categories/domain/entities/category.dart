@@ -6,9 +6,16 @@ class FinanceCategory {
   final CategoryType type;
   final bool active;
   final DateTime createdAt;
+  final String description;
 
-  FinanceCategory({required this.id, required this.name, required this.type, required this.active, required this.createdAt});
-  
+  FinanceCategory({
+    required this.id,
+    required this.name,
+    required this.type,
+    required this.active,
+    required this.createdAt,
+    required this.description,
+  });
 
   factory FinanceCategory.fromFinance(Map<String, dynamic> json) {
     return FinanceCategory(
@@ -17,6 +24,7 @@ class FinanceCategory {
       type: CategoryType.values.byName(json['type'] as String),
       active: json['active'] as bool,
       createdAt: DateTime.parse(json['created_at'] as String),
+      description: json['description'] as String,
     );
   }
 
@@ -27,6 +35,7 @@ class FinanceCategory {
       'type': type.name,
       'active': active,
       'created_at': createdAt.toIso8601String(),
+      'description': description,
     };
   }
 }

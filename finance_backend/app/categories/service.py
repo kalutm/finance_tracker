@@ -17,8 +17,8 @@ def get_user_categories(
     return repo.list_user_categories(session, user_id, limit, offset, type, active)
 
 
-def create_category(session: Session, user_id, name, type) -> Category:
-    category = Category(user_id=user_id, name=name, type=type)
+def create_category(session: Session, user_id, name, type, description) -> Category:
+    category = Category(user_id=user_id, name=name, type=type, description=description)
     try:
         refreshed_category = repo.save_category(session, category)
         session.commit()

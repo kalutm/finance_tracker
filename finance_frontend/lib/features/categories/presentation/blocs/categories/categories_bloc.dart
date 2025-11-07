@@ -34,7 +34,7 @@ class CategoriesBloc extends Bloc<CategoriesEvent, CategoriesState> {
       _cachedcategories = categories;
       emit(CategoriesLoaded(List.unmodifiable(_cachedcategories)));
     } catch (e) {
-      emit(CategoryOperationFailure(_mapErrorToMessage(e), _cachedcategories));
+      emit(CategoriesOperationFailure(_mapErrorToMessage(e), _cachedcategories));
     }
   }
 
@@ -49,7 +49,7 @@ class CategoriesBloc extends Bloc<CategoriesEvent, CategoriesState> {
       emit(CategoriesLoaded(List.unmodifiable(_cachedcategories)));
     } catch (e, st) {
       developer.log('LoadCategories error', error: e, stackTrace: st);
-      emit(CategoryOperationFailure(_mapErrorToMessage(e), _cachedcategories));
+      emit(CategoriesOperationFailure(_mapErrorToMessage(e), _cachedcategories));
     }
   }
 

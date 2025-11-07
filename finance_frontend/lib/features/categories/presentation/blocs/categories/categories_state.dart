@@ -25,10 +25,10 @@ class CategoriesLoaded extends CategoriesState {
   List<Object?> get props => [categories];
 } // when the service has finished loading the current user's categories (List<FinanceCategory>)
 
-class CategoryOperationFailure extends CategoriesState {
+class CategoriesOperationFailure extends CategoriesState {
   final List<FinanceCategory> categories;
   final String message;
-  const CategoryOperationFailure(this.message, this.categories);
+  const CategoriesOperationFailure(this.message, this.categories);
 
   @override
   List<Object?> get props => [message];

@@ -146,7 +146,7 @@ class FinanceCategoryService implements CategoryService{
       }
       // request successful -> return the fetched convert to and return the fetched data as List<FinanceCategory>
 
-      final accountsMap = resBody["accounts"] as List<dynamic>;
+      final accountsMap = (resBody["categories"] ?? []) as List<dynamic>;
       final List<FinanceCategory> accounts = [];
       for (final account in accountsMap) {
         accounts.add(FinanceCategory.fromFinance(account as Map<String, dynamic>));

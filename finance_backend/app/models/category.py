@@ -17,3 +17,4 @@ class Category(SQLModel, table=True):
     active: bool = Field(default=True)
     type: CategoryType = Field(nullable=False)
     created_at: datetime = Field(default_factory=now_utc)
+    description: str = Field(nullable=True)
