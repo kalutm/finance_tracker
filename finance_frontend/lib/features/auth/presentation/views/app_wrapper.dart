@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:finance_frontend/features/auth/domain/exceptions/auth_exceptions.dart';
 import 'package:finance_frontend/features/auth/presentation/cubits/auth_cubit.dart';
 import 'package:finance_frontend/features/auth/presentation/cubits/auth_state.dart';
@@ -106,6 +108,10 @@ class _AppWrapperState extends State<AppWrapper> {
                   content: Text("Couldnot delete user please try again later"),
                 ),
               );
+            } else if (state.exception is SocketException) {
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text("No Internet connection!, please try connecting to the interne")));
             } else {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text(state.exception.toString())),

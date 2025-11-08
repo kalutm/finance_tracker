@@ -53,11 +53,13 @@ class AccountsView extends StatelessWidget {
         },
         builder: (context, state) {
           List<Account> accounts = [];
+          bool isThereError = false;
           bool isLoading = false;
           
           if (state is AccountsLoaded) {
             accounts = state.accounts;
           } else if (state is AccountOperationFailure) {
+            isThereError = true;
             accounts = state.accounts;
           } else if (state is AccountsLoading || state is AccountsInitial) {
             isLoading = true;
@@ -67,7 +69,7 @@ class AccountsView extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
 
-          if (accounts.isEmpty) {
+          if (accounts.isEmpty && !isThereError) {
             return Center(
               child: Text(
                 "No accounts found. Tap '+' to create one.",

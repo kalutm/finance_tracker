@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:finance_frontend/features/accounts/domain/exceptions/account_exceptions.dart';
 import 'package:finance_frontend/features/accounts/domain/service/account_service.dart';
 import 'package:finance_frontend/features/accounts/presentation/blocs/account_form/account_form_event.dart';
@@ -103,6 +105,7 @@ class AccountFormBloc extends Bloc<AccountFormEvent, AccountFormState> {
     if (e is CouldnotDeactivateAccount) return 'Couldnot Deactivate account, please try again';
     if (e is CouldnotRestoreAccount) return 'Couldnot Restore account, please try again';
     if (e is CouldnotDeleteAccount) return 'Couldnot Delete account, please try again';
+    if(e is SocketException) return 'No Internet connection!, please try connecting to the internet';
     return e.toString();
   }
 }

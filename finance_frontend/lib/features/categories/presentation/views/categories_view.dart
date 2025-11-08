@@ -6,8 +6,10 @@ import 'package:finance_frontend/features/categories/presentation/blocs/category
 import 'package:finance_frontend/features/categories/presentation/blocs/category_form/category_form_event.dart';
 import 'package:finance_frontend/features/categories/presentation/blocs/category_form/category_form_state.dart';
 import 'package:finance_frontend/features/categories/presentation/blocs/entities/operation_type_enum.dart';
+import 'package:finance_frontend/features/categories/presentation/components/category_form_failure_dialog.dart';
 import 'package:finance_frontend/features/categories/presentation/components/category_form_sheet.dart';
 import 'package:finance_frontend/features/categories/presentation/components/category_item.dart';
+import 'package:finance_frontend/features/categories/presentation/components/category_list_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -77,24 +79,18 @@ class _CategoriesPageState extends State<CategoriesView> {
               ).showSnackBar(SnackBar(content: Text('Category deleted')));
               context.read<CategoriesBloc>().add(CategoryDeletedInForm(id));
             } else if (state is CategoryOperationFailure) {
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text(state.message)));
+              showDialog(
+                context: context,
+                builder: (context) {
+                  return CategoryFailureDialog(message: state.message);
+                },
+              );
             }
           },
         ),
       ],
       child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Categories'),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.refresh),
-              onPressed:
-                  () => context.read<CategoriesBloc>().add(RefreshCategories()),
-            ),
-          ],
-        ),
+        appBar: AppBar(title: const Text('Categories')),
         body: SafeArea(child: _buildBody(context)),
         floatingActionButton: FloatingActionButton(
           onPressed: () => _openCreateSheet(context),
@@ -132,20 +128,12 @@ class _CategoriesPageState extends State<CategoriesView> {
                     horizontal: 12,
                     vertical: 8,
                   ),
-                  sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate((context, idx) {
-                      final cat = filtered[idx];
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 6),
-                        child: CategoryItem(
-                          category: cat,
-                          onEdit: () => _openEditSheet(context, cat),
-                          onDeactivate: () => _confirmDeactivate(context, cat),
-                          onRestore: () => _confirmRestore(context, cat),
-                          onDelete: () => _confirmDelete(context, cat.id),
-                        ),
-                      );
-                    }, childCount: filtered.length),
+                  sliver: CategoryListView(
+                    filtered: filtered,
+                    onEdit: _openEditSheet,
+                    onDeactivate: _confirmDeactivate,
+                    onRestore: _confirmRestore,
+                    onDelete: _confirmDelete,
                   ),
                 ),
                 SliverToBoxAdapter(
@@ -155,7 +143,42 @@ class _CategoriesPageState extends State<CategoriesView> {
             ),
           );
         } else if (state is CategoriesOperationFailure) {
-          return Center(child: Text(state.message));
+          final List<FinanceCategory> all = state.categories;
+          final filtered = _applyFilter(all, _filter);
+
+          // create favorites/top grid (active categories)
+          final activeTop = filtered.where((c) => c.active).take(6).toList();
+
+          return RefreshIndicator(
+            onRefresh: () async {
+              context.read<CategoriesBloc>().add(RefreshCategories());
+              // Wait a small duration for UI to update; ideally, connect to events.
+              await Future.delayed(const Duration(milliseconds: 300));
+            },
+            child: CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(child: _buildSearchBar()),
+                if (activeTop.isNotEmpty)
+                  SliverToBoxAdapter(child: _buildTopGrid(activeTop)),
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  sliver: CategoryListView(
+                    filtered: filtered,
+                    onEdit: _openEditSheet,
+                    onDeactivate: _confirmDeactivate,
+                    onRestore: _confirmRestore,
+                    onDelete: _confirmDelete,
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: const SizedBox(height: 80),
+                ), // space for FAB
+              ],
+            ),
+          );
         } else {
           return const Center(child: Text('No categories found'));
         }
@@ -232,9 +255,7 @@ class _CategoriesPageState extends State<CategoriesView> {
           providers: [
             BlocProvider.value(value: context.read<CategoryFormBloc>()),
           ],
-          child: CategoryFormSheet(
-            initialCategory: null,
-          ),
+          child: CategoryFormSheet(initialCategory: null),
         );
       },
     );

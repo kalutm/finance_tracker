@@ -45,7 +45,7 @@ class FinanceCategoryService implements CategoryService{
     } on CategoryException catch (_) {
       rethrow;
     } catch (e) {
-      throw Exception("Category Creation Failed: $e");
+      rethrow;
     }
   }
 
@@ -70,7 +70,7 @@ class FinanceCategoryService implements CategoryService{
     } on CategoryException catch (_) {
       rethrow;
     } catch (e) {
-      throw Exception("Category deactivation Failed: $e");
+      rethrow;
     }
   }
 
@@ -99,7 +99,7 @@ class FinanceCategoryService implements CategoryService{
     } on CategoryException catch (_) {
       rethrow;
     } catch (e) {
-      throw Exception("Category deletion Failed: $e");
+      rethrow;
     }
   }
 
@@ -124,7 +124,7 @@ class FinanceCategoryService implements CategoryService{
     } on CategoryException catch (_) {
       rethrow;
     } catch (e) {
-      throw Exception("Couldnot Get category: $e");
+      rethrow;
     }
   }
 
@@ -156,7 +156,7 @@ class FinanceCategoryService implements CategoryService{
     } on CategoryException catch (_) {
       rethrow;
     } catch (e) {
-      throw Exception("Couldnot fetch categories: $e");
+      rethrow;
     }
   }
 
@@ -182,7 +182,7 @@ class FinanceCategoryService implements CategoryService{
     } on CategoryException catch (_) {
       rethrow;
     } catch (e) {
-      throw Exception("Category Restoration Failed: $e");
+      rethrow;
     }
   }
 
@@ -212,7 +212,7 @@ class FinanceCategoryService implements CategoryService{
     } on CategoryException catch (_) {
       rethrow;
     } catch (e) {
-      throw Exception("Updating category Failed: $e");
+      rethrow;
     }
   }
 }

@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:finance_frontend/features/categories/domain/exceptions/category_exceptions.dart';
 import 'package:finance_frontend/features/categories/domain/service/category_service.dart';
 import 'package:finance_frontend/features/categories/presentation/blocs/category_form/category_form_event.dart';
@@ -103,6 +105,7 @@ class CategoryFormBloc extends Bloc<CategoryFormEvent, CategoryFormState> {
     if (e is CouldnotDeactivateCategory) return 'Couldnot Deactivate category, please try again';
     if (e is CouldnotRestoreCategory) return 'Couldnot Restore category, please try again';
     if (e is CouldnotDeleteCategory) return 'Couldnot Delete category, please try again';
+    if(e is SocketException) return 'No Internet connection!, please try connecting to the internet';
     return e.toString();
   }
 }

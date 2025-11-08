@@ -1,4 +1,5 @@
 import 'dart:developer' as developer;
+import 'dart:io';
 import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:finance_frontend/features/accounts/domain/entities/account.dart';
 import 'package:finance_frontend/features/accounts/domain/exceptions/account_exceptions.dart';
@@ -114,6 +115,7 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
 
   String _mapErrorToMessage(Object e) {
     if (e is CouldnotFetchAccounts) return 'Couldnot fetch accounts, please try reloading the page';
+    if(e is SocketException) return 'No Internet connection!, please try connecting to the internet';
     return e.toString();
     
   }

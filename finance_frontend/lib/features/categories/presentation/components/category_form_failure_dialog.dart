@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 
-class AccountFailureDialog extends StatelessWidget {
+class CategoryFailureDialog extends StatelessWidget {
   final String message;
 
-  const AccountFailureDialog({
+  const CategoryFailureDialog({
     required this.message,
     super.key,
   });
@@ -30,7 +30,7 @@ class AccountFailureDialog extends StatelessWidget {
         child: ListBody(
           children: <Widget>[
             Text(
-              'An error occurred during the account operation:',
+              'An error occurred during the category operation:',
               style: theme.textTheme.bodyMedium,
             ),
             const SizedBox(height: 8),

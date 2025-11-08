@@ -66,7 +66,7 @@ class FinanceAuthService implements AuthService {
             } on AuthException catch (_) {
               rethrow;
             } catch (e) {
-              throw Exception("Could not Load user: $e");
+              rethrow;
             }
 
           }
@@ -84,7 +84,7 @@ class FinanceAuthService implements AuthService {
       } on AuthException catch(_){
         rethrow;
       } catch(e){
-        throw Exception("Couldnot Load user: $e");
+        rethrow;
       }
       
     }
@@ -115,7 +115,7 @@ class FinanceAuthService implements AuthService {
       } on AuthException catch (_) {
         rethrow;
       } catch (e) {
-        throw Exception("Couldnot get User Cridentials: $e");
+        rethrow;
       }
   }
 
@@ -150,7 +150,7 @@ class FinanceAuthService implements AuthService {
     } on AuthException catch (_) {
       rethrow;
     } catch(e){
-      throw Exception("Login Failed: $e");
+      rethrow;
     }
   }
 
@@ -199,7 +199,7 @@ class FinanceAuthService implements AuthService {
         throw Exception("Login with Google Fialed: $e");
       }
     } catch(e){
-      throw Exception("Login with Google Fialed: $e");
+      rethrow;
     }
   }
 
@@ -233,7 +233,7 @@ class FinanceAuthService implements AuthService {
     } on AuthException catch (_) {
       rethrow;
     } catch(e){
-      throw Exception("Register Failed: $e");
+      rethrow;
     }
   }
 
@@ -255,7 +255,7 @@ class FinanceAuthService implements AuthService {
     } on AuthException catch (_) {
       rethrow;
     } catch(e) {
-      throw Exception("Couldnot send email verification link: $e");
+      rethrow;
     }
   }
 
@@ -289,7 +289,7 @@ class FinanceAuthService implements AuthService {
     } on AuthException catch (_) {
       rethrow;
     } catch(e) {
-      throw Exception("Couldnot Delete User: $e");
+      rethrow;
     }
   }
 }

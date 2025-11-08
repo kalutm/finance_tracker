@@ -46,7 +46,7 @@ class FinanceAccountService implements AccountService {
     } on AccountException catch (_) {
       rethrow;
     } catch (e) {
-      throw Exception("Account Creation Failed: $e");
+      rethrow;
     }
   }
 
@@ -71,7 +71,7 @@ class FinanceAccountService implements AccountService {
     } on AccountException catch (_) {
       rethrow;
     } catch (e) {
-      throw Exception("Account deactivation Failed: $e");
+      rethrow;
     }
   }
 
@@ -100,7 +100,7 @@ class FinanceAccountService implements AccountService {
     } on AccountException catch (_) {
       rethrow;
     } catch (e) {
-      throw Exception("Account deletion Failed: $e");
+      rethrow;
     }
   }
 
@@ -125,7 +125,7 @@ class FinanceAccountService implements AccountService {
     } on AccountException catch (_) {
       rethrow;
     } catch (e) {
-      throw Exception("Couldnot Get account: $e");
+      rethrow;
     }
   }
 
@@ -157,7 +157,7 @@ class FinanceAccountService implements AccountService {
     } on AccountException catch (_) {
       rethrow;
     } catch (e) {
-      throw Exception("Couldnot fetch accounts: $e");
+      rethrow;
     }
   }
 
@@ -183,7 +183,7 @@ class FinanceAccountService implements AccountService {
     } on AccountException catch (_) {
       rethrow;
     } catch (e) {
-      throw Exception("Account Restoration Failed: $e");
+      rethrow;
     }
   }
 
@@ -213,7 +213,7 @@ class FinanceAccountService implements AccountService {
     } on AccountException catch (_) {
       rethrow;
     } catch (e) {
-      throw Exception("Updating account Failed: $e");
+      rethrow;
     }
   }
 }

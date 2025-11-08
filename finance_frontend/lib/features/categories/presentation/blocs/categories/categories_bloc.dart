@@ -1,4 +1,5 @@
 import 'dart:developer' as developer;
+import 'dart:io';
 import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:finance_frontend/features/categories/domain/entities/category.dart';
 import 'package:finance_frontend/features/categories/domain/exceptions/category_exceptions.dart';
@@ -114,6 +115,7 @@ class CategoriesBloc extends Bloc<CategoriesEvent, CategoriesState> {
 
   String _mapErrorToMessage(Object e) {
     if (e is CouldnotFetchCategories) return 'Couldnot fetch categories, please try reloading the page';
+    if(e is SocketException) return 'No Internet connection!, please try connecting to the internet';
     return e.toString();
     
   }
