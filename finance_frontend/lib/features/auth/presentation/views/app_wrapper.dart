@@ -111,7 +111,7 @@ class _AppWrapperState extends State<AppWrapper> {
             } else if (state.exception is SocketException) {
               ScaffoldMessenger.of(
                 context,
-              ).showSnackBar(SnackBar(content: Text("No Internet connection!, please try connecting to the interne")));
+              ).showSnackBar(SnackBar(content: Text("No Internet connection!, please try connecting to the internet")));
             } else {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text(state.exception.toString())),
