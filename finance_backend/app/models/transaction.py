@@ -19,6 +19,7 @@ class Transaction(SQLModel, table=True):
     type: TransactionType = Field(nullable=False)
     description: Optional[str] = Field(nullable=True)
     transfer_group_id: Optional[UUID] = Field(default=None, nullable=True, index=True)
+    is_outgoing: Optional[bool] = Field(default=None, nullable=True)
     created_at: datetime = Field(default_factory=now_utc)
     occurred_at: datetime = Field(default_factory=now_utc, nullable=False, description="Date the transaction occurred", index=True)
     

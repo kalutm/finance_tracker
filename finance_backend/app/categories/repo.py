@@ -1,5 +1,6 @@
 from sqlmodel import Session, select, func
 from app.models.category import Category
+from app.models.transaction import Transaction
 from app.models.enums import CategoryType
 from typing import List
 
@@ -51,3 +52,13 @@ def save_category(session: Session, category: Category) -> Category:
 def delete_category(session: Session, category: Category):
     session.delete(category)
     session.flush()
+
+
+# helper
+def count_transactions_for_categories(session: Session, category_id) -> int:
+    count_stmt = (
+        select(func.count())
+        .select_from(Transaction)
+        .where(Transaction.category_id == category_id)
+    )
+    return session.exec(count_stmt).one()

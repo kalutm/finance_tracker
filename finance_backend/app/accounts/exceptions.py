@@ -10,3 +10,6 @@ class AccountNameAlreadyTaken(AccountError):
 
 class UserNotAuthorizedForThisAccount(AccountError):
     pass
+
+class CouldnotDeleteAccount(AccountError):
+    pass

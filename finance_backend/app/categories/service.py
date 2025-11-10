@@ -8,6 +8,7 @@ from app.categories.exceptions import (
     CategoryNameAlreadyTaken,
     CategoryError,
     CategoryNotFound,
+    CouldnotDeleteCategory
 )
 
 
@@ -82,7 +83,7 @@ def delete_category(session: Session, id, user_id):
     Category = repo.get_category_for_user(session, id, user_id)
     if not Category:
         raise CategoryNotFound("couldnot find category")
-    # if repo.count_transactions_for_account(session, id) > 0:
-    #     raise CategoryError("Cannot hard-delete account with transactions. Consider deactivating.")
+    if repo.count_transactions_for_categories(session, id) > 0:
+        raise CouldnotDeleteCategory("Cannot hard-delete category with transactions. Consider deactivating.")
     repo.delete_category(session, Category)
     session.commit()

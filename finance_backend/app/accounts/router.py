@@ -147,6 +147,8 @@ def delete_account(
         service.delete_account(session, id, current_user.id)
     except service.AccountNotFound as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except service.CouldnotDeleteAccount as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
 
 
 @router.patch("/{id}/restore", response_model=AccountOut)

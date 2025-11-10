@@ -7,3 +7,6 @@ class CategoryNameAlreadyTaken(CategoryError):
 
 class CategoryNotFound(CategoryError):
     pass
+
+class CouldnotDeleteCategory(CategoryError):
+    pass

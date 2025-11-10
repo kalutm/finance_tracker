@@ -7,7 +7,9 @@ from ..accounts.exceptions import (
     AccountError,
     AccountNameAlreadyTaken,
     AccountNotFound,
-    UserNotAuthorizedForThisAccount
+    UserNotAuthorizedForThisAccount,
+    CouldnotDeleteAccount
+    
 )
 from ..accounts import repo
 from typing import List
@@ -51,8 +53,8 @@ def delete_account(session: Session, id, user_id):
     account = repo.get_account_for_user(session, id, user_id)
     if not account:
         raise AccountNotFound("couldnot find account")
-    # if repo.count_transactions_for_account(session, id) > 0:
-    #     raise AccountError("Cannot hard-delete account with transactions. Consider deactivating.")
+    if repo.count_transactions_for_account(session, id) > 0:
+        raise CouldnotDeleteAccount("Cannot hard-delete account with transactions. Consider deactivating.")
     repo.delete_account(session, account)
     session.commit()
 

@@ -9,7 +9,7 @@ class CategoryOut(BaseModel):
     active: bool
     type: CategoryType
     created_at: datetime
-    description: str
+    description: Optional[str]
 
     model_config = {"from_attributes": True}
 

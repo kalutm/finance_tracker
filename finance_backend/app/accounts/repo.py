@@ -1,6 +1,7 @@
 from sqlmodel import select, Session
 from sqlalchemy import or_, func
 from ..models.account import Account
+from ..models.transaction import Transaction
 from typing import List, Optional
 
 
@@ -49,9 +50,19 @@ def save_account(session: Session, account: Account) -> Account:
 
 
 def get_account_by_id(session: Session, id) -> Account:
-    return session.exec(select(Account).where(Account.id == id)).first()
+    return session.exec(select(Account).where(Account.id == id).with_for_update()).first()
 
 
 def delete_account(session: Session, account: Account):
     session.delete(account)
     session.flush()
+
+
+# helper
+def count_transactions_for_account(session: Session, account_id) -> int:
+    count_stmt = (
+        select(func.count())
+        .select_from(Transaction)
+        .where(Transaction.account_id == account_id)
+    )
+    return session.exec(count_stmt).one()
