@@ -13,3 +13,5 @@ class CouldnotDeactivateCategory implements CategoryException {}
 class CouldnotRestoreCategory implements CategoryException {}
 
 class CouldnotDeleteCategory implements CategoryException {}
+
+class CannotDeleteCategoryWithTransactions implements CategoryException {}

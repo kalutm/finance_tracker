@@ -8,7 +8,6 @@ import 'package:finance_frontend/features/categories/presentation/blocs/category
 import 'package:finance_frontend/features/categories/presentation/blocs/entities/operation_type_enum.dart';
 import 'package:finance_frontend/features/categories/presentation/components/category_form_failure_dialog.dart';
 import 'package:finance_frontend/features/categories/presentation/components/category_form_sheet.dart';
-import 'package:finance_frontend/features/categories/presentation/components/category_item.dart';
 import 'package:finance_frontend/features/categories/presentation/components/category_list_view.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -190,8 +189,9 @@ class _CategoriesPageState extends State<CategoriesView> {
     if (filter.isEmpty) return all;
     final lower = filter.toLowerCase();
     return all.where((c) {
+      final des = c.description ?? '';
       return c.name.toLowerCase().contains(lower) ||
-          (c.description.toLowerCase().contains(lower));
+          (des.toLowerCase().contains(lower));
     }).toList();
   }
 

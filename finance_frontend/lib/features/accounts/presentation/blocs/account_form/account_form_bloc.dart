@@ -105,6 +105,7 @@ class AccountFormBloc extends Bloc<AccountFormEvent, AccountFormState> {
     if (e is CouldnotDeactivateAccount) return 'Couldnot Deactivate account, please try again';
     if (e is CouldnotRestoreAccount) return 'Couldnot Restore account, please try again';
     if (e is CouldnotDeleteAccount) return 'Couldnot Delete account, please try again';
+    if (e is CannotDeleteAccountWithTransactions) return "Can't delete an account with transactions";
     if(e is SocketException) return 'No Internet connection!, please try connecting to the internet';
     return e.toString();
   }

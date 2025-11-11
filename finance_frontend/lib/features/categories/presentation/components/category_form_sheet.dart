@@ -29,7 +29,11 @@ class _CategoryFormSheetState extends State<CategoryFormSheet> {
     if (widget.initialCategory != null) {
       final c = widget.initialCategory!;
       _nameCtrl.text = c.name;
-      _descCtrl.text = c.description;
+      
+      final des = c.description;
+      if(des != null){
+        _descCtrl.text = des;
+      }
       _type = c.type;
     }
   }
@@ -168,7 +172,7 @@ class _CategoryFormSheetState extends State<CategoryFormSheet> {
       final createDto = CategoryCreate(
         name: name,
         type: type,
-        description: desc,
+        description: desc.isEmpty ? null: desc,
       );
       context.read<CategoryFormBloc>().add(CreateCategory(createDto));
     }

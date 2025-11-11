@@ -191,3 +191,5 @@ def delete_transaction(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except TransactionError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except InsufficientBalance as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))

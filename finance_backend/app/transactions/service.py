@@ -161,6 +161,8 @@ class TransactionsService:
         amount = transaction.amount
         account = get_account_for_user(self.session, transaction.account_id, user_id)
         if transaction.type == TransactionType.INCOME:
+            if amount > account.balance:
+                raise InsufficientBalance("account balance insufficient")
             account.balance -= amount
         elif transaction.type == TransactionType.EXPENSE:
             account.balance += amount

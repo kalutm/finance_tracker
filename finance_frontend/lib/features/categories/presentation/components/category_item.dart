@@ -31,7 +31,7 @@ class CategoryItem extends StatelessWidget {
             child: Icon(Icons.category, color: Colors.white),
           ),
           title: Text(category.name, style: Theme.of(context).textTheme.titleMedium),
-          subtitle: Text(category.description),
+          subtitle: Text(category.description??''),
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [

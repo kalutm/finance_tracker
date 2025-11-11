@@ -13,3 +13,5 @@ class CouldnotDeactivateAccount implements AccountException {}
 class CouldnotRestoreAccount implements AccountException {}
 
 class CouldnotDeleteAccount implements AccountException {}
+
+class CannotDeleteAccountWithTransactions implements AccountException{}

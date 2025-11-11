@@ -89,10 +89,16 @@ class FinanceCategoryService implements CategoryService{
         final json = jsonDecode(res.body) as Map<String, dynamic>;
         if (res.statusCode != 204) {
           dev_tool.log("EERROORR: ${json["detail"]}");
+          if(res.statusCode == 400){
+            throw CannotDeleteCategoryWithTransactions();
+          }
           throw CouldnotDeleteCategory();
         }
       } else {
         if (res.statusCode != 204) {
+          if(res.statusCode == 400){
+            throw CannotDeleteCategoryWithTransactions();
+          }
           throw CouldnotDeleteCategory();
         }
       }

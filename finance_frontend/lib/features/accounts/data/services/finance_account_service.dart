@@ -90,10 +90,16 @@ class FinanceAccountService implements AccountService {
         final json = jsonDecode(res.body) as Map<String, dynamic>;
         if (res.statusCode != 204) {
           dev_tool.log("EERROORR: ${json["detail"]}");
+          if(res.statusCode == 400){
+            throw CannotDeleteAccountWithTransactions();
+          }
           throw CouldnotDeleteAccount();
         }
       } else {
         if (res.statusCode != 204) {
+          if(res.statusCode == 400){
+            throw CannotDeleteAccountWithTransactions();
+          }
           throw CouldnotDeleteAccount();
         }
       }

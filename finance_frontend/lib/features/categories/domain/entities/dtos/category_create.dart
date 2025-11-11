@@ -3,12 +3,12 @@ import 'package:finance_frontend/features/categories/domain/entities/category_ty
 class CategoryCreate {
   final String name;
   final CategoryType type;
-  final String description;
+  final String? description;
 
   const CategoryCreate({
     required this.name,
     required this.type,
-    this.description = '',
+    this.description,
   });
 
   Map<String, dynamic> toJson() {

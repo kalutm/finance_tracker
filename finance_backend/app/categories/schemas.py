@@ -20,7 +20,7 @@ class CategoriesOut(BaseModel):
 class CategoryCreate(BaseModel):
     name: str
     type: CategoryType
-    description: str
+    description: Optional[str] = None
 
 class CategoryUpdate(BaseModel):
     name: Optional[str] = None
