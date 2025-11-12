@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends, Path, Query, HTTPException, status
+from sqlmodel import Session
 from app.api.deps import get_current_user, get_session
 from app.models.user import User
-from sqlmodel import Session
+from app.models.enums import TransactionType
 from app.transactions.service import TransactionsService
-from typing import Annotated, Optional
+from typing import Annotated, Optional, List
+from uuid import UUID
 from datetime import datetime
 from app.transactions.schemas import (
     TransactionsOut,
@@ -12,6 +14,8 @@ from app.transactions.schemas import (
     TransferTransactionCreate,
     TransactionPatch,
     TransferTransactionsOut,
+    TransactionSummaryOut,
+    TransactionStatsOut
 )
 from app.transactions.exceptions import (
     InsufficientBalance,
@@ -42,6 +46,9 @@ def get_user_transactions(
         title="category-id",
         description="filtering transaction's based on a category",
     ),
+    type: Optional[TransactionType] = Query(
+        None, title="Transaction Type", description="Type of the Transaction i.e INCOME, EXPENSE or Transfer"
+    ),
     start: Optional[datetime] = Query(
         None,
         title="start-date",
@@ -55,7 +62,7 @@ def get_user_transactions(
 ):
     transaction_service = TransactionsService(session)
     transactions, total = transaction_service.get_user_transactions(
-        current_user.id, limit, offset, account_id, category_id, start, end
+        current_user.id, limit, offset, account_id, category_id, type, start, end
     )
 
     transaction_outs = []
@@ -189,7 +196,47 @@ def delete_transaction(
         transaction_service.delete_transaction(id, current_user.id)
     except TransactionNotFound as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
+    except InsufficientBalance as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+
+
+@router.delete("/transfer/{transfer_group_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_transfer_transaction(
+    transfer_group_id: Annotated[
+        UUID,
+        Path(
+            title="Transfer-group-id",
+            description="The global id of Transfer Transaction's",
+        ),
+    ],
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    try:
+        transaction_service = TransactionsService(session)
+        transaction_service.delete_transfer_transaction(transfer_group_id, current_user.id)
     except TransactionError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except InsufficientBalance as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    
+
+@router.get("/summary", response_model=TransactionSummaryOut)
+def get_transaction_summary(
+    month: str = Query(..., pattern=r"^\d{4}-\d{2}$", example="2025-11"),
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    service = TransactionsService(session)
+    return service.get_transaction_summary(month, current_user.id)
+
+
+
+@router.get("/stats", response_model=List[TransactionStatsOut])
+def get_transaction_stats(
+    by: str = Query("category", enum=["category", "account", "type"]),
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+):
+    service = TransactionsService(session)
+    return service.get_transaction_stats(by, current_user.id)

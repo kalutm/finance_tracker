@@ -47,10 +47,20 @@ class TransferTransactionCreate(BaseModel):
     description: Optional[str] = None
     occurred_at: Optional[datetime] = None
 
-
 class TransactionPatch(BaseModel):
     category_id: Optional[int] = None
     amount: Optional[Decimal] = None
     merchant: Optional[str] = None
     description: Optional[str] = None
     occurred_at: Optional[datetime] = None
+
+class TransactionSummaryOut(BaseModel):
+    month: str
+    total_income: Decimal
+    total_expense: Decimal
+    net_savings: Decimal
+
+class TransactionStatsOut(BaseModel):
+    name: str
+    total: Decimal
+    percentage: Decimal

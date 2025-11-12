@@ -2,16 +2,19 @@ from sqlmodel import Session, select
 from app.models.transaction import Transaction
 from sqlalchemy import func
 from typing import List, Tuple
+from decimal import Decimal
 
 
 def list_user_transactions(
-    session: Session, user_id, limit, offset, account_id, category_id, start, end
+    session: Session, user_id, limit, offset, account_id, category_id, type, start, end
 ) -> Tuple[List[Transaction], int]:
     conditions = [Transaction.user_id == user_id]
     if account_id:
         conditions.append(Transaction.account_id == account_id)
     if category_id:
         conditions.append(Transaction.category_id == category_id)
+    if type:
+        conditions.append(Transaction.type == type)
     if start and end:
         conditions.append(Transaction.occurred_at.between(start, end))
     elif start:
@@ -56,3 +59,23 @@ def save_transaction(session: Session, transaction: Transaction) -> Transaction:
 def delete_transaction(session: Session, transaction: Transaction):
     session.delete(transaction)
     session.flush()
+
+
+def get_transaction_summary_for_type(
+    session: Session, type, start_date, end_date, user_id
+) -> Decimal:
+    return session.exec(
+        select(func.coalesce(func.sum(Transaction.amount), 0))
+        .where(Transaction.user_id == user_id)
+        .where(Transaction.type == type)
+        .where(Transaction.occurred_at.between(start_date, end_date))
+    ).one()
+
+
+def get_grouped_transaction_totals(session, user_id: str, group_field) -> List[Tuple]:
+    stmt = (
+        select(group_field, func.sum(Transaction.amount).label("total"))
+        .where(Transaction.user_id == user_id)
+        .group_by(group_field)
+    )
+    return session.exec(stmt).all()
