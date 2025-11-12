@@ -13,6 +13,7 @@ class TransactionOut(BaseModel):
     merchant: Optional[str] = None
     currency: str
     type: TransactionType
+    is_outgoing: Optional[bool] = None
     description: Optional[str] = None
     transfer_group_id: Optional[UUID] = None
     occurred_at: datetime
