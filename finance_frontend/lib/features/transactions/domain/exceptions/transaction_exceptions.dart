@@ -23,3 +23,5 @@ class CannotUpdateTransferTransactions implements TransactionException {}
 class AccountBalanceTnsufficient implements TransactionException {}
 
 class InvalidInputtedAmount implements TransactionException {}
+
+class InvalidTransferTransaction implements TransactionException {}

@@ -90,9 +90,9 @@ def create_transaction(
 
         return transaction_out
     except InsufficientBalance as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"code": "INSUFFICIENT_BALANCE", "message": str(e)})
     except InvalidAmount as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"code": "INVALID_AMOUNT", "message": str(e)})
 
 
 @router.post(
@@ -118,9 +118,9 @@ def create_transaction(
         )
         return transfer_transactions_out
     except InsufficientBalance as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"code": "INSUFFICIENT_BALANCE", "message": str(e)})
     except InvalidAmount as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"code": "INVALID_AMOUNT", "message": str(e)})
 
 
 @router.get("/{id}", response_model=TransactionOut)
@@ -170,11 +170,11 @@ def update_transaction(
     except TransactionNotFound as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except InvalidAmount as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"code": "INVALID_AMOUNT", "message": str(e)})
     except InsufficientBalance as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"code": "INSUFFICIENT_BALANCE", "message": str(e)})
     except CanNotUpdateTransaction as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"code": "CANNOT_UPDATE_TRANSACTION", "message": str(e)})
 
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -197,7 +197,7 @@ def delete_transaction(
     except TransactionNotFound as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except InsufficientBalance as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"code": "INSUFFICIENT_BALANCE", "message": str(e)})
 
 
 @router.delete("/transfer/{transfer_group_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -216,9 +216,9 @@ def delete_transfer_transaction(
         transaction_service = TransactionsService(session)
         transaction_service.delete_transfer_transaction(transfer_group_id, current_user.id)
     except TransactionError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"code": "INVALID_TRANSFER_TRANSACTION", "message": str(e)})
     except InsufficientBalance as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"code": "INSUFFICIENT_BALANCE", "message": str(e)})
     
 
 @router.get("/summary", response_model=TransactionSummaryOut)

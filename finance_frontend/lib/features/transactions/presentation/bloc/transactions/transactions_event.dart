@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:finance_frontend/features/accounts/domain/entities/account.dart';
 import 'package:finance_frontend/features/transactions/domain/entities/transaction.dart';
 import 'package:flutter/foundation.dart';
 
@@ -7,7 +8,7 @@ abstract class TransactionsEvent extends Equatable {
   const TransactionsEvent();
   @override
   List<Object?> get props => [];
-} 
+}
 
 class LoadTransactions extends TransactionsEvent {
   const LoadTransactions();
@@ -16,6 +17,14 @@ class LoadTransactions extends TransactionsEvent {
 class RefreshTransactions extends TransactionsEvent {
   const RefreshTransactions();
 } // when ever the ui needs to refresh the current user's transactions (List<Transaction>)
+
+class TransactionFilterChanged extends TransactionsEvent {
+  final Account? account;
+  const TransactionFilterChanged([this.account]);
+
+  @override
+  List<Object?> get props => [account];
+}
 
 class TransactionCreatedInForm extends TransactionsEvent {
   final Transaction transaction;
@@ -42,11 +51,18 @@ class TransactionUpdatedInForm extends TransactionsEvent {
   List<Object?> get props => [transaction];
 } // when the user has updated an transaction in form
 
-
 class TransactionDeletedInForm extends TransactionsEvent {
   final String id;
   const TransactionDeletedInForm(this.id);
 
   @override
   List<Object?> get props => [id];
-} // when the user has deleted a transaction in form 
+} // when the user has deleted a transaction in form
+
+class TransferTransactionDeletedInForm extends TransactionsEvent {
+  final String transferGroupId;
+  const TransferTransactionDeletedInForm(this.transferGroupId);
+
+  @override
+  List<Object?> get props => [transferGroupId];
+} // when the user has deleted a Transfer transaction in form

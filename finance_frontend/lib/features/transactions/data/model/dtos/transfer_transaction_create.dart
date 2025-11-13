@@ -1,9 +1,11 @@
+import 'package:finance_frontend/features/transactions/domain/entities/transaction_type.dart';
+
 class TransferTransactionCreate {
   final int accountId;
   final int toAccountId;
   final String amount;
   final String currency;
-  final String type;
+  final TransactionType type;
   final String? description;
   final DateTime? occurredAt;
 
@@ -22,7 +24,7 @@ class TransferTransactionCreate {
         "to_account_id": toAccountId,
         "amount": amount,
         "currency": currency,
-        "type": type,
+        "type": type.name,
         "description": description,
         "occurred_at": occurredAt!.toIso8601String(),
       };

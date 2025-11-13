@@ -4,11 +4,13 @@ import 'package:finance_frontend/features/transactions/data/model/dtos/transfer_
 import 'package:finance_frontend/features/transactions/domain/entities/transaction.dart';
 
 abstract class TransactionService {
-    Future<List<Transaction>> getUserTransactions();
+  Future<List<Transaction>> getUserTransactions();
 
   Future<Transaction> createTransaction(TransactionCreate create);
 
-    Future<Transaction> createTransferTransaction(TransferTransactionCreate create);
+  Future<(Transaction, Transaction)> createTransferTransaction(
+    TransferTransactionCreate create,
+  );
 
   Future<Transaction> getTransaction(String id);
 
@@ -16,6 +18,5 @@ abstract class TransactionService {
 
   Future<void> deleteTransaction(String id);
 
-  Future<void>deleteTransferTransaction(String transferGroupId);
-
+  Future<void> deleteTransferTransaction(String transferGroupId);
 }

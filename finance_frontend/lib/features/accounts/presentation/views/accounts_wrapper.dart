@@ -1,4 +1,3 @@
-import 'package:finance_frontend/features/accounts/data/services/finance_account_service.dart';
 import 'package:finance_frontend/features/accounts/presentation/blocs/accounts/accounts_bloc.dart';
 import 'package:finance_frontend/features/accounts/presentation/views/accounts_view.dart';
 import 'package:flutter/material.dart';
@@ -9,8 +8,8 @@ class AccountsWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider<AccountsBloc>(
-      create: (_) => AccountsBloc(FinanceAccountService()),
+    return BlocProvider.value(
+      value: context.read<AccountsBloc>(),
       child: const AccountsView(),
     );
   }

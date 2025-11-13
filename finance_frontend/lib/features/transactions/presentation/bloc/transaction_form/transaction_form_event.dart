@@ -9,7 +9,7 @@ abstract class TransactionFormEvent extends Equatable {
   const TransactionFormEvent();
   @override
   List<Object?> get props => [];
-} 
+}
 
 class CreateTransaction extends TransactionFormEvent {
   final TransactionCreate create;
@@ -45,18 +45,17 @@ class UpdateTransaction extends TransactionFormEvent {
 } // when the user wants to modify an Transaction
 
 class DeleteTransferTransaction extends TransactionFormEvent {
-  final String id;
-  const DeleteTransferTransaction(this.id);
+  final String transferGroupId;
+  const DeleteTransferTransaction(this.transferGroupId);
 
   @override
-  List<Object?> get props => [id];
+  List<Object?> get props => [transferGroupId];
 } // when the user wants to delete a Transfer Transaction
 
-
-class DeleteAccount extends TransactionFormEvent {
+class DeleteTransaction extends TransactionFormEvent {
   final String id;
-  const DeleteAccount(this.id);
+  const DeleteTransaction(this.id);
 
   @override
   List<Object?> get props => [id];
-} // when the user wants to hard delete an Transaction 
+} // when the user wants to hard delete an Transaction

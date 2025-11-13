@@ -31,10 +31,10 @@ class CreateTransferTransactionOperationSuccess extends TransactionFormState {
   final Transaction outgoing;
   final Transaction incoming;
 
-  const CreateTransferTransactionOperationSuccess(this.incoming, this.outgoing);
+  const CreateTransferTransactionOperationSuccess(this.outgoing, this.incoming);
 
   @override
-  List<Object?> get props => [incoming, outgoing];
+  List<Object?> get props => [outgoing, incoming];
 } // when any create Transfer Transaction has successfully completed
 
 class TransactionDeleteOperationSuccess extends TransactionFormState {
@@ -44,6 +44,14 @@ class TransactionDeleteOperationSuccess extends TransactionFormState {
   @override
   List<Object?> get props => [id];
 } // when a delete Operation on an transaction has successfully completed
+
+class TransferTransactionDeleteOperationSuccess extends TransactionFormState {
+  final String transferGroupId;
+  const TransferTransactionDeleteOperationSuccess(this.transferGroupId);
+
+  @override
+  List<Object?> get props => [transferGroupId];
+} // when a delete Operation on an Transfer transaction has successfully completed
 
 class TransactionOperationFailure extends TransactionFormState {
   final String message;

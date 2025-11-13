@@ -20,11 +20,11 @@ class FinanceTransactionService implements TransactionService {
   }
 
   @override
-  Future<Transaction> createTransferTransaction(
+  Future<(Transaction, Transaction)> createTransferTransaction(
     TransferTransactionCreate create,
   ) async {
-    final transaction = await source.createTransferTransaction(create);
-    return transaction.toEntity();
+    final (outgoing, incoming) = await source.createTransferTransaction(create);
+    return (outgoing.toEntity(), incoming.toEntity());
   }
 
   @override
@@ -50,7 +50,10 @@ class FinanceTransactionService implements TransactionService {
   }
 
   @override
-  Future<Transaction> updateTransaction(String id, TransactionPatch patch) async {
+  Future<Transaction> updateTransaction(
+    String id,
+    TransactionPatch patch,
+  ) async {
     final transaction = await source.updateTransaction(id, patch);
     return transaction.toEntity();
   }

@@ -1,15 +1,16 @@
 import 'package:decimal/decimal.dart';
 import 'package:finance_frontend/features/transactions/domain/entities/transaction.dart';
+import 'package:finance_frontend/features/transactions/domain/entities/transaction_type.dart';
 
 class TransactionModel {
   final String id;
   final String amount;
   final bool? isOutGoing;
   final String accountId;
-  final String categoryId;
+  final String? categoryId;
   final String currency;
   final String? merchant;
-  final String type;
+  final TransactionType type;
   final String? description;
   final String? transferGroupId;
   final String createdAt;
@@ -22,7 +23,7 @@ class TransactionModel {
     required this.amount,
     this.isOutGoing,
     required this.accountId,
-    required this.categoryId,
+    this.categoryId,
     required this.currency,
     this.merchant,
     required this.type,
@@ -66,21 +67,30 @@ class TransactionModel {
     );
   }
 
-  factory TransactionModel.fromFinance(Map<String, dynamic> json) =>
-      TransactionModel(
-        id: json['id'],
-        amount: json['amount'],
-        isOutGoing: json['is_outgoing'],
-        accountId: json['account_id'],
-        categoryId: json['category_id'],
-        currency: json['currency'],
-        merchant: json['merchant'],
-        type: json['type'],
-        description: json['description'],
-        transferGroupId: json['transfer_group_id'],
-        createdAt: json['created_at'],
-        occuredAt: json['occurred_at'],
-      );
+  factory TransactionModel.fromFinance(
+    Map<String, dynamic> json,
+  ) => TransactionModel(
+    id: (json['id'] as int).toString(),
+    amount: json['amount'] as String,
+    isOutGoing:
+        json['is_outgoing'] != null ? (json['is_outgoing'] as bool) : null,
+    accountId: (json['account_id'] as int).toString(),
+    categoryId:
+        json['category_id'] != null
+            ? (json['category_id'] as int).toString()
+            : null,
+    currency: json['currency'] as String,
+    merchant: json['merchant'] != null ? (json['merchant'] as String) : null,
+    type: TransactionType.values.byName(json['type'] as String),
+    description:
+        json['description'] != null ? (json['description'] as String) : null,
+    transferGroupId:
+        json['transfer_group_id'] != null
+            ? (json['transfer_group_id'] as String)
+            : null,
+    createdAt: json['created_at'] as String,
+    occuredAt: json['occurred_at'] as String,
+  );
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -90,10 +100,10 @@ class TransactionModel {
     'category_id': categoryId,
     'currency': currency,
     'merchant': merchant,
-    'type': type,
+    'type': type.name,
     'description': description,
     'transfer_group_id': transferGroupId,
-    'created_at':createdAt,
-    'occurred_at':occuredAt,
+    'created_at': createdAt,
+    'occurred_at': occuredAt,
   };
 }

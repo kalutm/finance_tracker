@@ -1,1 +1,1 @@
-enum TransactionOperationType {create, read, update, restore, deactivate, delete}
+enum TransactionOperationType { create, read, update, delete }

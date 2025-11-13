@@ -1,18 +1,20 @@
+import 'package:finance_frontend/features/transactions/domain/entities/transaction_type.dart';
+
 class TransactionCreate {
   final String amount;
   final DateTime occuredAt;
   final String accountId;
-  final String categoryId;
+  final String? categoryId;
   final String currency;
   final String? merchant;
-  final String type;
+  final TransactionType type;
   final String? description;
 
   TransactionCreate({
     required this.amount,
     required this.occuredAt,
     required this.accountId,
-    required this.categoryId,
+    this.categoryId,
     required this.currency,
     this.merchant,
     required this.type,
@@ -20,13 +22,13 @@ class TransactionCreate {
   });
 
   Map<String, dynamic> toJson() => {
-        'amount': amount,
-        'occurred_at': occuredAt.toIso8601String(),
-        'account_id': accountId,
-        'category_id': categoryId,
-        'currency': currency,
-        'merchant': merchant,
-        'type': type,
-        'description': description,
-      };
+    'amount': amount,
+    'occurred_at': occuredAt.toIso8601String(),
+    'account_id': accountId,
+    'category_id': categoryId,
+    'currency': currency,
+    'merchant': merchant,
+    'type': type.name,
+    'description': description,
+  };
 }

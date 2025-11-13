@@ -1,10 +1,22 @@
 import 'dart:io';
-
+import 'package:finance_frontend/features/accounts/data/services/finance_account_service.dart';
+import 'package:finance_frontend/features/accounts/presentation/blocs/accounts/accounts_bloc.dart';
 import 'package:finance_frontend/features/auth/domain/exceptions/auth_exceptions.dart';
 import 'package:finance_frontend/features/auth/presentation/cubits/auth_cubit.dart';
 import 'package:finance_frontend/features/auth/presentation/cubits/auth_state.dart';
 import 'package:finance_frontend/features/auth/presentation/views/first_auth_wrappr.dart';
 import 'package:finance_frontend/features/auth/presentation/views/home_view.dart';
+import 'package:finance_frontend/features/categories/data/services/finance_category_service.dart';
+import 'package:finance_frontend/features/categories/presentation/blocs/categories/categories_bloc.dart';
+import 'package:finance_frontend/features/transactions/domain/use_cases/add_transaction.dart';
+import 'package:finance_frontend/features/transactions/domain/use_cases/add_transfer_transaction.dart';
+import 'package:finance_frontend/features/transactions/domain/use_cases/delete_transaction.dart';
+import 'package:finance_frontend/features/transactions/domain/use_cases/delete_transfer_transaction.dart';
+import 'package:finance_frontend/features/transactions/domain/use_cases/get_transaction.dart';
+import 'package:finance_frontend/features/transactions/domain/use_cases/get_transactions.dart';
+import 'package:finance_frontend/features/transactions/domain/use_cases/update_transaction.dart';
+import 'package:finance_frontend/features/transactions/presentation/bloc/transaction_form/transaction_form_bloc.dart';
+import 'package:finance_frontend/features/transactions/presentation/bloc/transactions/transactions_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -35,7 +47,33 @@ class _AppWrapperState extends State<AppWrapper> {
       child: BlocConsumer<AuthCubit, AuthState>(
         builder: (context, state) {
           if (state is Authenticated) {
-            return const Home();
+            return MultiBlocProvider(
+              providers: [
+                BlocProvider(
+                  create: (context) => AccountsBloc(FinanceAccountService()),
+                ),
+                BlocProvider(
+                  create: (context) => TransactionsBloc(GetTransactionsUc()),
+                ),
+                BlocProvider(
+                  create:
+                      (context) => TransactionFormBloc(
+                        createTransactionUc: CreateTransactionUc(),
+                        createTransferTransactionUc:
+                            CreateTransferTransactionUc(),
+                        getTransactionUc: GetTransactionUc(),
+                        updateTransactionUc: UpdateTransactionUc(),
+                        deleteTransactionUc: DeleteTransactionUc(),
+                        deleteTransferTransactionUc:
+                            DeleteTransferTransactionUc(),
+                      ),
+                ),
+                BlocProvider(
+                  create: (context) => CategoriesBloc(FinanceCategoryService()),
+                ),
+              ],
+              child: const Home(),
+            );
           } else if (state is AuthNeedsVerification) {
             return FirstAuthWrappr(toVerify: true, email: state.email);
           } else if (state is Unauthenticated) {
@@ -109,9 +147,13 @@ class _AppWrapperState extends State<AppWrapper> {
                 ),
               );
             } else if (state.exception is SocketException) {
-              ScaffoldMessenger.of(
-                context,
-              ).showSnackBar(SnackBar(content: Text("No Internet connection!, please try connecting to the internet")));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    "No Internet connection!, please try connecting to the internet",
+                  ),
+                ),
+              );
             } else {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text(state.exception.toString())),
