@@ -1,4 +1,3 @@
-// features/categories/presentation/widgets/category_selector.dart
 
 import 'package:finance_frontend/features/categories/domain/entities/category.dart'; // Assume Category entity exists
 import 'package:finance_frontend/features/categories/domain/utils/category_icon_mapper.dart';
@@ -43,7 +42,7 @@ class CategorySelector extends StatelessWidget {
       child: InputDecorator(
         decoration: InputDecoration(
           labelText: label,
-          prefixIcon: Icon(selectedCategory?.displayIcon ?? Icons.category_rounded), // Assuming Category has an icon field
+          prefixIcon: Icon(selectedCategory?.displayIcon ?? Icons.category_rounded),
           border: const OutlineInputBorder(),
         ),
         child: Text(
