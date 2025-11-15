@@ -21,9 +21,11 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
     on<AccountDeactivatedInForm>(_onDeactivatedAccount);
     on<AccountRestoredInForm>(_onRestoredAccount);
     on<AccountDeletedInForm>(_onDeletedAccount);
-
+    
     add(LoadAccounts());
   }
+
+  // update account's whenever an account crud has taken place
 
   Future<void> _onLoadAccounts(
     LoadAccounts event,

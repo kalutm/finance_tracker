@@ -78,22 +78,4 @@ class CategoryItem extends StatelessWidget {
       visualDensity: VisualDensity.compact,
     );
   }
-
-  Widget _buildSwipeActionLeft(Color color) {
-    return Container(
-      alignment: Alignment.centerLeft,
-      padding: const EdgeInsets.only(left: 16),
-      color: color.withAlpha(31),
-      child: const Icon(Icons.pause_circle, size: 28),
-    );
-  }
-
-  Widget _buildSwipeActionRight() {
-    return Container(
-      alignment: Alignment.centerRight,
-      padding: const EdgeInsets.only(right: 16),
-      color: Colors.red.withAlpha(31),
-      child: const Icon(Icons.delete, size: 28),
-    );
-  }
 }

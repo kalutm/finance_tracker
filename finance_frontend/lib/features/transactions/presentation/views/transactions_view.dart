@@ -327,12 +327,7 @@ class TransactionsView extends StatelessWidget {
 
       // Sum the balances
       for (var account in accountsState.accounts) {
-        try {
           totalBalance += account.balanceValue;
-        } catch (e) {
-          // Log the error but continue summing others
-          print('Error parsing balance for account ${account.name}: $e');
-        }
       }
     }
 

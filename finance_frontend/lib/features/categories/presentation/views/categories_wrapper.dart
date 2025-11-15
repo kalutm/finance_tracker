@@ -12,8 +12,8 @@ class CategoriesWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
-        BlocProvider<CategoriesBloc>(
-          create: (_) => CategoriesBloc(FinanceCategoryService()),
+        BlocProvider.value(
+          value: context.read<CategoriesBloc>(),
         ),
         BlocProvider(create: (context) => CategoryFormBloc(FinanceCategoryService())),
       ],
