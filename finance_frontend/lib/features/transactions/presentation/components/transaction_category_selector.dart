@@ -238,7 +238,9 @@ class _CategorySelectionSheetState extends State<_CategorySelectionSheet> {
                   );
                 }
 
-                final filtered = _filterCategories(state.categories, _query);
+                final activeCategories = state.categories.where((cat) => cat.active).toList();
+
+                final filtered = _filterCategories(activeCategories, _query);
 
                 if (filtered.isEmpty) {
                   return Center(

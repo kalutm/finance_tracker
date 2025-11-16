@@ -273,7 +273,8 @@ class _TransactionFormModalState extends State<TransactionFormModal>
     final accountsState = context.watch<AccountsBloc>().state;
     List<Account> accounts = [];
     if (accountsState is AccountsLoaded) {
-      accounts = accountsState.accounts;
+      final activeAccounts = accountsState.accounts.where((acc) => acc.active).toList();
+      accounts = activeAccounts;
       if (_selectedAccount == null &&
           accounts.isNotEmpty &&
           widget.initialTransaction == null) {
