@@ -8,8 +8,6 @@ import 'package:finance_frontend/features/accounts/domain/entities/dtos/account_
 import 'package:finance_frontend/features/accounts/presentation/blocs/account_form/account_form_bloc.dart';
 import 'package:finance_frontend/features/accounts/presentation/blocs/account_form/account_form_event.dart';
 import 'package:finance_frontend/features/accounts/presentation/blocs/account_form/account_form_state.dart';
-import 'package:finance_frontend/features/accounts/presentation/blocs/accounts/accounts_bloc.dart';
-import 'package:finance_frontend/features/accounts/presentation/blocs/accounts/accounts_event.dart';
 import 'package:finance_frontend/features/accounts/presentation/blocs/entities/operation_type_enum.dart';
 
 class AccountFormModal extends StatefulWidget {
@@ -107,25 +105,12 @@ class _AccountFormModalState extends State<AccountFormModal> {
                 ),
               ),
             );
-
-            final accountsBloc = context.read<AccountsBloc>();
-            if (state.operationType == AccountOperationType.create) {
-              accountsBloc.add(AccountCreatedInForm(state.account));
-            } if (state.operationType == AccountOperationType.update){
-              accountsBloc.add(AccountUpdatedInForm(state.account));
-            } if (state.operationType == AccountOperationType.deactivate){
-              accountsBloc.add(AccountDeactivatedInForm(state.account));
-            } if (state.operationType == AccountOperationType.restore){
-              accountsBloc.add(AccountRestoredInForm(state.account));
-            }
-
             Navigator.of(context).pop();
 
           } else if (state is AccountDeleteOperationSuccess) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text("Account deleted successfully.")),
             );
-            context.read<AccountsBloc>().add(AccountDeletedInForm(state.id));
             Navigator.of(context).pop();
           } else if (state is AccountOperationFailure) {
             showDialog(
@@ -284,7 +269,6 @@ class _AccountFormModalState extends State<AccountFormModal> {
     );
   }
 
-  // Helper to build the Deactivate/Restore/Delete Button for a cleaner main build method
   Widget _buildAccountActionButton(
     BuildContext context, {
     required bool isInactive,

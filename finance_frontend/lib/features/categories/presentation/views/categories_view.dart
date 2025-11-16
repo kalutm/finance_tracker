@@ -5,7 +5,6 @@ import 'package:finance_frontend/features/categories/presentation/blocs/categori
 import 'package:finance_frontend/features/categories/presentation/blocs/category_form/category_form_bloc.dart';
 import 'package:finance_frontend/features/categories/presentation/blocs/category_form/category_form_event.dart';
 import 'package:finance_frontend/features/categories/presentation/blocs/category_form/category_form_state.dart';
-import 'package:finance_frontend/features/categories/presentation/blocs/entities/operation_type_enum.dart';
 import 'package:finance_frontend/features/categories/presentation/components/category_form_failure_dialog.dart';
 import 'package:finance_frontend/features/categories/presentation/components/category_form_sheet.dart';
 import 'package:finance_frontend/features/categories/presentation/components/category_list_view.dart';
@@ -36,47 +35,19 @@ class _CategoriesPageState extends State<CategoriesView> {
             }
           },
         ),
-        // Global listener: transform CategoryFormBloc successes into CategoriesBloc updates
+        // Global listener: notify user when Crud was successful
         BlocListener<CategoryFormBloc, CategoryFormState>(
           listener: (context, state) {
             if (state is CategoryOperationSuccess) {
-              final cat = state.category;
               final op = state.operationType;
               final opName = op.toString().split('.').last;
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text('Category ${opName}d successful')),
               );
-              // Notify CategoriesBloc to update cached list in-place:
-              switch (op) {
-                case CategoryOperationType.create:
-                  context.read<CategoriesBloc>().add(
-                    CategoryCreatedInForm(cat),
-                  );
-                  break;
-                case CategoryOperationType.update:
-                  context.read<CategoriesBloc>().add(
-                    CategoryUpdatedInForm(cat),
-                  );
-                  break;
-                case CategoryOperationType.deactivate:
-                  context.read<CategoriesBloc>().add(
-                    CategoryDeactivatedInForm(cat),
-                  );
-                  break;
-                case CategoryOperationType.restore:
-                  context.read<CategoriesBloc>().add(
-                    CategoryRestoredInForm(cat),
-                  );
-                  break;
-                default:
-                  break;
-              }
             } else if (state is CategoryDeleteOperationSuccess) {
-              final id = state.id;
               ScaffoldMessenger.of(
                 context,
               ).showSnackBar(SnackBar(content: Text('Category deleted')));
-              context.read<CategoriesBloc>().add(CategoryDeletedInForm(id));
             } else if (state is CategoryOperationFailure) {
               showDialog(
                 context: context,
@@ -106,43 +77,10 @@ class _CategoriesPageState extends State<CategoriesView> {
           return const Center(child: CircularProgressIndicator());
         } else if (state is CategoriesLoaded) {
           final List<FinanceCategory> all = state.categories;
-          final filtered = _applyFilter(all, _filter);
+          if(all.isEmpty){
+            return Center(child: Text("No Categories found. Tap the '+' button to create one"),);
+          }
 
-          // create favorites/top grid (active categories)
-          final activeTop = filtered.where((c) => c.active).take(6).toList();
-
-          return RefreshIndicator(
-            onRefresh: () async {
-              context.read<CategoriesBloc>().add(RefreshCategories());
-              // Wait a small duration for UI to update; ideally, connect to events.
-              await Future.delayed(const Duration(milliseconds: 300));
-            },
-            child: CustomScrollView(
-              slivers: [
-                SliverToBoxAdapter(child: _buildSearchBar()),
-                if (activeTop.isNotEmpty)
-                  SliverToBoxAdapter(child: _buildTopGrid(activeTop)),
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  sliver: CategoryListView(
-                    filtered: filtered,
-                    onEdit: _openEditSheet,
-                    onDeactivate: _confirmDeactivate,
-                    onRestore: _confirmRestore,
-                    onDelete: _confirmDelete,
-                  ),
-                ),
-                SliverToBoxAdapter(
-                  child: const SizedBox(height: 80),
-                ), // space for FAB
-              ],
-            ),
-          );
-        } else if (state is CategoriesOperationFailure) {
-          final List<FinanceCategory> all = state.categories;
           final filtered = _applyFilter(all, _filter);
 
           // create favorites/top grid (active categories)
@@ -179,7 +117,42 @@ class _CategoriesPageState extends State<CategoriesView> {
             ),
           );
         } else {
-          return const Center(child: Text('No categories found'));
+          final List<FinanceCategory> all = (state as CategoriesOperationFailure).categories;
+          final filtered = _applyFilter(all, _filter);
+
+          // create favorites/top grid (active categories)
+          final activeTop = filtered.where((c) => c.active).take(6).toList();
+
+          return RefreshIndicator(
+            onRefresh: () async {
+              context.read<CategoriesBloc>().add(RefreshCategories());
+              // Wait a small duration for UI to update; ideally, connect to events.
+              await Future.delayed(const Duration(milliseconds: 300));
+            },
+            child: CustomScrollView(
+              slivers: [
+                SliverToBoxAdapter(child: _buildSearchBar()),
+                if (activeTop.isNotEmpty)
+                  SliverToBoxAdapter(child: _buildTopGrid(activeTop)),
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  sliver: CategoryListView(
+                    filtered: filtered,
+                    onEdit: _openEditSheet,
+                    onDeactivate: _confirmDeactivate,
+                    onRestore: _confirmRestore,
+                    onDelete: _confirmDelete,
+                  ),
+                ),
+                SliverToBoxAdapter(
+                  child: const SizedBox(height: 80),
+                ), // space for FAB
+              ],
+            ),
+          );
         }
       },
     );

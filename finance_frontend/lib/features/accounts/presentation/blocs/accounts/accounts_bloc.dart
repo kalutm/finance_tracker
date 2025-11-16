@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:developer' as developer;
 import 'dart:io';
 import 'package:bloc_concurrency/bloc_concurrency.dart';
@@ -10,22 +11,25 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
   final AccountService accountService;
-
-  List<Account> _cachedAccounts = [];
+  StreamSubscription<List<Account>>? _accountsSub;
 
   AccountsBloc(this.accountService) : super(const AccountsInitial()) {
     on<LoadAccounts>(_onLoadAccounts, transformer: droppable());
     on<RefreshAccounts>(_onRefreshAccounts, transformer: droppable());
-    on<AccountCreatedInForm>(_onCreatedAccount);
-    on<AccountUpdatedInForm>(_onUpdatedAccount);
-    on<AccountDeactivatedInForm>(_onDeactivatedAccount);
-    on<AccountRestoredInForm>(_onRestoredAccount);
-    on<AccountDeletedInForm>(_onDeletedAccount);
-    
-    add(LoadAccounts());
-  }
+    on<AccountsUpdated>(_onAccountsUpdated);
 
-  // update account's whenever an account crud has taken place
+    // subscribe to service stream and forward to internal event
+    _accountsSub = accountService.accountsStream.listen(
+      (accounts) => add(AccountsUpdated(accounts)),
+      onError: (err, st) {
+        // we could map the error to a state if needed
+        developer.log('AccountService stream error', error: err, stackTrace: st);
+      },
+    );
+
+    // triggering initial load
+    add(const LoadAccounts());
+  }
 
   Future<void> _onLoadAccounts(
     LoadAccounts event,
@@ -34,10 +38,9 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
     emit(const AccountsLoading());
     try {
       final accounts = await accountService.getUserAccounts();
-      _cachedAccounts = accounts;
-      emit(AccountsLoaded(List.unmodifiable(_cachedAccounts)));
+      emit(AccountsLoaded(List.unmodifiable(accounts)));
     } catch (e) {
-      emit(AccountOperationFailure(_mapErrorToMessage(e), _cachedAccounts));
+      emit(AccountOperationFailure(_mapErrorToMessage(e), const []));
     }
   }
 
@@ -45,80 +48,34 @@ class AccountsBloc extends Bloc<AccountsEvent, AccountsState> {
     RefreshAccounts event,
     Emitter<AccountsState> emit,
   ) async {
-    emit(AccountsLoaded(List.unmodifiable(_cachedAccounts)));
+    // keeping last known UI state while refreshing
+    final currentAccounts = state is AccountsLoaded ? (state as AccountsLoaded).accounts : const [] as List<Account>;
+    emit(AccountsLoaded(List.unmodifiable(currentAccounts)));
     try {
       final accounts = await accountService.getUserAccounts();
-      _cachedAccounts = accounts;
-      emit(AccountsLoaded(List.unmodifiable(_cachedAccounts)));
+      emit(AccountsLoaded(List.unmodifiable(accounts)));
     } catch (e, st) {
       developer.log('LoadAccounts error', error: e, stackTrace: st);
-      emit(AccountOperationFailure(_mapErrorToMessage(e), _cachedAccounts));
+      emit(AccountOperationFailure(_mapErrorToMessage(e), currentAccounts));
     }
   }
 
-  Future<void> _onCreatedAccount(
-    AccountCreatedInForm event,
+  Future<void> _onAccountsUpdated(
+    AccountsUpdated event,
     Emitter<AccountsState> emit,
   ) async {
-    final updated = List<Account>.from(_cachedAccounts);
-    updated.insert(0, event.account);
-    _cachedAccounts = updated;
-    emit(AccountsLoaded(List.unmodifiable(_cachedAccounts)));
+    emit(AccountsLoaded(List.unmodifiable(event.accounts)));
   }
 
-  Future<void> _onUpdatedAccount(
-    AccountUpdatedInForm event,
-    Emitter<AccountsState> emit,
-  ) async {
-    final index = _cachedAccounts.indexWhere((a) => a.id == event.account.id);
-    if (index != -1) {
-      final updated = List<Account>.from(_cachedAccounts);
-      updated[index] = event.account;
-      _cachedAccounts = updated;
-      emit(AccountsLoaded(List.unmodifiable(_cachedAccounts)));
-    }
-  }
-
-  Future<void> _onDeactivatedAccount(
-    AccountDeactivatedInForm event,
-    Emitter<AccountsState> emit,
-  ) async {
-    final index = _cachedAccounts.indexWhere((a) => a.id == event.account.id);
-    if (index != -1) {
-      final updated = List<Account>.from(_cachedAccounts);
-      updated[index] = event.account;
-      _cachedAccounts = updated;
-      emit(AccountsLoaded(List.unmodifiable(_cachedAccounts)));
-    }
-  }
-
-  Future<void> _onRestoredAccount(
-    AccountRestoredInForm event,
-    Emitter<AccountsState> emit,
-  ) async {
-    final index = _cachedAccounts.indexWhere((a) => a.id == event.account.id);
-    if (index != -1) {
-      final updated = List<Account>.from(_cachedAccounts);
-      updated[index] = event.account;
-      _cachedAccounts = updated;
-      emit(AccountsLoaded(List.unmodifiable(_cachedAccounts)));
-    }
-  }
-
-  Future<void> _onDeletedAccount(
-    AccountDeletedInForm event,
-    Emitter<AccountsState> emit,
-  ) async {
-    final updated = List<Account>.from(_cachedAccounts);
-    updated.removeWhere((a) => a.id == event.id);
-    _cachedAccounts = updated;
-    emit(AccountsLoaded(List.unmodifiable(_cachedAccounts)));
+  @override
+  Future<void> close() {
+    _accountsSub?.cancel();
+    return super.close();
   }
 
   String _mapErrorToMessage(Object e) {
     if (e is CouldnotFetchAccounts) return 'Couldnot fetch accounts, please try reloading the page';
-    if(e is SocketException) return 'No Internet connection!, please try connecting to the internet';
+    if (e is SocketException) return 'No Internet connection!, please try connecting to the internet';
     return e.toString();
-    
   }
 }

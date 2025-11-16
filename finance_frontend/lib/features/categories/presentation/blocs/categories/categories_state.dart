@@ -11,25 +11,35 @@ abstract class CategoriesState extends Equatable {
 
 class CategoriesInitial extends CategoriesState {
   const CategoriesInitial();
-} // when the categories page is loading before any operation
+}
 
 class CategoriesLoading extends CategoriesState {
   const CategoriesLoading();
-} // when the service is loading current user's categories (List<FinanceCategory>)
+}
 
 class CategoriesLoaded extends CategoriesState {
   final List<FinanceCategory> categories;
-  const CategoriesLoaded(this.categories);
+  final String _fingerprint;
+
+  CategoriesLoaded(this.categories) : _fingerprint = _computeFingerprint(categories);
+
+  static String _computeFingerprint(List<FinanceCategory> categories) {
+    // include fields that should cause UI updates when changed
+    return categories.map((c) => '${c.id}:${c.name}:${c.active}').join('|');
+  }
 
   @override
-  List<Object?> get props => [categories];
-} // when the service has finished loading the current user's categories (List<FinanceCategory>)
+  List<Object?> get props => [categories, _fingerprint];
+}
 
 class CategoriesOperationFailure extends CategoriesState {
   final List<FinanceCategory> categories;
   final String message;
-  const CategoriesOperationFailure(this.message, this.categories);
+  final String _fingerprint;
+
+  CategoriesOperationFailure(this.message, this.categories)
+      : _fingerprint = CategoriesLoaded._computeFingerprint(categories);
 
   @override
-  List<Object?> get props => [message];
-} // when any operation has failed
+  List<Object?> get props => [message, categories, _fingerprint];
+}

@@ -64,9 +64,13 @@ class RemoteDataSource {
       final accessToken = await secureStorageService.readString(
         key: "access_token",
       );
-      final res = await http.patch(
-        headers: {"Authorization": "Bearer $accessToken"},
+      final res = await http.post(
+        headers: {
+          "Authorization": "Bearer $accessToken",
+          "Content-Type": "application/json",
+        },
         Uri.parse("$baseUrl/transfer"),
+        body: jsonEncode(create.toJson()),
       );
 
       final json = jsonDecode(res.body) as Map<String, dynamic>;

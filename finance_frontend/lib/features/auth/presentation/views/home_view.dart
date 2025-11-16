@@ -18,7 +18,7 @@ class _HomeState extends State<Home> {
 
   // Mapping to hold our navigation destinations
   static final List<Widget> _widgetOptions = <Widget>[
-    const TransactionsView(), // This is where the feed goes
+    const TransactionsView(),
     const AccountsWrapper(),
     const CategoriesWrapper(),
     const SettingsView(),
@@ -39,7 +39,6 @@ class _HomeState extends State<Home> {
     // The main Scaffold now contains only the current selected page
     return Scaffold(
       appBar: AppBar(
-        // Title is dynamic based on selected index
         title: Text(
           _getAppBarTitle(_selectedIndex),
           style: theme.textTheme.headlineSmall?.copyWith(
@@ -48,14 +47,12 @@ class _HomeState extends State<Home> {
         ),
       ),
 
-      // Dynamic Body Content
       body: _widgetOptions.elementAt(_selectedIndex),
 
-      // Refactored Drawer
+
       drawer: Drawer(
         child: Column(
           children: [
-            // User-friendly Drawer Header
             DrawerHeader(
               decoration: BoxDecoration(color: theme.colorScheme.primary),
               child: Column(
@@ -110,7 +107,7 @@ class _HomeState extends State<Home> {
 
             const Spacer(),
 
-            // Logout at the bottom
+            // Logout and Delete at the bottom
             ListTile(
               leading: Icon(
                 Icons.logout_rounded,
@@ -131,38 +128,24 @@ class _HomeState extends State<Home> {
                   );
               },
             ),
-            PopupMenuButton<String>(
-              icon: const Icon(Icons.more_vert),
-              onSelected: (value) {
-                if (value == 'delete_user') {
-                  showDialog(
+            ListTile(
+              leading: Icon(
+               Icons.delete_forever, color: Colors.red
+              ),
+              title: Text('Delete Account', style: TextStyle(color: Colors.red)),
+              onTap: () {
+                Navigator.of(context).pop(); // Close drawer
+                showDialog(
                     context: context,
                     builder:
                         (context) => ConfirmationDialog(
                           title: "Delete Account",
                           content:
-                              "This will permanently delete the Your User account. Are you sure?",
+                              "Are you sure you want to delete your account? This cannot be undone.",
                           isDelete: true,
                         ),
                   );
-                }
               },
-              itemBuilder:
-                  (context) => [
-                    const PopupMenuItem(
-                      value: 'delete_user',
-                      child: Row(
-                        children: [
-                          Icon(Icons.delete_forever, color: Colors.red),
-                          SizedBox(width: 8),
-                          Text(
-                            'Delete Account',
-                            style: TextStyle(color: Colors.red),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
             ),
             const SizedBox(height: 20),
           ],

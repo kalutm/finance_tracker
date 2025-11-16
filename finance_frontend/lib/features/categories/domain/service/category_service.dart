@@ -1,8 +1,12 @@
+import 'dart:async';
 import 'package:finance_frontend/features/categories/domain/entities/category.dart';
 import 'package:finance_frontend/features/categories/domain/entities/dtos/category_create.dart';
 import 'package:finance_frontend/features/categories/domain/entities/dtos/category_patch.dart';
 
 abstract class CategoryService {
+
+  Stream<List<FinanceCategory>> get categoriesStream;
+
   Future<List<FinanceCategory>> getUserCategories();
 
   Future<FinanceCategory> createCategory(CategoryCreate create);

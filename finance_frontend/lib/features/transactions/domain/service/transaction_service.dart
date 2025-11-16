@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:finance_frontend/features/transactions/data/model/dtos/transaction_create.dart';
 import 'package:finance_frontend/features/transactions/data/model/dtos/transaction_update.dart';
 import 'package:finance_frontend/features/transactions/data/model/dtos/transfer_transaction_create.dart';
@@ -5,6 +7,8 @@ import 'package:finance_frontend/features/transactions/domain/entities/transacti
 
 abstract class TransactionService {
   Future<List<Transaction>> getUserTransactions();
+
+  Stream<List<Transaction>> get transactionsStream;
 
   Future<Transaction> createTransaction(TransactionCreate create);
 

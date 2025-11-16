@@ -1,30 +1,35 @@
+import 'dart:async';
 import 'dart:developer' as developer;
 import 'dart:io';
 import 'package:bloc_concurrency/bloc_concurrency.dart';
 import 'package:finance_frontend/features/transactions/domain/exceptions/transaction_exceptions.dart';
 import 'package:finance_frontend/features/transactions/domain/entities/transaction.dart';
-import 'package:finance_frontend/features/transactions/domain/use_cases/get_transactions.dart';
+import 'package:finance_frontend/features/transactions/domain/service/transaction_service.dart';
 import 'package:finance_frontend/features/transactions/presentation/bloc/transactions/transactions_event.dart';
 import 'package:finance_frontend/features/transactions/presentation/bloc/transactions/transactions_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class TransactionsBloc extends Bloc<TransactionsEvent, TransactionsState> {
-  final GetTransactionsUc getTransactionsUc;
+  final TransactionService transactionService;
+  StreamSubscription<List<Transaction>>? _txSub;
 
   List<Transaction> _cachedTransactions = [];
 
-  TransactionsBloc(this.getTransactionsUc)
-    : super(const TransactionsInitial()) {
+  TransactionsBloc(this.transactionService) : super(const TransactionsInitial()) {
     on<LoadTransactions>(_onLoadTransactions, transformer: droppable());
     on<RefreshTransactions>(_onRefreshTransactions, transformer: droppable());
-    on<TransactionCreatedInForm>(_onCreatedTransaction);
-    on<TransferTransactionCreatedInForm>(_onTransferTransactionCreated);
-    on<TransactionUpdatedInForm>(_onUpdatedTransaction);
-    on<TransferTransactionDeletedInForm>(_onTransferTransactionDeleted);
-    on<TransactionDeletedInForm>(_onDeletedTransaction);
+    on<TransactionsUpdated>(_onTransactionsUpdated);
     on<TransactionFilterChanged>(_onTransactionFilterChanged);
 
-    add(LoadTransactions());
+    // subscribe to service stream
+    _txSub = transactionService.transactionsStream.listen(
+      (txs) => add(TransactionsUpdated(txs)),
+      onError: (err, st) {
+        developer.log('TransactionService stream error', error: err, stackTrace: st);
+      },
+    );
+
+    add(const LoadTransactions());
   }
 
   Future<void> _onLoadTransactions(
@@ -33,7 +38,7 @@ class TransactionsBloc extends Bloc<TransactionsEvent, TransactionsState> {
   ) async {
     emit(const TransactionsLoading());
     try {
-      final transactions = await getTransactionsUc.call();
+      final transactions = await transactionService.getUserTransactions();
       _cachedTransactions = transactions;
       emit(TransactionsLoaded(List.unmodifiable(_cachedTransactions)));
     } catch (e) {
@@ -53,9 +58,8 @@ class TransactionsBloc extends Bloc<TransactionsEvent, TransactionsState> {
     final prevState = state;
     emit(const TransactionsLoading());
     try {
-      final transactions = await getTransactionsUc.call();
+      final transactions = await transactionService.getUserTransactions();
       _cachedTransactions = transactions;
-
       _emitFilteredTransactionsLoaded(emit, prevState);
     } catch (e, st) {
       developer.log('LoadTransactions error', error: e, stackTrace: st);
@@ -63,74 +67,14 @@ class TransactionsBloc extends Bloc<TransactionsEvent, TransactionsState> {
     }
   }
 
-  Future<void> _onCreatedTransaction(
-    TransactionCreatedInForm event,
+  Future<void> _onTransactionsUpdated(
+    TransactionsUpdated event,
     Emitter<TransactionsState> emit,
   ) async {
+    _cachedTransactions = event.transactions;
+
+    // preserve any existing filter from current state
     final prevState = state;
-
-    final updated = List<Transaction>.from(_cachedTransactions);
-    updated.insert(0, event.transaction);
-    _cachedTransactions = updated;
-
-    _emitFilteredTransactionsLoaded(emit, prevState);
-  }
-
-  Future<void> _onUpdatedTransaction(
-    TransactionUpdatedInForm event,
-    Emitter<TransactionsState> emit,
-  ) async {
-    final prevState = state;
-
-    final index = _cachedTransactions.indexWhere(
-      (txn) => txn.id == event.transaction.id,
-    );
-    if (index != -1) {
-      final updated = List<Transaction>.from(_cachedTransactions);
-      updated[index] = event.transaction;
-      _cachedTransactions = updated;
-
-      _emitFilteredTransactionsLoaded(emit, prevState);
-    }
-  }
-
-  Future<void> _onTransferTransactionDeleted(
-    TransferTransactionDeletedInForm event,
-    Emitter<TransactionsState> emit,
-  ) async {
-    final prevState = state;
-
-    final updated = List<Transaction>.from(_cachedTransactions);
-    updated.removeWhere((txn) => txn.transferGroupId == event.transferGroupId);
-    _cachedTransactions = updated;
-
-    _emitFilteredTransactionsLoaded(emit, prevState);
-  }
-
-  Future<void> _onTransferTransactionCreated(
-    TransferTransactionCreatedInForm event,
-    Emitter<TransactionsState> emit,
-  ) async {
-    final prevState = state;
-
-    final updated = List<Transaction>.from(_cachedTransactions);
-    updated.insert(0, event.incoming);
-    updated.insert(0, event.outgoing);
-    _cachedTransactions = updated;
-
-    _emitFilteredTransactionsLoaded(emit, prevState);
-  }
-
-  Future<void> _onDeletedTransaction(
-    TransactionDeletedInForm event,
-    Emitter<TransactionsState> emit,
-  ) async {
-    final prevState = state;
-
-    final updated = List<Transaction>.from(_cachedTransactions);
-    updated.removeWhere((txn) => txn.id == event.id);
-    _cachedTransactions = updated;
-
     _emitFilteredTransactionsLoaded(emit, prevState);
   }
 
@@ -266,5 +210,11 @@ class TransactionsBloc extends Bloc<TransactionsEvent, TransactionsState> {
         ),
       );
     }
+  }
+
+  @override
+  Future<void> close() {
+    _txSub?.cancel();
+    return super.close();
   }
 }

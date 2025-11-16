@@ -12,6 +12,15 @@ class Account {
 
   Decimal get balanceValue => Decimal.parse(balance);
 
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is Account && other.id == id;
+  }
+
+  @override
+  int get hashCode => id.hashCode;
+
   Account({
     required this.id,
     required this.balance,

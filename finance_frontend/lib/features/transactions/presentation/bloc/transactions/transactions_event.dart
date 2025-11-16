@@ -26,43 +26,10 @@ class TransactionFilterChanged extends TransactionsEvent {
   List<Object?> get props => [account];
 }
 
-class TransactionCreatedInForm extends TransactionsEvent {
-  final Transaction transaction;
-  const TransactionCreatedInForm(this.transaction);
+class TransactionsUpdated extends TransactionsEvent {
+  final List<Transaction> transactions;
+  const TransactionsUpdated(this.transactions);
 
   @override
-  List<Object?> get props => [transaction];
-} // when a user has created a new transaction in form
-
-class TransferTransactionCreatedInForm extends TransactionsEvent {
-  final Transaction outgoing;
-  final Transaction incoming;
-  const TransferTransactionCreatedInForm(this.outgoing, this.incoming);
-
-  @override
-  List<Object?> get props => [outgoing, incoming];
-} // when a user has created a new transfer Transaction in form
-
-class TransactionUpdatedInForm extends TransactionsEvent {
-  final Transaction transaction;
-  const TransactionUpdatedInForm(this.transaction);
-
-  @override
-  List<Object?> get props => [transaction];
-} // when the user has updated an transaction in form
-
-class TransactionDeletedInForm extends TransactionsEvent {
-  final String id;
-  const TransactionDeletedInForm(this.id);
-
-  @override
-  List<Object?> get props => [id];
-} // when the user has deleted a transaction in form
-
-class TransferTransactionDeletedInForm extends TransactionsEvent {
-  final String transferGroupId;
-  const TransferTransactionDeletedInForm(this.transferGroupId);
-
-  @override
-  List<Object?> get props => [transferGroupId];
-} // when the user has deleted a Transfer transaction in form
+  List<Object?> get props => [transactions];
+} // internal event fired when TransactionService emits new list

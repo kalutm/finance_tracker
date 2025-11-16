@@ -1,5 +1,3 @@
-// features/transactions/presentation/views/transactions_page.dart
-
 import 'package:finance_frontend/features/accounts/domain/entities/account.dart';
 import 'package:finance_frontend/features/accounts/domain/utils/account_icom_map.dart';
 import 'package:finance_frontend/features/accounts/presentation/blocs/accounts/accounts_bloc.dart';
@@ -15,13 +13,12 @@ import 'package:finance_frontend/features/transactions/presentation/components/t
 import 'package:finance_frontend/features/transactions/presentation/views/transaction_form_modal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:decimal/decimal.dart'; // Required for accurate math
+import 'package:decimal/decimal.dart';
 
 class TransactionsView extends StatelessWidget {
   const TransactionsView({super.key});
 
   void _showTransactionForm(BuildContext context) {
-    // Open the full-screen transaction form
     Navigator.of(context).push(
       MaterialPageRoute(
         fullscreenDialog: true,
@@ -44,7 +41,7 @@ class TransactionsView extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        automaticallyImplyLeading: true, // Show the drawer icon
+        automaticallyImplyLeading: true,
         title: _buildAccountSelector(context, theme),
         centerTitle: true,
         actions: [
@@ -68,15 +65,12 @@ class TransactionsView extends StatelessWidget {
           }
         },
         builder: (context, state) {
-          // --- LOADING & ERROR STATES ---
           if (state is TransactionsInitial || state is TransactionsLoading) {
             return const Center(child: CircularProgressIndicator());
           }
 
           List<Transaction> transactions = [];
           Account? selectedAccount;
-          String?
-          errorMessage; // To display error messages if a failure occurred
 
           if (state is TransactionsLoaded) {
             transactions = state.transactions;
@@ -84,11 +78,9 @@ class TransactionsView extends StatelessWidget {
           } else if (state is TransactionOperationFailure) {
             transactions = state.transactions;
             selectedAccount = state.account;
-            errorMessage = state.message;
           }
 
-          // --- Empty State Check ---
-          if (transactions.isEmpty && errorMessage == null) {
+          if (transactions.isEmpty) {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(32.0),
@@ -98,7 +90,7 @@ class TransactionsView extends StatelessWidget {
                     Icon(
                       Icons.receipt_long_rounded,
                       size: 64,
-                      color: theme.colorScheme.primary.withOpacity(0.6),
+                      color: theme.colorScheme.primary.withAlpha(153),
                     ),
                     const SizedBox(height: 16),
                     Text(
@@ -113,7 +105,7 @@ class TransactionsView extends StatelessWidget {
                       'Tap the "+" button to record your first transaction!',
                       textAlign: TextAlign.center,
                       style: theme.textTheme.bodyMedium?.copyWith(
-                        color: theme.colorScheme.onSurface.withOpacity(0.7),
+                        color: theme.colorScheme.onSurface.withAlpha(178),
                       ),
                     ),
                   ],
@@ -122,7 +114,6 @@ class TransactionsView extends StatelessWidget {
             );
           }
 
-          // --- UI STRUCTURE ---
           return RefreshIndicator(
             onRefresh: () async {
               context.read<TransactionsBloc>().add(const RefreshTransactions());
@@ -132,57 +123,28 @@ class TransactionsView extends StatelessWidget {
                 horizontal: 16.0,
                 vertical: 20.0,
               ),
-              itemCount: transactions.length + 1, // +1 for the BalanceCard
+              itemCount: transactions.length + 1,
               itemBuilder: (context, index) {
                 // First item is the Balance Card
                 if (index == 0) {
-                  // --- Balance Calculation (Accurate) ---
-                  final balanceData = _calculateTotalBalance(
-                    context,
-                    selectedAccount,
-                  );
-
-                  // --- Error Message Banner (if applicable) ---
-                  final errorWidget =
-                      errorMessage != null
-                          ? Padding(
-                            padding: const EdgeInsets.only(bottom: 12.0),
-                            child: Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.error.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.warning_amber_rounded,
-                                    color: theme.colorScheme.error,
-                                  ),
-                                  SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      'Error: $errorMessage',
-                                      style: TextStyle(
-                                        color: theme.colorScheme.error,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          )
-                          : const SizedBox.shrink();
-
+                  // Wrap the balance area with AccountsBloc builder so it rebuilds when accounts change
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      errorWidget,
-                      BalanceCard(
-                        accountName: selectedAccount?.name ?? 'All Accounts',
-                        currentBalance: balanceData['balance'] as String,
-                        currency: balanceData['currency'] as String,
-                        isTotalBalance: selectedAccount == null,
+                      BlocBuilder<AccountsBloc, AccountsState>(
+                        builder: (accountsContext, accountsState) {
+                          final balanceData = _calculateTotalBalanceFromState(
+                            accountsState,
+                            selectedAccount,
+                          );
+                          return BalanceCard(
+                            accountName:
+                                selectedAccount?.name ?? 'All Accounts',
+                            currentBalance: balanceData['balance'] as String,
+                            currency: balanceData['currency'] as String,
+                            isTotalBalance: selectedAccount == null,
+                          );
+                        },
                       ),
                     ],
                   );
@@ -207,7 +169,6 @@ class TransactionsView extends StatelessWidget {
     );
   }
 
-  // --- Account Selector Widget (Refined) ---
   Widget _buildAccountSelector(BuildContext context, ThemeData theme) {
     return BlocBuilder<AccountsBloc, AccountsState>(
       builder: (accountsContext, accountsState) {
@@ -216,32 +177,39 @@ class TransactionsView extends StatelessWidget {
           final List<Account?> displayAccounts = [null, ...allAccounts];
 
           return BlocBuilder<TransactionsBloc, TransactionsState>(
-            buildWhen:
-                (p, c) =>
-                    (p is TransactionsLoaded &&
-                        c is TransactionsLoaded &&
-                        p.account != c.account) ||
-                    p.runtimeType != c.runtimeType,
+            buildWhen: (p, c) {
+              final pId = (p is TransactionsLoaded ? p.account?.id : null);
+              final cId = (c is TransactionsLoaded ? c.account?.id : null);
+              if (p.runtimeType != c.runtimeType) return true;
+              return pId != cId;
+            },
             builder: (txContext, txState) {
-              Account? selectedAccount;
+              Account? selectedAccountFromTx;
               if (txState is TransactionsLoaded) {
-                selectedAccount = txState.account;
+                selectedAccountFromTx = txState.account;
               } else if (txState is TransactionOperationFailure) {
-                selectedAccount = txState.account;
+                selectedAccountFromTx = txState.account;
+              }
+
+              Account? dropdownValue = displayAccounts.firstWhere(
+                (a) => a?.id == selectedAccountFromTx?.id,
+                orElse: () => selectedAccountFromTx,
+              );
+
+              if (!displayAccounts.contains(dropdownValue)) {
+                dropdownValue = null;
               }
 
               return DropdownButtonHideUnderline(
                 child: DropdownButton<Account?>(
-                  value: selectedAccount,
+                  value: dropdownValue,
                   icon: Icon(
                     Icons.arrow_drop_down,
                     color: theme.colorScheme.onPrimary,
                   ),
                   dropdownColor: theme.colorScheme.surface,
-
-                  // Use a Custom Title Widget to ensure the color is correct when the item is selected
                   hint: Text(
-                    selectedAccount?.name ?? 'All Accounts',
+                    selectedAccountFromTx?.name ?? 'All Accounts',
                     style: theme.textTheme.titleMedium?.copyWith(
                       color: theme.colorScheme.onPrimary,
                       fontWeight: FontWeight.w600,
@@ -257,20 +225,22 @@ class TransactionsView extends StatelessWidget {
                   items:
                       displayAccounts.map((account) {
                         final name = account?.name ?? 'All Accounts';
+                        final bool isSelected =
+                            account?.id == selectedAccountFromTx?.id;
 
                         return DropdownMenuItem<Account?>(
                           value: account,
                           child: Row(
                             children: [
-                              // *** INTEGRATE ACCOUNT ICON MAPPER ***
                               Icon(
                                 account?.displayIcon ??
                                     Icons.account_balance_wallet_rounded,
                                 color:
-                                    account == selectedAccount
+                                    isSelected
                                         ? theme.colorScheme.primary
-                                        : theme.colorScheme.onSurface
-                                            .withOpacity(0.7),
+                                        : theme.colorScheme.onSurface.withAlpha(
+                                          178,
+                                        ),
                                 size: 20,
                               ),
                               const SizedBox(width: 10),
@@ -278,7 +248,7 @@ class TransactionsView extends StatelessWidget {
                                 name,
                                 style: theme.textTheme.titleMedium?.copyWith(
                                   color:
-                                      account == selectedAccount
+                                      isSelected
                                           ? theme.colorScheme.primary
                                           : theme.colorScheme.onSurface,
                                   fontWeight: FontWeight.w600,
@@ -298,43 +268,48 @@ class TransactionsView extends StatelessWidget {
     );
   }
 
-  // --- ACCURATE BALANCE CALCULATION ---
-  Map<String, String> _calculateTotalBalance(
-    BuildContext context,
+  // balance calculation from account's state to update whenever a transaction crud
+  Map<String, String> _calculateTotalBalanceFromState(
+    AccountsState accountsState,
     Account? selectedAccount,
   ) {
-    final accountsState = context.read<AccountsBloc>().state;
     Decimal totalBalance = Decimal.zero;
     String currency = 'MIX'; // Default for mixed/total balance
 
+    List<Account> accountsList = [];
+    if (accountsState is AccountsLoaded) {
+      accountsList = accountsState.accounts;
+    } else if (accountsState is AccountOperationFailure) {
+      accountsList = accountsState.accounts;
+    }
+
     if (selectedAccount != null) {
-      // 1. Single Account: Use its balance and currency directly
+      // If a specific account is selected, try to find the authoritative account instance by id
       try {
-        totalBalance = selectedAccount.balanceValue;
-        currency = selectedAccount.currency;
-      } catch (e) {
-        // Handle parsing error if the balance string is invalid
-        return {'balance': 'Error', 'currency': selectedAccount.currency};
+        final currAccount = accountsList.firstWhere(
+          (a) => a.id == selectedAccount.id,
+        );
+        totalBalance = currAccount.balanceValue;
+        currency = currAccount.currency;
+      } catch (_) {
+        // if not found first where -> state error, we try to use the passed selectedAccount's balance
+        try {
+          totalBalance = selectedAccount.balanceValue;
+          currency = selectedAccount.currency;
+        } catch (_) {
+          return {'balance': 'Error', 'currency': selectedAccount.currency};
+        }
       }
-    } else if (accountsState is AccountsLoaded) {
-      // 2. All Accounts: Sum balances. NOTE: This is only accurate if all accounts use the same currency.
-      // For simplicity, we assume a single base currency or display the sum regardless.
-
-      // Determine the primary currency (e.g., the first account's currency)
-      if (accountsState.accounts.isNotEmpty) {
-        currency = accountsState.accounts.first.currency;
+    } else {
+      // Sum all accounts (if any)
+      if (accountsList.isNotEmpty) {
+        currency = accountsList.first.currency;
       }
-
-      // Sum the balances
-      for (var account in accountsState.accounts) {
-          totalBalance += account.balanceValue;
+      for (var account in accountsList) {
+        totalBalance += account.balanceValue;
       }
     }
 
-    return {
-      // Use toDecimal to format the Decimal to a standard string
-      'balance': totalBalance.toStringAsFixed(2),
-      'currency': currency,
-    };
+    return {'balance': totalBalance.toStringAsFixed(2), 'currency': currency};
   }
 }

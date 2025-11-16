@@ -12,15 +12,13 @@ import 'package:finance_frontend/features/transactions/domain/entities/transacti
 import 'package:finance_frontend/features/transactions/presentation/bloc/transaction_form/transaction_form_bloc.dart';
 import 'package:finance_frontend/features/transactions/presentation/bloc/transaction_form/transaction_form_event.dart';
 import 'package:finance_frontend/features/transactions/presentation/bloc/transaction_form/transaction_form_state.dart';
-import 'package:finance_frontend/features/transactions/presentation/bloc/transactions/transactions_bloc.dart';
-import 'package:finance_frontend/features/transactions/presentation/bloc/transactions/transactions_event.dart';
 import 'package:finance_frontend/features/transactions/presentation/components/transaction_category_selector.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
 class TransactionFormModal extends StatefulWidget {
-  final Transaction? initialTransaction; // The transaction being edited
+  final Transaction? initialTransaction;
 
   const TransactionFormModal({this.initialTransaction, super.key});
 
@@ -32,18 +30,20 @@ class _TransactionFormModalState extends State<TransactionFormModal>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final _formKey = GlobalKey<FormState>();
+  final _transferFormKey = GlobalKey<FormState>();
 
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   DateTime _selectedDate = DateTime.now();
   Account? _selectedAccount;
 
-  // Expense/Income Fields (TransactionCreate) 
+  // Expense/Income Fields for (TransactionCreate)
   FinanceCategory? _selectedCategory;
   final TextEditingController _merchantController = TextEditingController();
-  TransactionType _transactionType = TransactionType.EXPENSE; // 'Expense' or 'Income'
+  TransactionType _transactionType =
+      TransactionType.EXPENSE; // 'Expense' or 'Income'
 
-  // Transfer Fields (TransferTransactionCreate)
+  // Transfer Fields for (TransferTransactionCreate)
   Account? _selectedToAccount;
 
   @override
@@ -66,18 +66,15 @@ class _TransactionFormModalState extends State<TransactionFormModal>
     super.dispose();
   }
 
-  // New Method: Load Initial Data ---
   void _loadInitialData(Transaction txn) {
     final isTransfer = txn.type == TransactionType.TRANSFER;
-    // If editing, we generally lock the type/tab
     _tabController.index = isTransfer ? 1 : 0;
 
-    // Populate common fields
     _amountController.text = txn.amount;
     _selectedDate = txn.occuredAt;
     _descriptionController.text = txn.description ?? '';
 
-    // Set Account (requires fetching from AccountsBloc or passing account entity)
+    // Set Account
     final accountsState = context.read<AccountsBloc>().state;
     if (accountsState is AccountsLoaded) {
       // Find the account by ID, checking the ID string matches
@@ -88,23 +85,15 @@ class _TransactionFormModalState extends State<TransactionFormModal>
     }
 
     if (!isTransfer) {
-      // Expense/Income specific fields
-      _transactionType = txn.type; // 'Expense' or 'Income'
+      // set Expense/Income specific fields
+      _transactionType = txn.type; 
       _merchantController.text = txn.merchant ?? '';
 
-      // Placeholder Category (since we don't have a lookup)
-      // In a real app, you'd fetch the Category entity by ID here.
-    } else {
-      // Transfer specific fields
-      // NOTE: For editing, the complexity of matching the TO account is high.
-      // We only allow editing of amount/date/description for the group.
-    }
-
+    } 
     // Force a UI refresh to show loaded data
     WidgetsBinding.instance.addPostFrameCallback((_) => setState(() {}));
   }
 
-  // --- Helpers ---
   Future<void> _selectDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -119,94 +108,109 @@ class _TransactionFormModalState extends State<TransactionFormModal>
     }
   }
 
-  // --- Submission Logic ---
   void _submitForm() {
+  final isEditing = widget.initialTransaction != null;
+  final bloc = context.read<TransactionFormBloc>();
+
+  if (_tabController.index == 0) {
+    // Income / Expense Form
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
 
-      final bloc = context.read<TransactionFormBloc>();
-      final isEditing = widget.initialTransaction != null;
-
-      if (_tabController.index == 0) {
-        if (isEditing) {
-          // --- UPDATE LOGIC ---
-          final patchDto = TransactionPatch(
-            amount: _amountController.text,
-            occuredAt: _selectedDate,
-            categoryId: _selectedCategory?.id,
-            merchant:
-                _merchantController.text.trim().isNotEmpty
-                    ? _merchantController.text.trim()
-                    : null,
-            description:
-                _descriptionController.text.trim().isNotEmpty
-                    ? _descriptionController.text.trim()
-                    : null,
-          );
-          if (!patchDto.isEmpty) {
-            bloc.add(
-              UpdateTransaction(widget.initialTransaction!.id, patchDto),
-            );
-          } else {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('No changes to save.')),
-            );
-          }
+      if (isEditing) {
+        final patchDto = TransactionPatch(
+          amount: _amountController.text,
+          occuredAt: _selectedDate,
+          categoryId: _selectedCategory?.id,
+          merchant: _merchantController.text.trim().isNotEmpty
+              ? _merchantController.text.trim()
+              : null,
+          description: _descriptionController.text.trim().isNotEmpty
+              ? _descriptionController.text.trim()
+              : null,
+        );
+        if (!patchDto.isEmpty) {
+          bloc.add(UpdateTransaction(widget.initialTransaction!.id, patchDto));
         } else {
-          // --- CREATE LOGIC ---
-          final createDto = TransactionCreate(
-            amount: _amountController.text,
-            occuredAt: _selectedDate,
-            accountId: _selectedAccount!.id,
-            categoryId: _selectedCategory?.id,
-            currency: _selectedAccount!.currency,
-            merchant:
-                _merchantController.text.trim().isNotEmpty
-                    ? _merchantController.text.trim()
-                    : null,
-            type: _transactionType,
-            description:
-                _descriptionController.text.trim().isNotEmpty
-                    ? _descriptionController.text.trim()
-                    : null,
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('No changes to save.')),
           );
-          bloc.add(CreateTransaction(createDto));
         }
       } else {
-        // TRANSFER
-        if (isEditing) {
-          // Transfers are generally not editable directly, only deletable.
+        final createDto = TransactionCreate(
+          amount: _amountController.text,
+          occuredAt: _selectedDate,
+          accountId: _selectedAccount!.id,
+          categoryId: _selectedCategory?.id,
+          currency: _selectedAccount!.currency,
+          merchant: _merchantController.text.trim().isNotEmpty
+              ? _merchantController.text.trim()
+              : null,
+          type: _transactionType,
+          description: _descriptionController.text.trim().isNotEmpty
+              ? _descriptionController.text.trim()
+              : null,
+        );
+        bloc.add(CreateTransaction(createDto));
+      }
+    }
+  } else {
+    // Transfer Form
+    if (_transferFormKey.currentState!.validate()) {
+      _transferFormKey.currentState!.save();
+
+      if (isEditing) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Transfers can only be deleted, not edited. Recreate it if needed.',
+            ),
+          ),
+        );
+      } else {
+        if (_selectedAccount == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please select the FROM Account.')),
+          );
+          return;
+        }
+        if (_selectedToAccount == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Please select the TO Account.')),
+          );
+          return;
+        }
+        if (_selectedAccount!.id == _selectedToAccount!.id) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text(
-                'Transfers can only be deleted, not edited. Recreate it if needed.',
-              ),
-            ),
+                content:
+                    Text('Source and Destination accounts cannot be the same.')),
           );
-        } else {
-          // --- CREATE LOGIC ---
-          final createTransferDto = TransferTransactionCreate(
-            accountId: int.parse(_selectedAccount!.id),
-            toAccountId: int.parse(_selectedToAccount!.id),
-            amount: _amountController.text,
-            currency: _selectedAccount!.currency,
-            type: TransactionType.TRANSFER,
-            description:
-                _descriptionController.text.trim().isNotEmpty
-                    ? _descriptionController.text.trim()
-                    : null,
-            occurredAt: _selectedDate,
-          );
-          bloc.add(CreateTransferTransaction(createTransferDto));
+          return;
         }
+
+        final createTransferDto = TransferTransactionCreate(
+          accountId: _selectedAccount!.id,
+          toAccountId: _selectedToAccount!.id,
+          amount: _amountController.text,
+          currency: _selectedAccount!.currency,
+          type: TransactionType.TRANSFER,
+          description: _descriptionController.text.trim().isNotEmpty
+              ? _descriptionController.text.trim()
+              : null,
+          occurredAt: _selectedDate,
+        );
+        bloc.add(CreateTransferTransaction(createTransferDto));
       }
     }
   }
+}
 
-  // 8. New Method: Delete Confirmation Dialog
+
   void _confirmDelete(BuildContext context) {
     final theme = Theme.of(context);
     final txn = widget.initialTransaction!;
+    final isTransfer = txn.type == TransactionType.TRANSFER;
 
     showDialog(
       context: context,
@@ -219,7 +223,7 @@ class _TransactionFormModalState extends State<TransactionFormModal>
               ),
             ),
             content: Text(
-              txn.type == TransactionType.TRANSFER
+              isTransfer
                   ? 'Are you sure you want to delete this Transfer group? Both transactions will be permanently deleted.'
                   : 'Are you sure you want to delete this transaction?',
             ),
@@ -233,11 +237,19 @@ class _TransactionFormModalState extends State<TransactionFormModal>
                   backgroundColor: theme.colorScheme.error,
                 ),
                 onPressed: () {
-                  Navigator.of(ctx).pop(); // Close dialog
-                  if (txn.type == TransactionType.TRANSFER) {
-                    // Assuming txn.id is the transfer_group_id if it's a transfer entity
+                  Navigator.of(ctx).pop(); 
+
+                  if (isTransfer) {
+                    if (txn.transferGroupId == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Transfer group ID missing!'),
+                        ),
+                      );
+                      return;
+                    }
                     context.read<TransactionFormBloc>().add(
-                      DeleteTransferTransaction(txn.id),
+                      DeleteTransferTransaction(txn.transferGroupId!),
                     );
                   } else {
                     context.read<TransactionFormBloc>().add(
@@ -265,26 +277,19 @@ class _TransactionFormModalState extends State<TransactionFormModal>
       if (_selectedAccount == null &&
           accounts.isNotEmpty &&
           widget.initialTransaction == null) {
-        // Set a default account only for *new* transactions
+        // Set a default account only for a new transaction
         _selectedAccount = accounts.first;
       }
     }
 
     final isEditing = widget.initialTransaction != null;
 
-    // --- BLoC Listener for Success/Failure ---
     return BlocListener<TransactionFormBloc, TransactionFormState>(
       listener: (context, state) {
         if (state is TransactionOperationSuccess) {
           final isUpdate =
               state.operationType == TransactionOperationType.update;
-          // Notify TransactionsBloc and close
-          context.read<TransactionsBloc>().add(
-            isUpdate
-                ? TransactionUpdatedInForm(state.transaction)
-                : TransactionCreatedInForm(state.transaction),
-          );
-          Navigator.of(context).pop(); // Close form
+          Navigator.of(context).pop();
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
@@ -293,26 +298,13 @@ class _TransactionFormModalState extends State<TransactionFormModal>
             ),
           );
         } else if (state is CreateTransferTransactionOperationSuccess) {
-          // Notify TransactionsBloc and close
-          context.read<TransactionsBloc>().add(
-            TransferTransactionCreatedInForm(state.outgoing, state.incoming),
-          );
-          Navigator.of(context).pop(); // Close form
+          Navigator.of(context).pop();
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Transfer created successfully!')),
           );
         } else if (state is TransactionDeleteOperationSuccess ||
             state is TransferTransactionDeleteOperationSuccess) {
-          // Notify TransactionsBloc of the deletion
-          final id =
-              state is TransactionDeleteOperationSuccess
-                  ? state.id
-                  : (state as TransferTransactionDeleteOperationSuccess)
-                      .transferGroupId;
-          context.read<TransactionsBloc>().add(
-            TransactionDeletedInForm(id),
-          ); // Assuming single event covers both
-          Navigator.of(context).pop(); // Close form
+          Navigator.of(context).pop();
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Transaction deleted successfully!')),
           );
@@ -362,18 +354,14 @@ class _TransactionFormModalState extends State<TransactionFormModal>
           ),
         ),
 
-        // --- Form Body ---
         body: TabBarView(
           controller: _tabController,
           children: [
-            // Tab 1: Expense / Income Form
             _buildExpenseIncomeForm(theme, accounts, isEditing),
-            // Tab 2: Transfer Form
             _buildTransferForm(theme, accounts, isEditing),
           ],
         ),
 
-        // --- Save Button ---
         floatingActionButton:
             BlocBuilder<TransactionFormBloc, TransactionFormState>(
               builder: (context, state) {
@@ -403,7 +391,6 @@ class _TransactionFormModalState extends State<TransactionFormModal>
     );
   }
 
-  // --- Tab 1: Expense/Income Form Builder ---
   Widget _buildExpenseIncomeForm(
     ThemeData theme,
     List<Account> accounts,
@@ -435,7 +422,9 @@ class _TransactionFormModalState extends State<TransactionFormModal>
                           // Disable if editing
                           setState(() {
                             _transactionType =
-                                index == 0 ? TransactionType.EXPENSE : TransactionType.INCOME;
+                                index == 0
+                                    ? TransactionType.EXPENSE
+                                    : TransactionType.INCOME;
                           });
                         },
                 children: [
@@ -458,7 +447,7 @@ class _TransactionFormModalState extends State<TransactionFormModal>
                   (value) =>
                       value == null ||
                               double.tryParse(value) == null ||
-                              double.parse(value)! <= 0
+                              double.parse(value) <= 0
                           ? 'Enter a valid amount'
                           : null,
             ),
@@ -499,7 +488,7 @@ class _TransactionFormModalState extends State<TransactionFormModal>
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(8),
                 side: BorderSide(
-                  color: theme.colorScheme.onSurface.withOpacity(0.2),
+                  color: theme.colorScheme.onSurface.withAlpha(51),
                 ),
               ),
               onTap: () => _selectDate(context),
@@ -532,128 +521,153 @@ class _TransactionFormModalState extends State<TransactionFormModal>
     );
   }
 
-  // --- Tab 2: Transfer Form Builder ---
   Widget _buildTransferForm(
-    ThemeData theme,
-    List<Account> accounts,
-    bool isEditing,
-  ) {
-    if (isEditing) {
-      return const Center(
-        child: Padding(
-          padding: EdgeInsets.all(32.0),
-          child: Text(
-            'Edit details on the Expense/Income tab, or use the delete button to remove this transfer group.',
-            textAlign: TextAlign.center,
+  ThemeData theme,
+  List<Account> accounts,
+  bool isEditing,
+) {
+  if (isEditing) {
+    return const Center(
+      child: Padding(
+        padding: EdgeInsets.all(32.0),
+        child: Text(
+          'Edit details on the Expense/Income tab, or use the delete button to remove this transfer group.',
+          textAlign: TextAlign.center,
+        ),
+      ),
+    );
+  }
+
+  final fromAccounts = accounts;
+
+  // To list excludes the currently selected FROM account
+  final toAccounts = accounts.where((acc) => acc.id != _selectedAccount?.id).toList();
+
+  // Defensive: if previously selected TO account is now invalid (equal to FROM), clear it 
+  if (_selectedToAccount != null &&
+      toAccounts.indexWhere((a) => a.id == _selectedToAccount!.id) == -1) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() {
+          _selectedToAccount = null;
+        });
+      }
+    });
+  }
+
+  return SingleChildScrollView(
+    padding: const EdgeInsets.all(20.0),
+    child: Form(
+      key: _transferFormKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          TextFormField(
+            controller: _amountController,
+            keyboardType: TextInputType.number,
+            decoration: const InputDecoration(
+              labelText: 'Transfer Amount',
+              prefixIcon: Icon(Icons.attach_money),
+            ),
+            validator: (value) =>
+                value == null || double.tryParse(value) == null || double.parse(value) <= 0
+                    ? 'Enter a valid amount'
+                    : null,
           ),
-        ),
+          const SizedBox(height: 16),
+
+          // Account Selector (From)
+          // When user selects FROM account, ensure TO selection is not the same
+          _buildAccountSelectorField(
+            theme,
+            fromAccounts,
+            (account) {
+              setState(() {
+                _selectedAccount = account;
+                // If the TO account equals newly selected FROM, clear it.
+                if (_selectedToAccount != null && _selectedToAccount!.id == account?.id) {
+                  _selectedToAccount = null;
+                }
+              });
+            },
+            _selectedAccount,
+            label: 'Transfer FROM Account',
+          ),
+          const SizedBox(height: 16),
+
+          const Center(child: Icon(Icons.arrow_downward_rounded, size: 32)),
+          const SizedBox(height: 16),
+
+          // Account Selector (To)
+          // Guard the value so it's null if it isn't present in the `toAccounts` list
+          _buildAccountSelectorField(
+            theme,
+            toAccounts,
+            (account) => setState(() => _selectedToAccount = account),
+            // If current selectedToAccount is not in toAccounts, pass null
+            toAccounts.any((a) => a.id == _selectedToAccount?.id) ? _selectedToAccount : null,
+            label: 'Transfer TO Account',
+          ),
+          const SizedBox(height: 16),
+
+          // Date Picker 
+          ListTile(
+            title: Text('Date: ${DateFormat.yMd().format(_selectedDate)}'),
+            leading: const Icon(Icons.calendar_today),
+            trailing: const Icon(Icons.edit),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+              side: BorderSide(
+                color: theme.colorScheme.onSurface.withAlpha(51),
+              ),
+            ),
+            onTap: () => _selectDate(context),
+          ),
+          const SizedBox(height: 16),
+
+          // Description Field
+          TextFormField(
+            controller: _descriptionController,
+            maxLines: 3,
+            decoration: const InputDecoration(
+              labelText: 'Notes/Description (Optional)',
+              prefixIcon: Icon(Icons.description),
+              alignLabelWithHint: true,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
+Widget _buildAccountSelectorField(
+  ThemeData theme,
+  List<Account> accounts,
+  void Function(Account?) onChanged,
+  Account? selectedAccount, {
+  String label = 'Select Account',
+}) {
+  final valueToUse = selectedAccount != null && accounts.any((a) => a.id == selectedAccount.id)
+      ? selectedAccount
+      : null;
+
+  return DropdownButtonFormField<Account>(
+    decoration: InputDecoration(
+      labelText: label,
+      prefixIcon: const Icon(Icons.account_balance_wallet_rounded),
+      border: const OutlineInputBorder(),
+    ),
+    value: valueToUse,
+    isExpanded: true,
+    items: accounts.map((Account account) {
+      return DropdownMenuItem<Account>(
+        value: account,
+        child: Text('${account.name} (${account.currency})'),
       );
-    }
-
-    // ... (Transfer form content - identical to previous, but using isEditing to control absorption)
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20.0),
-      child: Form(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Amount Field
-            TextFormField(
-              controller: _amountController,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(
-                labelText: 'Transfer Amount',
-                prefixIcon: Icon(Icons.attach_money),
-              ),
-              validator:
-                  (value) =>
-                      value == null ||
-                              double.tryParse(value) == null ||
-                              double.parse(value)! <= 0
-                          ? 'Enter a valid amount'
-                          : null,
-            ),
-            const SizedBox(height: 16),
-
-            // Account Selector (From)
-            _buildAccountSelectorField(
-              theme,
-              accounts,
-              (account) => setState(() => _selectedAccount = account),
-              _selectedAccount,
-              label: 'Transfer FROM Account',
-            ),
-            const SizedBox(height: 16),
-
-            const Center(child: Icon(Icons.arrow_downward_rounded, size: 32)),
-            const SizedBox(height: 16),
-
-            // Account Selector (To)
-            _buildAccountSelectorField(
-              theme,
-              accounts.where((acc) => acc != _selectedAccount).toList(),
-              (account) => setState(() => _selectedToAccount = account),
-              _selectedToAccount,
-              label: 'Transfer TO Account',
-            ),
-            const SizedBox(height: 16),
-
-            // Date Picker (Same as E/I)
-            ListTile(
-              title: Text('Date: ${DateFormat.yMd().format(_selectedDate)}'),
-              leading: const Icon(Icons.calendar_today),
-              trailing: const Icon(Icons.edit),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-                side: BorderSide(
-                  color: theme.colorScheme.onSurface.withOpacity(0.2),
-                ),
-              ),
-              onTap: () => _selectDate(context),
-            ),
-            const SizedBox(height: 16),
-
-            // Description Field (Optional, Same as E/I)
-            TextFormField(
-              controller: _descriptionController,
-              maxLines: 3,
-              decoration: const InputDecoration(
-                labelText: 'Notes/Description (Optional)',
-                prefixIcon: Icon(Icons.description),
-                alignLabelWithHint: true,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // --- Reusable Account Selector Dropdown ---
-  Widget _buildAccountSelectorField(
-    ThemeData theme,
-    List<Account> accounts,
-    Function(Account?) onChanged,
-    Account? selectedAccount, {
-    String label = 'Select Account',
-  }) {
-    return DropdownButtonFormField<Account>(
-      decoration: InputDecoration(
-        labelText: label,
-        prefixIcon: const Icon(Icons.account_balance_wallet_rounded),
-        border: const OutlineInputBorder(),
-      ),
-      value: selectedAccount,
-      isExpanded: true,
-      items:
-          accounts.map((Account account) {
-            return DropdownMenuItem<Account>(
-              value: account,
-              child: Text('${account.name} (${account.currency})'),
-            );
-          }).toList(),
-      onChanged: onChanged,
-      validator: (value) => value == null ? 'Please select an account' : null,
-    );
-  }
+    }).toList(),
+    onChanged: onChanged,
+    validator: (value) => value == null ? 'Please select an account' : null,
+  );
+}
 }

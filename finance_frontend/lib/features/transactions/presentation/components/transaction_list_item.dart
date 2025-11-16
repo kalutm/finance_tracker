@@ -1,5 +1,3 @@
-// features/transactions/presentation/widgets/transaction_list_item.dart
-
 import 'package:finance_frontend/features/accounts/presentation/blocs/accounts/accounts_bloc.dart';
 import 'package:finance_frontend/features/categories/presentation/blocs/categories/categories_bloc.dart';
 import 'package:finance_frontend/features/transactions/domain/entities/transaction.dart';
@@ -15,7 +13,6 @@ class TransactionListItem extends StatelessWidget {
 
   const TransactionListItem({required this.transaction, super.key});
 
-  // Helper to determine the color of the amount text
   Color _getAmountColor(BuildContext context, ThemeData theme) {
     final isExpense = transaction.type == TransactionType.EXPENSE;
     final isIncome = transaction.type == TransactionType.INCOME;
@@ -29,23 +26,22 @@ class TransactionListItem extends StatelessWidget {
     }
   }
 
-  // Helper to determine the prefix sign
   String _getAmountPrefix() {
     if (transaction.type == TransactionType.EXPENSE) return '-';
     if (transaction.type == TransactionType.INCOME) return '+';
     return '';
   }
 
-  // Helper to determine the main icon (Using placeholder logic from previous step)
   IconData _getIconData() {
-    if (transaction.type == TransactionType.TRANSFER)
+    if (transaction.type == TransactionType.TRANSFER) {
       return Icons.swap_horiz_rounded;
-    if (transaction.type == TransactionType.INCOME)
+    }
+    if (transaction.type == TransactionType.INCOME) {
       return Icons.trending_up_rounded;
-    return Icons.shopping_bag_rounded; // Generic for Expense
+    }
+    return Icons.shopping_bag_rounded;
   }
 
-  // Function to handle the tap and open the modal for editing
   void _openEditModal(BuildContext context) {
     Navigator.of(context).push(
       MaterialPageRoute(
@@ -77,15 +73,14 @@ class TransactionListItem extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
       child: InkWell(
-        onTap:
-            () => _openEditModal(context), // Tappable now opens the edit modal
+        onTap: () => _openEditModal(context),
         child: Container(
           decoration: BoxDecoration(
             color: theme.colorScheme.surface,
             borderRadius: BorderRadius.circular(12),
             boxShadow: [
               BoxShadow(
-                color: theme.colorScheme.onSurface.withOpacity(0.05),
+                color: theme.colorScheme.onSurface.withAlpha(13),
                 blurRadius: 4,
                 offset: const Offset(0, 2),
               ),
@@ -95,23 +90,19 @@ class TransactionListItem extends StatelessWidget {
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              // 1. Icon (Left Side)
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: amountColor.withOpacity(0.1),
+                  color: amountColor.withAlpha(25),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(_getIconData(), color: amountColor, size: 24),
               ),
               const SizedBox(width: 16),
-
-              // 2. Details (Center Column)
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Main Description / Category Name
                     Text(
                       transaction.description ?? transaction.type.name,
                       style: theme.textTheme.titleMedium?.copyWith(
@@ -120,22 +111,18 @@ class TransactionListItem extends StatelessWidget {
                       ),
                     ),
                     const SizedBox(height: 4),
-                    // Secondary Detail (Merchant/Date/Account)
                     Text(
                       '${transaction.merchant ?? transaction.type} • ${DateFormat.yMd().format(transaction.occuredAt)}',
                       style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurface.withOpacity(0.7),
+                        color: theme.colorScheme.onSurface.withAlpha(178),
                       ),
                     ),
                   ],
                 ),
               ),
-
-              // 3. Amount & Account (Right Side)
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  // Amount (Large, bold, color-coded)
                   Text(
                     '${_getAmountPrefix()}${formattedAmount}',
                     style: theme.textTheme.titleMedium?.copyWith(
@@ -144,7 +131,6 @@ class TransactionListItem extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  // Account Name (Subtle)
                   Text(
                     'Acc. ID: ${transaction.accountId}',
                     style: theme.textTheme.bodySmall?.copyWith(

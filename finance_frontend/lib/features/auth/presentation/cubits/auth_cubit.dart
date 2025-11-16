@@ -133,7 +133,12 @@ class AuthCubit extends Cubit<AuthState> {
       }
     } on Exception catch (e) {
       emit(AuthError(e));
-      emit(Unauthenticated());
+      final user = _currentUser;
+      if(user == null){
+        emit(Unauthenticated());
+      } else{
+        emit(Authenticated(user));
+      }
     }
   }
 }

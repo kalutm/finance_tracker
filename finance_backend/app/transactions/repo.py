@@ -25,7 +25,7 @@ def list_user_transactions(
     totalstmt = select(func.count()).select_from(Transaction).where(*conditions)
     total = session.exec(totalstmt).one()
 
-    stmt = select(Transaction).where(*conditions).limit(limit).offset(offset)
+    stmt = select(Transaction).where(*conditions).limit(limit).offset(offset).order_by(Transaction.occurred_at.desc())
 
     transactions = session.exec(stmt).all()
     return transactions, total
