@@ -22,6 +22,7 @@ def test_get_user_by_email_returns_none(db_session: Session):
     assert result is None
 
 
+
 @pytest.mark.parametrize("provider,should_return", [
     (Provider.LOCAL, True),
     (Provider.LOCAL_GOOGLE, True),
