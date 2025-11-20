@@ -1,11 +1,12 @@
-# tests/conftest.py
 import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import SQLModel, create_engine, Session
 from sqlalchemy.orm import sessionmaker
+from uuid import UUID, uuid4
 
 from app.main import app
 from app import models
+from app.models.user import User
 from app.core.settings import settings
 from app.db.session import get_session
 from app.auth.dependencies import get_current_user
@@ -57,8 +58,8 @@ def override_get_session(db_session):
 @pytest.fixture(scope="function")
 def override_get_current_user():
     """Override get_current_user dependency to simulate a logged-in user."""
-    fake_user = models.user.User(
-        id="1",
+    fake_user = User(
+        id=UUID(int=0x12345678123456781234567812345678),
         provider=models.enums.Provider.LOCAL,
         email="fake@user.com",
         is_verified=True,
@@ -74,8 +75,6 @@ def override_get_current_user():
 
 
 # Test client
-
-
 @pytest.fixture(scope="function")
 def client(override_get_session):
     """Test client with dependencies overridden (auth + db)."""

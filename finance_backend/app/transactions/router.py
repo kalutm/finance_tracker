@@ -3,7 +3,7 @@ from sqlmodel import Session
 from app.api.deps import get_current_user, get_session
 from app.models.user import User
 from app.models.enums import TransactionType
-from app.transactions.service import TransactionsService
+from app.transactions.service import TransactionsService, get_transaction_service
 from typing import Annotated, Optional, List
 from uuid import UUID
 from datetime import datetime
@@ -15,7 +15,7 @@ from app.transactions.schemas import (
     TransactionPatch,
     TransferTransactionsOut,
     TransactionSummaryOut,
-    TransactionStatsOut
+    TransactionStatsOut,
 )
 from app.transactions.exceptions import (
     InsufficientBalance,
@@ -47,7 +47,9 @@ def get_user_transactions(
         description="filtering transaction's based on a category",
     ),
     type: Optional[TransactionType] = Query(
-        None, title="Transaction Type", description="Type of the Transaction i.e INCOME, EXPENSE or Transfer"
+        None,
+        title="Transaction Type",
+        description="Type of the Transaction i.e INCOME, EXPENSE or Transfer",
     ),
     start: Optional[datetime] = Query(
         None,
@@ -59,10 +61,18 @@ def get_user_transactions(
     ),
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
+    transaction_service: TransactionsService = Depends(get_transaction_service),
 ):
-    transaction_service = TransactionsService(session)
     transactions, total = transaction_service.get_user_transactions(
-        current_user.id, limit, offset, account_id, category_id, type, start, end
+        session,
+        current_user.id,
+        limit,
+        offset,
+        account_id,
+        category_id,
+        type,
+        start,
+        end,
     )
 
     transaction_outs = []
@@ -78,11 +88,11 @@ def create_transaction(
     transaction_data: TransactionCreate,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
+    transaction_service: TransactionsService = Depends(get_transaction_service),
 ):
     try:
-        transaction_service = TransactionsService(session)
-
         transaction = transaction_service.create_income_expense_transaction(
+            session,
             transaction_data.model_dump(exclude_unset=True),
             current_user.id,
         )
@@ -90,9 +100,15 @@ def create_transaction(
 
         return transaction_out
     except InsufficientBalance as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"code": "INSUFFICIENT_BALANCE", "message": str(e)})
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "INSUFFICIENT_BALANCE", "message": str(e)},
+        )
     except InvalidAmount as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"code": "INVALID_AMOUNT", "message": str(e)})
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "INVALID_AMOUNT", "message": str(e)},
+        )
 
 
 @router.post(
@@ -104,23 +120,28 @@ def create_transaction(
     transaction_data: TransferTransactionCreate,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
+    transaction_service: TransactionsService = Depends(get_transaction_service),
 ):
     try:
-        transaction_service = TransactionsService(session)
-
         txn_out, txn_in = transaction_service.create_transfer_transaction(
-            transaction_data, current_user.id
+            session, transaction_data, current_user.id
         )
-        
+
         transfer_transactions_out = TransferTransactionsOut(
             outgoing_transaction=TransactionOut.model_validate(txn_out),
             incoming_transaction=TransactionOut.model_validate(txn_in),
         )
         return transfer_transactions_out
     except InsufficientBalance as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"code": "INSUFFICIENT_BALANCE", "message": str(e)})
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "INSUFFICIENT_BALANCE", "message": str(e)},
+        )
     except InvalidAmount as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"code": "INVALID_AMOUNT", "message": str(e)})
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "INVALID_AMOUNT", "message": str(e)},
+        )
 
 
 @router.get("/{id}", response_model=TransactionOut)
@@ -136,10 +157,10 @@ def get_transaction(
     ],
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
+    transaction_service: TransactionsService = Depends(get_transaction_service),
 ):
     try:
-        transaction_service = TransactionsService(session)
-        transaction = transaction_service.get_transaction(id, current_user.id)
+        transaction = transaction_service.get_transaction(session, id, current_user.id)
         return TransactionOut.model_validate(transaction)
     except TransactionNotFound as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
@@ -159,22 +180,30 @@ def update_transaction(
     ],
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
+    transaction_service: TransactionsService = Depends(get_transaction_service),
 ):
     try:
-        transaction_service = TransactionsService(session)
         updated_transaction = transaction_service.update_transaction(
-            transaction_data, id, current_user.id
+            session, transaction_data, id, current_user.id
         )
-
         return TransactionOut.model_validate(updated_transaction)
     except TransactionNotFound as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except InvalidAmount as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"code": "INVALID_AMOUNT", "message": str(e)})
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "INVALID_AMOUNT", "message": str(e)},
+        )
     except InsufficientBalance as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"code": "INSUFFICIENT_BALANCE", "message": str(e)})
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "INSUFFICIENT_BALANCE", "message": str(e)},
+        )
     except CanNotUpdateTransaction as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"code": "CANNOT_UPDATE_TRANSACTION", "message": str(e)})
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "CANNOT_UPDATE_TRANSACTION", "message": str(e)},
+        )
 
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -190,14 +219,17 @@ def delete_transaction(
     ],
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
+    transaction_service: TransactionsService = Depends(get_transaction_service),
 ):
     try:
-        transaction_service = TransactionsService(session)
-        transaction_service.delete_transaction(id, current_user.id)
+        transaction_service.delete_transaction(session, id, current_user.id)
     except TransactionNotFound as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except InsufficientBalance as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"code": "INSUFFICIENT_BALANCE", "message": str(e)})
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "INSUFFICIENT_BALANCE", "message": str(e)},
+        )
 
 
 @router.delete("/transfer/{transfer_group_id}", status_code=status.HTTP_204_NO_CONTENT)
@@ -211,25 +243,32 @@ def delete_transfer_transaction(
     ],
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
+    transaction_service: TransactionsService = Depends(get_transaction_service),
 ):
     try:
-        transaction_service = TransactionsService(session)
-        transaction_service.delete_transfer_transaction(transfer_group_id, current_user.id)
+        transaction_service.delete_transfer_transaction(
+            session, transfer_group_id, current_user.id
+        )
     except TransactionError as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"code": "INVALID_TRANSFER_TRANSACTION", "message": str(e)})
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "INVALID_TRANSFER_TRANSACTION", "message": str(e)},
+        )
     except InsufficientBalance as e:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail={"code": "INSUFFICIENT_BALANCE", "message": str(e)})
-    
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={"code": "INSUFFICIENT_BALANCE", "message": str(e)},
+        )
+
 
 @router.get("/summary", response_model=TransactionSummaryOut)
 def get_transaction_summary(
     month: str = Query(..., pattern=r"^\d{4}-\d{2}$", example="2025-11"),
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
+    transaction_service: TransactionsService = Depends(get_transaction_service),
 ):
-    service = TransactionsService(session)
-    return service.get_transaction_summary(month, current_user.id)
-
+    return transaction_service.get_transaction_summary(session, month, current_user.id)
 
 
 @router.get("/stats", response_model=List[TransactionStatsOut])
@@ -237,6 +276,6 @@ def get_transaction_stats(
     by: str = Query("category", enum=["category", "account", "type"]),
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
+    transaction_service: TransactionsService = Depends(get_transaction_service),
 ):
-    service = TransactionsService(session)
-    return service.get_transaction_stats(by, current_user.id)
+    return transaction_service.get_transaction_stats(session, by, current_user.id)

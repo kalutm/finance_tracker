@@ -1,6 +1,6 @@
 import pytest
 from sqlmodel import Session
-from uuid import uuid4
+from uuid import UUID
 from app.auth.repo import UserRepository
 from app.models.user import User
 from app.models.enums import Provider
@@ -98,8 +98,7 @@ def test_get_user_by_id(db_session: Session):
 
 def test_get_user_by_id_returns_none(db_session: Session):
     # do NOT add user → repo should naturally return None
-    uid = uuid4()
-    result = repo.get_user_by_id(db_session, uid)
+    result = repo.get_user_by_id(db_session, UUID("9999"))
     assert result is None
 
 
