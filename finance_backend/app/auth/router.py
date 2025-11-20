@@ -2,10 +2,11 @@ from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from fastapi.security import OAuth2PasswordRequestForm
 from ..db.session import Session, get_session
-from ..auth import service
+from ..auth.service import get_user_service, UserService
 from ..auth.dependencies import get_current_user
 from ..auth.emailer import send_verification_email
 from ..auth.jwt import create_access_token
+from app.models.user import User
 from ..auth.schemas import (
     TokenIn,
     UserCreate,
@@ -14,7 +15,19 @@ from ..auth.schemas import (
     EmailIn,
     TokenOut,
     AccessTokenOut,
-    UserOut
+    UserOut,
+)
+from ..auth.exceptions import (
+    UserAlreadyExists,
+    UserNotFound,
+    InvalidCredentials,
+    AccountNotVerified,
+    GoogleTokenInvalid,
+    AccountExistsWithDifferentProvider,
+    InvalidVerificationToken,
+    AccountAlreadyVerified,
+    RateLimitExceeded,
+    InvalidRefreshToken,
 )
 from ..core.settings import settings
 
@@ -31,6 +44,7 @@ def register(
     user_data: UserCreate,
     background: BackgroundTasks,
     session: Session = Depends(get_session),
+    service: UserService = Depends(get_user_service),
 ):
     try:
         access, refresh = service.register_user(
@@ -48,15 +62,15 @@ def register(
             send_verification_email, user_data.email, verification_token
         )
         return TokenOut(acc_jwt=access, ref_jwt=refresh, token_type="bearer")
-    except service.UserAlreadyExists as e:
+    except UserAlreadyExists as e:
         raise HTTPException(status_code=400, detail=str(e))
 
 
 @router.post("/login_form")
-def login_form(data: OAuth2PasswordRequestForm = Depends(), session: Session = Depends(get_session)):
+def login_form(data: OAuth2PasswordRequestForm = Depends(), session: Session = Depends(get_session), service: UserService = Depends(get_user_service)):
     access, refresh = service.login_local(
         session,
-        data.username,  # treat username as email
+        data.username,
         data.password,
         ACCESS_TOKEN_EXPIRE_MINUTES,
         REFRESH_TOKEN_EXPIRE_DAYS,
@@ -64,9 +78,8 @@ def login_form(data: OAuth2PasswordRequestForm = Depends(), session: Session = D
     return {"access_token": access, "token_type": "bearer"}
 
 
-
 @router.post("/login", response_model=TokenOut)
-def login_local(user_data: LoginIn, session: Session = Depends(get_session)):
+def login_local(user_data: LoginIn, session: Session = Depends(get_session), service: UserService = Depends(get_user_service)):
     try:
         access, refresh = service.login_local(
             session,
@@ -76,9 +89,9 @@ def login_local(user_data: LoginIn, session: Session = Depends(get_session)):
             REFRESH_TOKEN_EXPIRE_DAYS,
         )
         return TokenOut(acc_jwt=access, ref_jwt=refresh, token_type="bearer")
-    except service.InvalidCredentials as e:
+    except InvalidCredentials as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except service.AccountNotVerified:
+    except AccountNotVerified:
         raise HTTPException(
             status_code=403,
             detail="Email not verified! please verify your email before you login",
@@ -86,7 +99,7 @@ def login_local(user_data: LoginIn, session: Session = Depends(get_session)):
 
 
 @router.post("/login/google", response_model=TokenOut)
-def login_google(user_data: GoogleLoginIn, session: Session = Depends(get_session)):
+def login_google(user_data: GoogleLoginIn, session: Session = Depends(get_session), service: UserService = Depends(get_user_service)):
     try:
         access, refresh = service.login_google(
             session,
@@ -97,9 +110,9 @@ def login_google(user_data: GoogleLoginIn, session: Session = Depends(get_sessio
         )
 
         return TokenOut(acc_jwt=access, ref_jwt=refresh, token_type="bearer")
-    except service.GoogleTokenInvalid as e:
+    except GoogleTokenInvalid as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except service.AccountExistsWithDifferentProvider:
+    except AccountExistsWithDifferentProvider:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Account email already exists with different provider. Contact support.",
@@ -107,13 +120,13 @@ def login_google(user_data: GoogleLoginIn, session: Session = Depends(get_sessio
 
 
 @router.get("/verify")
-def verify_email(token: str, session: Session = Depends(get_session)):
+def verify_email(token: str, session: Session = Depends(get_session), service: UserService = Depends(get_user_service)):
     try:
         message = service.verify_email(session, token)
         return {"message": message}
-    except service.InvalidVerificationToken as e:
+    except InvalidVerificationToken as e:
         raise HTTPException(status_code=400, detail=str(e))
-    except service.UserNotFound:
+    except UserNotFound:
         raise HTTPException(
             status_code=404, detail="User not found! please register before you verify"
         )
@@ -124,6 +137,7 @@ def resend_verification(
     email_in: EmailIn,
     background: BackgroundTasks,
     session: Session = Depends(get_session),
+    service: UserService = Depends(get_user_service),
 ):
     try:
         token = service.resend_email(
@@ -135,38 +149,38 @@ def resend_verification(
         background.add_task(send_verification_email, email_in.email, token)
         return {"message": "Verification email resent"}
 
-    except service.AccountAlreadyVerified:
+    except AccountAlreadyVerified:
         raise HTTPException(status_code=400, detail="User has already been verified")
-    except service.RateLimitExceeded:
+    except RateLimitExceeded:
         raise HTTPException(
             status_code=400, detail="Please wait before resending again"
         )
-    except service.UserNotFound:
+    except UserNotFound:
         raise HTTPException(
             status_code=404, detail="User not found! please register before you verify"
         )
 
 
 @router.post("/refresh")
-def refresh_token(ref_in: TokenIn) -> AccessTokenOut:
+def refresh_token(ref_in: TokenIn, service: UserService = Depends(get_user_service)) -> AccessTokenOut:
     try:
         new_access_token = service.refresh(ref_in.token, ACCESS_TOKEN_EXPIRE_MINUTES)
         return AccessTokenOut(acc_jwt=new_access_token, token_type="bearer")
-    except service.InvalidRefreshToken:
+    except InvalidRefreshToken:
         raise HTTPException(status_code=401, detail="Invalid refresh token")
 
 
-# protected routes
+# protected routes get("/me") and delete("/me")
 @router.get("/me")
-def get_me(user: service.User = Depends(get_current_user)) -> UserOut:
+def get_me(user: User = Depends(get_current_user), service: UserService = Depends(get_user_service)) -> UserOut:
     return service.get_current_user_info(user)
 
 
 @router.delete("/me")
 def delete_my_account(
-    current_user: service.User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     session: Session = Depends(get_session),
+    service: UserService = Depends(get_user_service),
 ):
     message = service.delete_current_user(session, current_user)
     return {"detail": message}
-

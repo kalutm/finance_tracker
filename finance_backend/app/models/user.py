@@ -1,4 +1,5 @@
 from sqlmodel import SQLModel, Field, Column
+import sqlalchemy as sa
 from typing import Optional
 from datetime import datetime
 from uuid import uuid4, UUID
@@ -17,7 +18,9 @@ class User(SQLModel, table=True):
     is_verified: bool = Field(default=False)
     last_verification_email: Optional[datetime] = Field(nullable=True)
     created_at: datetime = Field(default_factory=now_utc)
-    updated_at: Optional[datetime] = Field(
-        default_factory=now_utc,
-        sa_column=Column(onupdate=now_utc)
+    updated_at: datetime = Field(
+        default=None,
+        sa_column=Column(
+            sa.DateTime, server_default=sa.func.now(), onupdate=sa.func.now()
+        ),
     )

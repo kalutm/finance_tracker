@@ -6,6 +6,7 @@ from uuid import UUID
 from datetime import datetime
 from ..models.common import now_utc
 from ..models.enums import AccountType
+import sqlalchemy as sa
 
 
 class Account(SQLModel, table=True):
@@ -26,7 +27,9 @@ class Account(SQLModel, table=True):
     currency: str = Field(default="USD", nullable=False, max_length=3)
     active: bool = Field(default=True)
     created_at: datetime = Field(default_factory=now_utc)
-    updated_at: Optional[datetime] = Field(
-        default_factory=now_utc,
-        sa_column=Column(onupdate=now_utc)
+    updated_at: datetime = Field(
+        default=None,
+        sa_column=Column(
+            sa.DateTime, server_default=sa.func.now(), onupdate=sa.func.now()
+        ),
     )
