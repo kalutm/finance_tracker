@@ -4,61 +4,65 @@ from app.models.transaction import Transaction
 from app.models.enums import CategoryType
 from typing import List
 
-
-def list_user_categories(
-    session: Session, user_id, limit, offset, type, active
-) -> tuple[List[Category], int]:
-    total_stmt = (
-        select(func.count())
-        .select_from(Category)
-        .where(
-            Category.user_id == user_id,
-            True if type is None else Category.type == type,
-            Category.active == active if active is not None else True,
+class CategoriesRepo:
+    def list_user_categories(
+        self, session: Session, user_id, limit, offset, type, active
+    ) -> tuple[List[Category], int]:
+        total_stmt = (
+            select(func.count())
+            .select_from(Category)
+            .where(
+                Category.user_id == user_id,
+                True if type is None else Category.type == type,
+                Category.active == active if active is not None else True,
+            )
         )
-    )
-    total = session.exec(total_stmt).one()
+        total = session.exec(total_stmt).one()
 
-    query_stmt = (
-        select(Category)
-        .where(
-            Category.user_id == user_id,
-            True if type is None else Category.type == type,
-            Category.active == active if active is not None else True,
+        query_stmt = (
+            select(Category)
+            .where(
+                Category.user_id == user_id,
+                True if type is None else Category.type == type,
+                Category.active == active if active is not None else True,
+            )
+            .order_by(Category.created_at.desc())
+            .limit(limit=limit)
+            .offset(offset=offset)
         )
-        .order_by(Category.created_at.desc())
-        .limit(limit=limit)
-        .offset(offset=offset)
-    )
-    categories = session.exec(query_stmt).all()
+        categories = session.exec(query_stmt).all()
 
-    return categories, int(total)
+        return categories, int(total)
 
 
-def get_category_for_user(session: Session, id, user_id) -> Category:
-    return session.exec(
-        select(Category).where(Category.id == id, Category.user_id == user_id)
-    ).first()
+    def get_category_for_user(self, session: Session, id, user_id) -> Category:
+        return session.exec(
+            select(Category).where(Category.id == id, Category.user_id == user_id)
+        ).first()
 
 
-def save_category(session: Session, category: Category) -> Category:
-    session.add(category)
-    session.flush()
-    session.refresh(category)
+    def save_category(self, session: Session, category: Category) -> Category:
+        session.add(category)
+        session.flush()
+        session.refresh(category)
 
-    return category
-
-
-def delete_category(session: Session, category: Category):
-    session.delete(category)
-    session.flush()
+        return category
 
 
-# helper
-def count_transactions_for_categories(session: Session, category_id) -> int:
-    count_stmt = (
-        select(func.count())
-        .select_from(Transaction)
-        .where(Transaction.category_id == category_id)
-    )
-    return session.exec(count_stmt).one()
+    def delete_category(self, session: Session, category: Category):
+        session.delete(category)
+        session.flush()
+
+
+    # helper
+    def count_transactions_for_categories(self, session: Session, category_id) -> int:
+        count_stmt = (
+            select(func.count())
+            .select_from(Transaction)
+            .where(Transaction.category_id == category_id)
+        )
+        return session.exec(count_stmt).one()
+
+# FastApi Dependency Provider
+def get_category_repo() -> CategoriesRepo:
+    return CategoriesRepo()

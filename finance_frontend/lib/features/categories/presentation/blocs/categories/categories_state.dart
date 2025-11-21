@@ -24,7 +24,6 @@ class CategoriesLoaded extends CategoriesState {
   CategoriesLoaded(this.categories) : _fingerprint = _computeFingerprint(categories);
 
   static String _computeFingerprint(List<FinanceCategory> categories) {
-    // include fields that should cause UI updates when changed
     return categories.map((c) => '${c.id}:${c.name}:${c.active}').join('|');
   }
 

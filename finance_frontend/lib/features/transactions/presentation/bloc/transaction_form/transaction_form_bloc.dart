@@ -115,28 +115,17 @@ class TransactionFormBloc
   }
 
   String _mapErrorToMessage(Object e) {
-    if (e is CouldnotCreateTransaction)
-      return 'Couldnot create transaction, please try again later';
-    if (e is AccountBalanceTnsufficient)
-      return 'Account balance insufficient, please recharge your account before expending';
-    if (e is InvalidInputtedAmount)
-      return 'Invalid Amount, please enter a value greater than Zero';
-    if (e is CouldnotCreateTransferTransaction)
-      return 'Couldnot create a the transfer transaction, please try again later';
-    if (e is CouldnotGetTransaction)
-      return 'Couldnot get transaction or Transaction not found';
-    if (e is CouldnotUpdateTransaction)
-      return 'Couldnot Update transaction or Transaction not found, please try again';
-    if (e is CannotUpdateTransferTransactions)
-      return "Can't Update a Transfer Transaction";
-    if (e is CouldnotDeleteTransaction)
-      return 'Couldnot Delete transaction or Transaction not found, please try again';
-    if (e is InvalidTransferTransaction)
-      return 'The transaction is invalid, Couldnot delete it';
-    if (e is CouldnotDeleteTransferTransaction)
-      return 'Couldnot Delete the transfer transaction, please try again later';
-    if (e is SocketException)
-      return 'No Internet connection!, please try connecting to the internet';
+    if (e is CouldnotCreateTransaction) return 'Couldnot create transaction, please try again later';
+    if (e is AccountBalanceTnsufficient) return 'Account balance insufficient, please recharge your account before expending';
+    if (e is InvalidInputtedAmount) return 'Invalid Amount, please enter a value greater than Zero';
+    if (e is CouldnotCreateTransferTransaction) return 'Couldnot create a the transfer transaction, please try again later';
+    if (e is CouldnotGetTransaction) return 'Couldnot get transaction or Transaction not found';
+    if (e is CouldnotUpdateTransaction) return 'Couldnot Update transaction or Transaction not found, please try again';
+    if (e is CannotUpdateTransferTransactions) return "Can't Update a Transfer Transaction";
+    if (e is CouldnotDeleteTransaction) return 'Couldnot Delete transaction or Transaction not found, please try again';
+    if (e is InvalidTransferTransaction) return 'The transaction is invalid, Couldnot delete it';
+    if (e is CouldnotDeleteTransferTransaction) return 'Couldnot Delete the transfer transaction, please try again later';
+    if (e is SocketException) return 'No Internet connection!, please try connecting to the internet';
     return e.toString();
   }
 }

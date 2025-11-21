@@ -1,10 +1,18 @@
 from fastapi import APIRouter, Depends, Path, Query, HTTPException, status
 from app.api.deps import get_current_user, get_session
+from app.models.user import User
 from app.models.enums import CategoryType
-from app.categories import service
+from app.categories.service import CategoriesService, get_categories_service
 from sqlmodel import Session
 from app.categories.schemas import CategoryCreate, CategoryOut, CategoriesOut, CategoryUpdate
 from typing import Annotated, Optional
+from app.categories.exceptions import (
+    CategoryNameAlreadyTaken,
+    CategoryError,
+    CategoryNotFound,
+    CouldnotDeleteCategory
+)
+
 
 router = APIRouter(prefix="/categories", tags=["category"])
 
@@ -25,7 +33,8 @@ def get_user_categories(
         None, title="Category Type", description="Type of the category i.e INCOME, EXPENSE or BOTH"
     ),
     session: Session = Depends(get_session),
-    current_user: service.User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    service: CategoriesService = Depends(get_categories_service),
 ):
     categories, total = service.get_user_categories(session, current_user.id, limit, offset, type, active)
 
@@ -40,7 +49,8 @@ def get_user_categories(
 def create_category(
     category_data: CategoryCreate,
     session: Session = Depends(get_session),
-    current_user: service.User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    service: CategoriesService = Depends(get_categories_service),
     ):
     try:
         category = service.create_category(
@@ -51,7 +61,7 @@ def create_category(
         category_out = CategoryOut.model_validate(category)
         return category_out
 
-    except service.CategoryNameAlreadyTaken as e:
+    except CategoryNameAlreadyTaken as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     
 @router.get("/{id}", response_model=CategoryOut)
@@ -66,13 +76,14 @@ def get_category(
         ),
     ],
     session: Session = Depends(get_session),
-    current_user: service.User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    service: CategoriesService = Depends(get_categories_service),
 ):
     try:
         category = service.get_category(session, id, current_user.id)
         category_out = CategoryOut.model_validate(category)
         return category_out
-    except service.CategoryNotFound as e:
+    except CategoryNotFound as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
 @router.patch("/{id}", response_model=CategoryOut)
@@ -88,7 +99,8 @@ def update_category(
     ],
     category_data: CategoryUpdate,
     session: Session = Depends(get_session),
-    current_user: service.User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    service: CategoriesService = Depends(get_categories_service),
 ):
     try:
         update_data = category_data.model_dump(exclude_unset=True)
@@ -96,9 +108,9 @@ def update_category(
         
         category_out = CategoryOut.model_validate(updated_category)
         return category_out
-    except service.CategoryNameAlreadyTaken as e:
+    except CategoryNameAlreadyTaken as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
-    except service.CategoryNotFound as e:
+    except CategoryNotFound as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
 
@@ -116,13 +128,14 @@ def deactivate_category(
         ),
     ],
     session: Session = Depends(get_session),
-    current_user: service.User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
+    service: CategoriesService = Depends(get_categories_service),
 ):
     try:
         deactivated_category = service.deactivate_category(session, id, current_user.id)
         category_out = CategoryOut.model_validate(deactivated_category)
         return category_out
-    except service.CategoryNotFound as e:
+    except CategoryNotFound as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
 
 
@@ -138,14 +151,15 @@ def restore_category(
         ),
     ],
     session: Session = Depends(get_session),
-    current_user: service.User = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
+    service: CategoriesService = Depends(get_categories_service),
 ):
 
     try:
         restored_category = service.restore_category(session, id, current_user.id)
         category_out = CategoryOut.model_validate(restored_category)
         return category_out
-    except service.CategoryNotFound as e:
+    except CategoryNotFound as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     
 
@@ -161,11 +175,12 @@ def delete_category(
         ),
     ],
     session: Session = Depends(get_session),
-    current_user: service.User = Depends(get_current_user)
+    current_user: User = Depends(get_current_user),
+    service: CategoriesService = Depends(get_categories_service),
 ):
     try:
         service.delete_category(session, id, current_user.id)
-    except service.CategoryNotFound as e:
+    except CategoryNotFound as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
-    except service.CouldnotDeleteCategory as e:
+    except CouldnotDeleteCategory as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
