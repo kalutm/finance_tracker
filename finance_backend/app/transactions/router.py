@@ -23,6 +23,7 @@ from app.transactions.exceptions import (
     InvalidAmount,
     CanNotUpdateTransaction,
     TransactionError,
+    InvalidTransferTransaction
 )
 
 router = APIRouter(prefix="/transactions", tags=["Transaction"])
@@ -249,7 +250,7 @@ def delete_transfer_transaction(
         transaction_service.delete_transfer_transaction(
             session, transfer_group_id, current_user.id
         )
-    except TransactionError as e:
+    except InvalidTransferTransaction as e:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"code": "INVALID_TRANSFER_TRANSACTION", "message": str(e)},

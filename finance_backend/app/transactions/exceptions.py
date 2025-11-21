@@ -12,3 +12,6 @@ class InvalidAmount(TransactionError):
 
 class CanNotUpdateTransaction(TransactionError):
     pass
+
+class InvalidTransferTransaction(TransactionError):
+    pass

@@ -20,15 +20,20 @@ from app.transactions.exceptions import (
     InvalidAmount,
     TransactionError,
     CanNotUpdateTransaction,
+    InvalidTransferTransaction
 )
 
 
 class TransactionsService:
-    def __init__(self, transaction_repo: TransactionRepo, account_repo: AccountRepository):
+    def __init__(
+        self, transaction_repo: TransactionRepo, account_repo: AccountRepository
+    ):
         self.transaction_repo = transaction_repo
         self.account_repo = account_repo
 
-    def create_income_expense_transaction(self, session: Session, data, user_id: str) -> Transaction:
+    def create_income_expense_transaction(
+        self, session: Session, data, user_id: str
+    ) -> Transaction:
         transaction = Transaction(**data, user_id=user_id)
         account_id = transaction.account_id
         amount = transaction.amount
@@ -109,7 +114,16 @@ class TransactionsService:
             raise e
 
     def get_user_transactions(
-        self, session: Session, user_id, limit, offset, account_id, category_id, type, start, end
+        self,
+        session: Session,
+        user_id,
+        limit,
+        offset,
+        account_id,
+        category_id,
+        type,
+        start,
+        end,
     ) -> Tuple[List[Transaction], int]:
         return self.transaction_repo.list_user_transactions(
             session,
@@ -124,7 +138,9 @@ class TransactionsService:
         )
 
     def get_transaction(self, session: Session, id, user_id) -> Transaction:
-        transaction = self.transaction_repo.get_transaction_for_user(session, id, user_id)
+        transaction = self.transaction_repo.get_transaction_for_user(
+            session, id, user_id
+        )
         if not transaction:
             raise TransactionNotFound("Transaction not found")
         return transaction
@@ -132,11 +148,15 @@ class TransactionsService:
     def update_transaction(
         self, session: Session, transaction_data: TransactionPatch, id, user_id
     ) -> Transaction:
-        transaction = self.transaction_repo.get_transaction_for_user(session, id, user_id)
+        transaction = self.transaction_repo.get_transaction_for_user(
+            session, id, user_id
+        )
         if not transaction:
             raise TransactionNotFound("Transaction not found")
 
-        account = self.account_repo.get_account_for_user(session, transaction.account_id, user_id)
+        account = self.account_repo.get_account_for_user(
+            session, transaction.account_id, user_id
+        )
         amount = transaction_data.amount
 
         if transaction.type == TransactionType.TRANSFER:
@@ -164,16 +184,22 @@ class TransactionsService:
         for field, value in update_data.items():
             setattr(transaction, field, value)
 
-        updated_transaction = self.transaction_repo.save_transaction(session, transaction)
+        updated_transaction = self.transaction_repo.save_transaction(
+            session, transaction
+        )
         session.commit()
         return updated_transaction
 
     def delete_transaction(self, session: Session, id, user_id):
-        transaction = self.transaction_repo.get_transaction_for_user(session, id, user_id)
+        transaction = self.transaction_repo.get_transaction_for_user(
+            session, id, user_id
+        )
         if not transaction:
             raise TransactionNotFound("Transaction not found")
         amount = transaction.amount
-        account = self.account_repo.get_account_for_user(session, transaction.account_id, user_id)
+        account = self.account_repo.get_account_for_user(
+            session, transaction.account_id, user_id
+        )
         if transaction.type == TransactionType.INCOME:
             if amount > account.balance:
                 raise InsufficientBalance("account balance insufficient")
@@ -189,7 +215,7 @@ class TransactionsService:
                 session, transfer_group_id, user_id
             )
             if len(group_transactions) != 2:
-                raise TransactionError("Invalid transfer transaction")
+                raise InvalidTransferTransaction("Invalid transfer transaction")
             outgoing_transaction = [
                 txn for txn in group_transactions if txn.is_outgoing
             ].pop()
@@ -216,7 +242,9 @@ class TransactionsService:
             session.rollback()
             raise e
 
-    def get_transaction_summary(self, session: Session, month: str, user_id: str) -> Dict[str, object]:
+    def get_transaction_summary(
+        self, session: Session, month: str, user_id: str
+    ) -> Dict[str, object]:
         year, month_num = map(int, month.split("-"))
         start_date = datetime(year, month_num, 1)
         end_date = datetime(year, month_num, monthrange(year, month_num)[1], 23, 59, 59)
@@ -236,7 +264,9 @@ class TransactionsService:
             "net_savings": net,
         }
 
-    def get_transaction_stats(self, session: Session, by: str, user_id: str) -> List[Dict[str, object]]:
+    def get_transaction_stats(
+        self, session: Session, by: str, user_id: str
+    ) -> List[Dict[str, object]]:
         group_field = {
             "category": Transaction.category_id,
             "account": Transaction.account_id,
@@ -278,6 +308,10 @@ class TransactionsService:
 
         return enriched
 
+
 # FastApi dependency provider
-def get_transaction_service(transaction_repo: TransactionRepo = Depends(get_transaction_repo), account_repo: AccountRepository = Depends(get_account_repo)) -> TransactionsService:
+def get_transaction_service(
+    transaction_repo: TransactionRepo = Depends(get_transaction_repo),
+    account_repo: AccountRepository = Depends(get_account_repo),
+) -> TransactionsService:
     return TransactionsService(transaction_repo, account_repo)
