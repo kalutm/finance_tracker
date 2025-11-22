@@ -1,6 +1,8 @@
 import 'dart:io';
+import 'package:finance_frontend/core/network/http_network_client.dart';
 import 'package:finance_frontend/features/accounts/data/services/finance_account_service.dart';
 import 'package:finance_frontend/features/accounts/presentation/blocs/accounts/accounts_bloc.dart';
+import 'package:finance_frontend/features/auth/data/services/finance_secure_storage_service.dart';
 import 'package:finance_frontend/features/auth/domain/exceptions/auth_exceptions.dart';
 import 'package:finance_frontend/features/auth/presentation/cubits/auth_cubit.dart';
 import 'package:finance_frontend/features/auth/presentation/cubits/auth_state.dart';
@@ -8,12 +10,14 @@ import 'package:finance_frontend/features/auth/presentation/views/first_auth_wra
 import 'package:finance_frontend/features/auth/presentation/views/home_view.dart';
 import 'package:finance_frontend/features/categories/data/services/finance_category_service.dart';
 import 'package:finance_frontend/features/categories/presentation/blocs/categories/categories_bloc.dart';
+import 'package:finance_frontend/features/transactions/data/data_sources/remote_data_source.dart';
 import 'package:finance_frontend/features/transactions/data/service/finance_transaction_service.dart';
 import 'package:finance_frontend/features/transactions/presentation/bloc/transaction_form/transaction_form_bloc.dart';
 import 'package:finance_frontend/features/transactions/presentation/bloc/transactions/transactions_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:http/http.dart';
 
 class AppWrapper extends StatefulWidget {
   const AppWrapper({super.key});
@@ -49,12 +53,12 @@ class _AppWrapperState extends State<AppWrapper> {
                 BlocProvider(
                   create:
                       (context) =>
-                          TransactionsBloc(FinanceTransactionService()),
+                          TransactionsBloc(FinanceTransactionService(FinanceAccountService(), RemoteDataSource(FinanceSecureStorageService(), HttpNetworkClient(Client())))),
                 ),
                 BlocProvider(
                   create:
                       (context) =>
-                          TransactionFormBloc(FinanceTransactionService()),
+                          TransactionFormBloc(FinanceTransactionService(FinanceAccountService(), RemoteDataSource(FinanceSecureStorageService(), HttpNetworkClient(Client())))),
                 ),
                 BlocProvider(
                   create: (context) => CategoriesBloc(FinanceCategoryService()),

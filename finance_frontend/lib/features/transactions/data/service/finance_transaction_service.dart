@@ -14,13 +14,7 @@ class FinanceTransactionService implements TransactionService {
   final AccountService accountService;
   final RemoteDataSource source;
 
-  FinanceTransactionService._internal(this.source, this.accountService);
-  static final FinanceTransactionService _instance =
-      FinanceTransactionService._internal(
-        RemoteDataSource(),
-        FinanceAccountService(),
-      );
-  factory FinanceTransactionService() => _instance;
+  FinanceTransactionService(this.accountService, this.source);
 
   final List<Transaction> _cachedTransactions = [];
   final StreamController<List<Transaction>> _controller =
