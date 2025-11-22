@@ -16,6 +16,7 @@ from app.categories.exceptions import (
 # demo uid
 uid = UUID(int=0x12345678123456781234567812345678)
 
+# helpers
 @pytest.fixture
 def mock_repo():
     return Mock(spec=CategoriesRepo)
@@ -28,7 +29,7 @@ def mock_session():
 def service(mock_repo):
     return CategoriesService(repo=mock_repo)
 
-
+# Tests
 def test_create_category_success(service, mock_repo, mock_session):
     # Mock Repo returning the category
     mock_repo.save_category.side_effect = lambda s, c: c 

@@ -145,6 +145,26 @@ def create_transaction(
         )
 
 
+@router.get("/summary", response_model=TransactionSummaryOut)
+def get_transaction_summary(
+    month: str = Query(..., pattern=r"^\d{4}-\d{2}$", example="2025-11"),
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+    transaction_service: TransactionsService = Depends(get_transaction_service),
+):
+    return transaction_service.get_transaction_summary(session, month, current_user.id)
+
+
+@router.get("/stats", response_model=List[TransactionStatsOut])
+def get_transaction_stats(
+    by: str = Query("category", enum=["category", "account", "type"]),
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+    transaction_service: TransactionsService = Depends(get_transaction_service),
+):
+    return transaction_service.get_transaction_stats(session, by, current_user.id)
+
+
 @router.get("/{id}", response_model=TransactionOut)
 def get_transaction(
     id: Annotated[
@@ -260,23 +280,3 @@ def delete_transfer_transaction(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"code": "INSUFFICIENT_BALANCE", "message": str(e)},
         )
-
-
-@router.get("/summary", response_model=TransactionSummaryOut)
-def get_transaction_summary(
-    month: str = Query(..., pattern=r"^\d{4}-\d{2}$", example="2025-11"),
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-    transaction_service: TransactionsService = Depends(get_transaction_service),
-):
-    return transaction_service.get_transaction_summary(session, month, current_user.id)
-
-
-@router.get("/stats", response_model=List[TransactionStatsOut])
-def get_transaction_stats(
-    by: str = Query("category", enum=["category", "account", "type"]),
-    session: Session = Depends(get_session),
-    current_user: User = Depends(get_current_user),
-    transaction_service: TransactionsService = Depends(get_transaction_service),
-):
-    return transaction_service.get_transaction_stats(session, by, current_user.id)

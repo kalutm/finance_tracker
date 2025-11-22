@@ -13,6 +13,7 @@ from app.tests.conftest import override_get_current_user
 # demo uid
 uid = UUID(int=0x12345678123456781234567812345678)
 
+# helpers
 @pytest.fixture
 def mock_account_service():
     return Mock(spec=AccountService)
@@ -28,6 +29,7 @@ def client_with_mocked_service(client, mock_account_service):
     yield client
     app.dependency_overrides.pop(get_account_service, None)
 
+# Tests
 def test_get_accounts_router(client_with_mocked_service, mock_account_service, override_get_current_user):
     mock_acc = Account(id=1, name="Test Acc", type=AccountType.BANK, currency="USD", user_id=uid)
 

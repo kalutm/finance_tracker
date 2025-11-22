@@ -279,8 +279,7 @@ class TransactionsService:
         if not results:
             return []
 
-        # total_sum might be Decimal or float
-        total_sum = sum(Decimal(str(row.total)) for row in results)
+        total_sum = sum(Decimal(str(total)) for label, total in results)
 
         enriched = []
         for group_value, total in results:

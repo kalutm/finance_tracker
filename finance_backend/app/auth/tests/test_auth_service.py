@@ -46,7 +46,7 @@ class FakeRepo:
         fn = self._fns.get("delete_user")
         return fn(session, user) if fn else None
 
-
+# Tests
 def test_register_user_success(monkeypatch):
     fake_repo = FakeRepo(
         get_local_user_by_email=lambda s, e: None,

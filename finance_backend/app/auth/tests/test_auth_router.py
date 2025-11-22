@@ -11,7 +11,7 @@ client = TestClient(app)
 def _clear_override(dep):
     app.dependency_overrides.pop(dep, None)
 
-
+# Tests
 def test_register_success(monkeypatch):
     # fake service instance exposing register_user(...)
     fake_service = SimpleNamespace(

@@ -16,6 +16,7 @@ from app.categories.exceptions import (
 # demo uid
 uid = UUID(int=0x12345678123456781234567812345678)
 
+# helpers
 @pytest.fixture
 def mock_service():
     return Mock(spec=CategoriesService)
@@ -31,7 +32,7 @@ def client_with_mock(client, mock_service):
     yield client
     app.dependency_overrides.pop(get_categories_service, None)
 
-
+# Tests
 def test_get_categories_query_params(client_with_mock, mock_service, override_get_current_user):
     # Test that query params are passed to service correctly.
 

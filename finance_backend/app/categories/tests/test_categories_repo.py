@@ -8,6 +8,7 @@ from app.tests.conftest import db_session, create_test_user, create_test_databas
 # no layer below so nothing to mock just instanciate the repo
 repo = CategoriesRepo()
 
+# helper
 def create_category_db(session, user_id, name, type=CategoryType.EXPENSE, active=True):
     cat = Category(user_id=user_id, name=name, type=type, active=active, description="desc")
     session.add(cat)
@@ -16,7 +17,7 @@ def create_category_db(session, user_id, name, type=CategoryType.EXPENSE, active
     return cat
 
 
-
+# Tests
 def test_create_and_get_category(db_session):
     user = create_test_user(db_session)
 

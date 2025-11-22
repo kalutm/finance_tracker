@@ -8,6 +8,7 @@ from app.accounts.repo import AccountRepository
 from app.models.account import Account
 from app.accounts.exceptions import AccountNameAlreadyTaken, CouldnotDeleteAccount
 
+# helpers
 @pytest.fixture
 def mock_repo():
     return Mock(spec=AccountRepository)
@@ -21,6 +22,7 @@ def mock_session():
 def account_service(mock_repo):
     return AccountService(repo=mock_repo)
 
+# Tests
 def test_create_account_success(account_service, mock_repo, mock_session):
     user_id = 1
     account_data = {"name": "Cash", "type": "CASH", "currency": "USD"}

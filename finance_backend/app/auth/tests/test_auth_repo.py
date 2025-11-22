@@ -9,7 +9,7 @@ from app.tests.conftest import db_session, create_test_database
 # Instantiate once since UserRepository is stateless
 repo = UserRepository()
 
-
+# Tests
 def test_get_user_by_email_success(db_session: Session):
     user = User(email="test@example.com", provider=Provider.LOCAL)
     db_session.add(user)

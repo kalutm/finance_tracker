@@ -5,7 +5,7 @@ from app.models.enums import AccountType
 from app.accounts.repo import AccountRepository
 from app.tests.conftest import db_session, create_test_database, create_test_user
 
-
+# Tests
 def test_save_and_get_account(db_session):
     repo = AccountRepository()
     user = create_test_user(db_session)
