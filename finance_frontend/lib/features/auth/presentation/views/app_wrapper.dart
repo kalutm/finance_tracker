@@ -44,12 +44,12 @@ class _AppWrapperState extends State<AppWrapper> {
       value: systemOverlayStyle,
       child: BlocConsumer<AuthCubit, AuthState>(
         builder: (context, state) {
-          final financeTransactionService = FinanceTransactionService(FinanceAccountService(), RemoteDataSource(FinanceSecureStorageService(), HttpNetworkClient(Client())));
+          final financeTransactionService = FinanceTransactionService(FinanceAccountService(FinanceSecureStorageService()), RemoteDataSource(FinanceSecureStorageService(), HttpNetworkClient(Client())));
           if (state is Authenticated) {
             return MultiBlocProvider(
               providers: [
                 BlocProvider(
-                  create: (context) => AccountsBloc(FinanceAccountService()),
+                  create: (context) => AccountsBloc(FinanceAccountService(FinanceSecureStorageService())),
                 ),
                 BlocProvider(
                   create:

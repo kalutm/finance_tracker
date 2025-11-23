@@ -1,13 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
-
 import 'package:finance_frontend/features/accounts/domain/entities/account.dart';
 import 'package:finance_frontend/features/accounts/domain/entities/account_type_enum.dart';
 import 'package:finance_frontend/features/accounts/domain/entities/dtos/account_create.dart';
 import 'package:finance_frontend/features/accounts/domain/entities/dtos/account_patch.dart';
 import 'package:finance_frontend/features/accounts/domain/exceptions/account_exceptions.dart';
 import 'package:finance_frontend/features/accounts/domain/service/account_service.dart';
-import 'package:finance_frontend/features/auth/data/services/finance_secure_storage_service.dart';
 import 'package:finance_frontend/features/auth/domain/services/secure_storage_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
@@ -16,11 +14,7 @@ import 'dart:developer' as dev_tool show log;
 class FinanceAccountService implements AccountService {
   final SecureStorageService secureStorageService;
 
-  FinanceAccountService._internal(this.secureStorageService);
-  static final FinanceAccountService _instance =
-      FinanceAccountService._internal(FinanceSecureStorageService());
-  factory FinanceAccountService() => _instance;
-
+  FinanceAccountService(this.secureStorageService);
   final baseUrl = "${dotenv.env["API_BASE_URL_MOBILE"]}/accounts";
 
 
