@@ -113,37 +113,37 @@ final authCubitProvider = Provider<AuthCubit>((ref) {
 });
 
 /// SettingsCubit
-final settingsCubitProvider = Provider.autoDispose<SettingsCubit>((ref) {
+final settingsCubitProvider = Provider<SettingsCubit>((ref) {
   final service = ref.read(sharedPreferencesProvider);
   return SettingsCubit(service);
 },);
 
 /// AccountsBloc
-final accountsBlocProvider = Provider.autoDispose<AccountsBloc>((ref) {
+final accountsBlocProvider = Provider<AccountsBloc>((ref) {
   final service = ref.read(accountServiceProvider);
   return AccountsBloc(service);
 });
 
 /// AccountFormBloc
-final accountFormBlocProvider = Provider.autoDispose<AccountFormBloc>((ref) {
+final accountFormBlocProvider = Provider<AccountFormBloc>((ref) {
   final service = ref.read(accountServiceProvider);
   return AccountFormBloc(service);
 });
 
 /// CategoriesBloc
-final categoriesBlocProvider = Provider.autoDispose<CategoriesBloc>((ref) {
+final categoriesBlocProvider = Provider<CategoriesBloc>((ref) {
   final service = ref.read(categoryServiceProvider);
   return CategoriesBloc(service);
 });
 
 /// CategoryFormBloc
-final categoryFormBlocProvider = Provider.autoDispose<CategoryFormBloc>((ref) {
+final categoryFormBlocProvider = Provider<CategoryFormBloc>((ref) {
   final service = ref.read(categoryServiceProvider);
   return CategoryFormBloc(service);
 });
 
 /// TransactionsBloc
-final transactionsBlocProvider = Provider.autoDispose<TransactionsBloc>((ref) {
+final transactionsBlocProvider = Provider<TransactionsBloc>((ref) {
   final service = ref.read(transactionServiceProvider);
   return TransactionsBloc(service);
 });

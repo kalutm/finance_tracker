@@ -1,10 +1,14 @@
 import 'dart:io';
 import 'package:finance_frontend/core/provider/providers.dart';
+import 'package:finance_frontend/features/accounts/presentation/blocs/accounts/accounts_bloc.dart';
 import 'package:finance_frontend/features/auth/domain/exceptions/auth_exceptions.dart';
 import 'package:finance_frontend/features/auth/presentation/cubits/auth_cubit.dart';
 import 'package:finance_frontend/features/auth/presentation/cubits/auth_state.dart';
 import 'package:finance_frontend/features/auth/presentation/views/first_auth_wrappr.dart';
 import 'package:finance_frontend/features/auth/presentation/views/home_view.dart';
+import 'package:finance_frontend/features/categories/presentation/blocs/categories/categories_bloc.dart';
+import 'package:finance_frontend/features/transactions/presentation/bloc/transaction_form/transaction_form_bloc.dart';
+import 'package:finance_frontend/features/transactions/presentation/bloc/transactions/transactions_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -39,17 +43,17 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
             return MultiBlocProvider(
               providers: [
                 BlocProvider(
-                  create: (context) => ref.read(accountsBlocProvider),
+                  create: (context) => AccountsBloc(ref.read(accountServiceProvider)),
                 ),
                 BlocProvider(
-                  create: (context) => ref.read(transactionsBlocProvider),
+                  create: (context) => TransactionsBloc(ref.read(transactionServiceProvider)),
                 ),
                 BlocProvider(
                   create:
-                      (context) => ref.read(transactionFormBlocProvider),
+                      (context) => TransactionFormBloc(ref.read(transactionServiceProvider)),
                 ),
                 BlocProvider(
-                  create: (context) => ref.read(categoriesBlocProvider),
+                  create: (context) => CategoriesBloc(ref.read(categoryServiceProvider)),
                 ),
               ],
               child: const Home(),
