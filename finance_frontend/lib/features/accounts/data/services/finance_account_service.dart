@@ -1,5 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:finance_frontend/core/network/network_client.dart';
+import 'package:finance_frontend/core/network/request.dart';
 import 'package:finance_frontend/features/accounts/domain/entities/account.dart';
 import 'package:finance_frontend/features/accounts/domain/entities/account_type_enum.dart';
 import 'package:finance_frontend/features/accounts/domain/entities/dtos/account_create.dart';
@@ -8,15 +10,18 @@ import 'package:finance_frontend/features/accounts/domain/exceptions/account_exc
 import 'package:finance_frontend/features/accounts/domain/service/account_service.dart';
 import 'package:finance_frontend/features/auth/domain/services/secure_storage_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:http/http.dart' as http;
 import 'dart:developer' as dev_tool show log;
 
 class FinanceAccountService implements AccountService {
   final SecureStorageService secureStorageService;
+  final NetworkClient client;
 
-  FinanceAccountService(this.secureStorageService);
+  FinanceAccountService(
+    this.secureStorageService, 
+    this.client,
+  );
+
   final baseUrl = "${dotenv.env["API_BASE_URL_MOBILE"]}/accounts";
-
 
   final List<Account> _cachedAccounts = [];
   final StreamController<List<Account>> _controller =
@@ -28,7 +33,22 @@ class FinanceAccountService implements AccountService {
   void _emitCache() {
     try {
       _controller.add(List.unmodifiable(_cachedAccounts));
+    } catch (_) {}
+  }
+
+  Future<Map<String, String>> _authHeaders() async {
+    final token = await secureStorageService.readString(key: "access_token");
+    return {
+      "Authorization": "Bearer $token",
+      "Content-Type": "application/json",
+    };
+  }
+
+  Map<String, dynamic> _decode(String body) {
+    try {
+      return jsonDecode(body) as Map<String, dynamic>;
     } catch (_) {
+      return <String, dynamic>{};
     }
   }
 
@@ -36,16 +56,18 @@ class FinanceAccountService implements AccountService {
   @override
   Future<List<Account>> getUserAccounts() async {
     try {
-      final accessToken = await secureStorageService.readString(
-        key: "access_token",
-      );
-      final resp = await http.get(
-        Uri.parse(baseUrl),
-        headers: {"Authorization": "Bearer $accessToken"},
+      final headers = await _authHeaders();
+
+      final res = await client.send(
+        RequestModel(
+          method: 'GET',
+          url: Uri.parse(baseUrl),
+          headers: headers,
+        ),
       );
 
-      final resBody = jsonDecode(resp.body) as Map<String, dynamic>;
-      if (resp.statusCode != 200) {
+      final resBody = _decode(res.body);
+      if (res.statusCode != 200) {
         dev_tool.log("EERROORR, EERROORR: ${resBody["detail"]}");
         throw CouldnotFetchAccounts();
       }
@@ -63,9 +85,7 @@ class FinanceAccountService implements AccountService {
       _emitCache();
 
       return List.unmodifiable(_cachedAccounts);
-    } on AccountException catch (_) {
-      rethrow;
-    } catch (e) {
+    } on AccountException {
       rethrow;
     }
   }
@@ -73,19 +93,18 @@ class FinanceAccountService implements AccountService {
   @override
   Future<Account> createAccount(AccountCreate create) async {
     try {
-      final accessToken = await secureStorageService.readString(
-        key: "access_token",
-      );
-      final res = await http.post(
-        headers: {
-          "Authorization": "Bearer $accessToken",
-          "Content-Type": "application/json",
-        },
-        Uri.parse("$baseUrl/"),
-        body: jsonEncode(create.toJson()),
+      final headers = await _authHeaders();
+
+      final res = await client.send(
+        RequestModel(
+          method: 'POST',
+          url: Uri.parse("$baseUrl/"),
+          headers: headers,
+          body: jsonEncode(create.toJson()),
+        ),
       );
 
-      final json = jsonDecode(res.body) as Map<String, dynamic>;
+      final json = _decode(res.body);
       if (res.statusCode != 201) {
         dev_tool.log("EERROORR, EERROORR: ${json["detail"]}");
         throw CouldnotCreateAccount();
@@ -98,9 +117,7 @@ class FinanceAccountService implements AccountService {
       _emitCache();
 
       return created;
-    } on AccountException catch (_) {
-      rethrow;
-    } catch (e) {
+    } on AccountException {
       rethrow;
     }
   }
@@ -108,15 +125,17 @@ class FinanceAccountService implements AccountService {
   @override
   Future<Account> deactivateAccount(String id) async {
     try {
-      final accessToken = await secureStorageService.readString(
-        key: "access_token",
-      );
-      final res = await http.patch(
-        headers: {"Authorization": "Bearer $accessToken"},
-        Uri.parse("$baseUrl/$id/deactivate"),
+      final headers = await _authHeaders();
+
+      final res = await client.send(
+        RequestModel(
+          method: 'PATCH',
+          url: Uri.parse("$baseUrl/$id/deactivate"),
+          headers: headers,
+        ),
       );
 
-      final json = jsonDecode(res.body) as Map<String, dynamic>;
+      final json = _decode(res.body);
       if (res.statusCode != 200) {
         dev_tool.log("EERROORR, EERROORR: ${json["detail"]}");
         throw CouldnotDeactivateAccount();
@@ -132,9 +151,7 @@ class FinanceAccountService implements AccountService {
       }
 
       return deactivated;
-    } on AccountException catch (_) {
-      rethrow;
-    } catch (e) {
+    } on AccountException {
       rethrow;
     }
   }
@@ -142,16 +159,18 @@ class FinanceAccountService implements AccountService {
   @override
   Future<void> deleteAccount(String id) async {
     try {
-      final accessToken = await secureStorageService.readString(
-        key: "access_token",
-      );
-      final res = await http.delete(
-        headers: {"Authorization": "Bearer $accessToken"},
-        Uri.parse("$baseUrl/$id"),
+      final headers = await _authHeaders();
+
+      final res = await client.send(
+        RequestModel(
+          method: 'DELETE',
+          url: Uri.parse("$baseUrl/$id"),
+          headers: headers,
+        ),
       );
 
       if (res.body.isNotEmpty) {
-        final json = jsonDecode(res.body) as Map<String, dynamic>;
+        final json = _decode(res.body);
         if (res.statusCode != 204) {
           dev_tool.log("EERROORR: ${json["detail"]}");
           if (res.statusCode == 400) {
@@ -171,9 +190,7 @@ class FinanceAccountService implements AccountService {
       // update cache + emit
       _cachedAccounts.removeWhere((a) => a.id == id);
       _emitCache();
-    } on AccountException catch (_) {
-      rethrow;
-    } catch (e) {
+    } on AccountException {
       rethrow;
     }
   }
@@ -199,15 +216,17 @@ class FinanceAccountService implements AccountService {
       if (cached.id.isNotEmpty) return cached;
 
       // else fetch from server
-      final accessToken = await secureStorageService.readString(
-        key: "access_token",
-      );
-      final resp = await http.get(
-        Uri.parse("$baseUrl/$id"),
-        headers: {"Authorization": "Bearer $accessToken"},
+      final headers = await _authHeaders();
+
+      final resp = await client.send(
+        RequestModel(
+          method: 'GET',
+          url: Uri.parse("$baseUrl/$id"),
+          headers: headers,
+        ),
       );
 
-      final resBody = jsonDecode(resp.body) as Map<String, dynamic>;
+      final resBody = _decode(resp.body);
       if (resp.statusCode != 200) {
         dev_tool.log("EERROORR, EERROORR: ${resBody["detail"]}");
         throw CouldnotGetAccont();
@@ -225,9 +244,7 @@ class FinanceAccountService implements AccountService {
       _emitCache();
 
       return fetched;
-    } on AccountException catch (_) {
-      rethrow;
-    } catch (e) {
+    } on AccountException {
       rethrow;
     }
   }
@@ -235,15 +252,17 @@ class FinanceAccountService implements AccountService {
   @override
   Future<Account> restoreAccount(String id) async {
     try {
-      final accessToken = await secureStorageService.readString(
-        key: "access_token",
-      );
-      final res = await http.patch(
-        headers: {"Authorization": "Bearer $accessToken"},
-        Uri.parse("$baseUrl/$id/restore"),
+      final headers = await _authHeaders();
+
+      final res = await client.send(
+        RequestModel(
+          method: 'PATCH',
+          url: Uri.parse("$baseUrl/$id/restore"),
+          headers: headers,
+        ),
       );
 
-      final json = jsonDecode(res.body) as Map<String, dynamic>;
+      final json = _decode(res.body);
       if (res.statusCode != 200) {
         final errorDetail = json["detail"] as String;
         dev_tool.log("EERROORR, EERROORR: $errorDetail");
@@ -262,9 +281,7 @@ class FinanceAccountService implements AccountService {
       _emitCache();
 
       return restored;
-    } on AccountException catch (_) {
-      rethrow;
-    } catch (e) {
+    } on AccountException {
       rethrow;
     }
   }
@@ -272,19 +289,18 @@ class FinanceAccountService implements AccountService {
   @override
   Future<Account> updateAccount(String id, AccountPatch patch) async {
     try {
-      final accessToken = await secureStorageService.readString(
-        key: "access_token",
-      );
-      final res = await http.patch(
-        headers: {
-          "Authorization": "Bearer $accessToken",
-          "Content-Type": "application/json",
-        },
-        Uri.parse("$baseUrl/$id"),
-        body: jsonEncode(patch.toJson()),
+      final headers = await _authHeaders();
+
+      final res = await client.send(
+        RequestModel(
+          method: 'PATCH',
+          url: Uri.parse("$baseUrl/$id"),
+          headers: headers,
+          body: jsonEncode(patch.toJson()),
+        ),
       );
 
-      final json = jsonDecode(res.body) as Map<String, dynamic>;
+      final json = _decode(res.body);
       if (res.statusCode != 200) {
         final errorDetail = json["detail"] as String;
         dev_tool.log("EERROORR, EERROORR: $errorDetail");
@@ -303,14 +319,12 @@ class FinanceAccountService implements AccountService {
       _emitCache();
 
       return updated;
-    } on AccountException catch (_) {
-      rethrow;
-    } catch (e) {
+    } on AccountException {
       rethrow;
     }
   }
 
-  // close stream when app disposes 
+  // close stream when app disposes
   void dispose() {
     if (!_controller.isClosed) _controller.close();
   }

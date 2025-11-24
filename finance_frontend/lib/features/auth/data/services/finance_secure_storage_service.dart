@@ -2,14 +2,7 @@ import 'package:finance_frontend/features/auth/domain/services/secure_storage_se
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 class FinanceSecureStorageService implements SecureStorageService {
-  static final FinanceSecureStorageService _instance = FinanceSecureStorageService._internal();
-
-  factory FinanceSecureStorageService() {
-    return _instance;
-  }
-
-  FinanceSecureStorageService._internal();
-
+  const FinanceSecureStorageService();
   final FlutterSecureStorage _secureStorage = const FlutterSecureStorage();
 
   @override

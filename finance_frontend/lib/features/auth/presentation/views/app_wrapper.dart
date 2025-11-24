@@ -1,32 +1,23 @@
 import 'dart:io';
-import 'package:finance_frontend/core/network/http_network_client.dart';
-import 'package:finance_frontend/features/accounts/data/services/finance_account_service.dart';
-import 'package:finance_frontend/features/accounts/presentation/blocs/accounts/accounts_bloc.dart';
-import 'package:finance_frontend/features/auth/data/services/finance_secure_storage_service.dart';
+import 'package:finance_frontend/core/provider/providers.dart';
 import 'package:finance_frontend/features/auth/domain/exceptions/auth_exceptions.dart';
 import 'package:finance_frontend/features/auth/presentation/cubits/auth_cubit.dart';
 import 'package:finance_frontend/features/auth/presentation/cubits/auth_state.dart';
 import 'package:finance_frontend/features/auth/presentation/views/first_auth_wrappr.dart';
 import 'package:finance_frontend/features/auth/presentation/views/home_view.dart';
-import 'package:finance_frontend/features/categories/data/services/finance_category_service.dart';
-import 'package:finance_frontend/features/categories/presentation/blocs/categories/categories_bloc.dart';
-import 'package:finance_frontend/features/transactions/data/data_sources/remote_data_source.dart';
-import 'package:finance_frontend/features/transactions/data/service/finance_transaction_service.dart';
-import 'package:finance_frontend/features/transactions/presentation/bloc/transaction_form/transaction_form_bloc.dart';
-import 'package:finance_frontend/features/transactions/presentation/bloc/transactions/transactions_bloc.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:http/http.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class AppWrapper extends StatefulWidget {
+class AppWrapper extends ConsumerStatefulWidget {
   const AppWrapper({super.key});
 
   @override
-  State<AppWrapper> createState() => _AppWrapperState();
+  ConsumerState<AppWrapper> createState() => _AppWrapperState();
 }
 
-class _AppWrapperState extends State<AppWrapper> {
+class _AppWrapperState extends ConsumerState<AppWrapper> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -44,25 +35,21 @@ class _AppWrapperState extends State<AppWrapper> {
       value: systemOverlayStyle,
       child: BlocConsumer<AuthCubit, AuthState>(
         builder: (context, state) {
-          final financeTransactionService = FinanceTransactionService(FinanceAccountService(FinanceSecureStorageService()), RemoteDataSource(FinanceSecureStorageService(), HttpNetworkClient(Client())));
           if (state is Authenticated) {
             return MultiBlocProvider(
               providers: [
                 BlocProvider(
-                  create: (context) => AccountsBloc(FinanceAccountService(FinanceSecureStorageService())),
+                  create: (context) => ref.read(accountsBlocProvider),
+                ),
+                BlocProvider(
+                  create: (context) => ref.read(transactionsBlocProvider),
                 ),
                 BlocProvider(
                   create:
-                      (context) =>
-                          TransactionsBloc(financeTransactionService),
+                      (context) => ref.read(transactionFormBlocProvider),
                 ),
                 BlocProvider(
-                  create:
-                      (context) =>
-                          TransactionFormBloc(financeTransactionService),
-                ),
-                BlocProvider(
-                  create: (context) => CategoriesBloc(FinanceCategoryService()),
+                  create: (context) => ref.read(categoriesBlocProvider),
                 ),
               ],
               child: const Home(),
@@ -74,7 +61,9 @@ class _AppWrapperState extends State<AppWrapper> {
           } else {
             return Scaffold(
               body: Center(
-                child: CircularProgressIndicator(padding: EdgeInsets.all(20)),
+                child: CircularProgressIndicator(
+                  padding: EdgeInsets.all(20),
+                ),
               ),
             );
           }
@@ -98,7 +87,9 @@ class _AppWrapperState extends State<AppWrapper> {
             } else if (state.exception is CouldnotLogIn) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text("Login Failed: ${state.exception.toString()}"),
+                  content: Text(
+                    "Login Failed: ${state.exception.toString()}",
+                  ),
                 ),
               );
             } else if (state.exception is CouldnotRegister) {
@@ -117,7 +108,8 @@ class _AppWrapperState extends State<AppWrapper> {
                   ),
                 ),
               );
-            } else if (state.exception is CouldnotSendEmailVerificatonLink) {
+            } else if (state.exception
+                is CouldnotSendEmailVerificatonLink) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
@@ -136,7 +128,9 @@ class _AppWrapperState extends State<AppWrapper> {
             } else if (state.exception is CouldnotDeleteUser) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text("Couldnot delete user please try again later"),
+                  content: Text(
+                    "Couldnot delete user please try again later",
+                  ),
                 ),
               );
             } else if (state.exception is SocketException) {

@@ -1,8 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:developer' as dev;
-
-import 'package:finance_frontend/features/auth/data/services/finance_secure_storage_service.dart';
+import 'package:finance_frontend/core/network/network_client.dart';
+import 'package:finance_frontend/core/network/request.dart';
 import 'package:finance_frontend/features/auth/domain/services/secure_storage_service.dart';
 import 'package:finance_frontend/features/categories/domain/entities/category.dart';
 import 'package:finance_frontend/features/categories/domain/entities/category_type_enum.dart';
@@ -11,15 +11,15 @@ import 'package:finance_frontend/features/categories/domain/entities/dtos/catego
 import 'package:finance_frontend/features/categories/domain/exceptions/category_exceptions.dart';
 import 'package:finance_frontend/features/categories/domain/service/category_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
-import 'package:http/http.dart' as http;
 
 class FinanceCategoryService implements CategoryService {
   final SecureStorageService secureStorageService;
+  final NetworkClient client;
 
-  FinanceCategoryService._internal(this.secureStorageService);
-  static final FinanceCategoryService _instance =
-      FinanceCategoryService._internal(FinanceSecureStorageService());
-  factory FinanceCategoryService() => _instance;
+  FinanceCategoryService(
+    this.secureStorageService,
+    this.client,
+  );
 
   final String baseUrl = "${dotenv.env["API_BASE_URL_MOBILE"]}/categories";
 
@@ -36,41 +36,53 @@ class FinanceCategoryService implements CategoryService {
     } catch (_) {}
   }
 
-  Future<String?> _readToken() =>
-      secureStorageService.readString(key: "access_token");
+  Future<Map<String, String>> _authHeaders() async {
+    final token = await secureStorageService.readString(key: "access_token");
+    return {
+      "Authorization": "Bearer $token",
+      "Content-Type": "application/json",
+    };
+  }
+
+  Map<String, dynamic> _decode(String body) {
+    try {
+      return jsonDecode(body) as Map<String, dynamic>;
+    } catch (_) {
+      return <String, dynamic>{};
+    }
+  }
 
   @override
   Future<List<FinanceCategory>> getUserCategories() async {
     try {
-      final token = await _readToken();
-      final resp = await http.get(
-        Uri.parse(baseUrl),
-        headers: {"Authorization": "Bearer $token"},
+      final headers = await _authHeaders();
+
+      final resp = await client.send(
+        RequestModel(
+          method: 'GET',
+          url: Uri.parse(baseUrl),
+          headers: headers,
+        ),
       );
 
-      final resBody = jsonDecode(resp.body) as Map<String, dynamic>;
+      final resBody = _decode(resp.body);
       if (resp.statusCode != 200) {
         dev.log("Failed fetching categories: ${resBody["detail"]}");
         throw CouldnotFetchCategories();
       }
 
       final categoriesMap = (resBody["categories"] ?? []) as List<dynamic>;
-      final categories =
-          categoriesMap
-              .map(
-                (c) => FinanceCategory.fromFinance(c as Map<String, dynamic>),
-              )
-              .toList();
+      final categories = categoriesMap
+          .map((c) => FinanceCategory.fromFinance(c as Map<String, dynamic>))
+          .toList();
 
       _cache
         ..clear()
         ..addAll(categories);
-
       _emitCache();
+
       return List.unmodifiable(_cache);
     } on CategoryException {
-      rethrow;
-    } catch (e) {
       rethrow;
     }
   }
@@ -78,17 +90,18 @@ class FinanceCategoryService implements CategoryService {
   @override
   Future<FinanceCategory> createCategory(CategoryCreate create) async {
     try {
-      final token = await _readToken();
-      final res = await http.post(
-        Uri.parse("$baseUrl/"),
-        headers: {
-          "Authorization": "Bearer $token",
-          "Content-Type": "application/json",
-        },
-        body: jsonEncode(create.toJson()),
+      final headers = await _authHeaders();
+
+      final res = await client.send(
+        RequestModel(
+          method: 'POST',
+          url: Uri.parse("$baseUrl/"),
+          headers: headers,
+          body: jsonEncode(create.toJson()),
+        ),
       );
 
-      final json = jsonDecode(res.body) as Map<String, dynamic>;
+      final json = _decode(res.body);
       if (res.statusCode != 201) {
         dev.log("Create category failed: ${json["detail"]}");
         throw CouldnotCreateCategory();
@@ -97,10 +110,9 @@ class FinanceCategoryService implements CategoryService {
       final created = FinanceCategory.fromFinance(json);
       _cache.insert(0, created);
       _emitCache();
+
       return created;
     } on CategoryException {
-      rethrow;
-    } catch (e) {
       rethrow;
     }
   }
@@ -108,14 +120,18 @@ class FinanceCategoryService implements CategoryService {
   @override
   Future<void> deleteCategory(String id) async {
     try {
-      final token = await _readToken();
-      final res = await http.delete(
-        Uri.parse("$baseUrl/$id"),
-        headers: {"Authorization": "Bearer $token"},
+      final headers = await _authHeaders();
+
+      final res = await client.send(
+        RequestModel(
+          method: 'DELETE',
+          url: Uri.parse("$baseUrl/$id"),
+          headers: headers,
+        ),
       );
 
       if (res.body.isNotEmpty) {
-        final json = jsonDecode(res.body) as Map<String, dynamic>;
+        final json = _decode(res.body);
         if (res.statusCode != 204) {
           dev.log("Delete category failed: ${json["detail"]}");
           if (res.statusCode == 400) {
@@ -136,8 +152,6 @@ class FinanceCategoryService implements CategoryService {
       _emitCache();
     } on CategoryException {
       rethrow;
-    } catch (e) {
-      rethrow;
     }
   }
 
@@ -147,25 +161,28 @@ class FinanceCategoryService implements CategoryService {
       // Try cache first
       final cached = _cache.firstWhere(
         (c) => c.id == id,
-        orElse:
-            () => FinanceCategory(
-              id: "",
-              name: '',
-              type: CategoryType.values.first,
-              active: false,
-              createdAt: DateTime.now(),
-            ),
+        orElse: () => FinanceCategory(
+          id: "",
+          name: '',
+          type: CategoryType.values.first,
+          active: false,
+          createdAt: DateTime.now(),
+        ),
       );
 
       if (cached.id.isNotEmpty) return cached;
 
-      final token = await _readToken();
-      final resp = await http.get(
-        Uri.parse("$baseUrl/$id"),
-        headers: {"Authorization": "Bearer $token"},
+      final headers = await _authHeaders();
+
+      final resp = await client.send(
+        RequestModel(
+          method: 'GET',
+          url: Uri.parse("$baseUrl/$id"),
+          headers: headers,
+        ),
       );
 
-      final resBody = jsonDecode(resp.body) as Map<String, dynamic>;
+      final resBody = _decode(resp.body);
       if (resp.statusCode != 200) {
         dev.log("Get category failed: ${resBody["detail"]}");
         throw CouldnotGetCategory();
@@ -179,10 +196,9 @@ class FinanceCategoryService implements CategoryService {
         _cache.insert(0, fetched);
       }
       _emitCache();
+
       return fetched;
     } on CategoryException {
-      rethrow;
-    } catch (e) {
       rethrow;
     }
   }
@@ -190,13 +206,17 @@ class FinanceCategoryService implements CategoryService {
   @override
   Future<FinanceCategory> restoreCategory(String id) async {
     try {
-      final token = await _readToken();
-      final res = await http.patch(
-        Uri.parse("$baseUrl/$id/restore"),
-        headers: {"Authorization": "Bearer $token"},
+      final headers = await _authHeaders();
+
+      final res = await client.send(
+        RequestModel(
+          method: 'PATCH',
+          url: Uri.parse("$baseUrl/$id/restore"),
+          headers: headers,
+        ),
       );
 
-      final json = jsonDecode(res.body) as Map<String, dynamic>;
+      final json = _decode(res.body);
       if (res.statusCode != 200) {
         dev.log("Restore category failed: ${json["detail"]}");
         throw CouldnotRestoreCategory();
@@ -210,28 +230,31 @@ class FinanceCategoryService implements CategoryService {
         _cache.insert(0, restored);
       }
       _emitCache();
+
       return restored;
     } on CategoryException {
-      rethrow;
-    } catch (e) {
       rethrow;
     }
   }
 
   @override
-  Future<FinanceCategory> updateCategory(String id, CategoryPatch patch) async {
+  Future<FinanceCategory> updateCategory(
+    String id,
+    CategoryPatch patch,
+  ) async {
     try {
-      final token = await _readToken();
-      final res = await http.patch(
-        Uri.parse("$baseUrl/$id"),
-        headers: {
-          "Authorization": "Bearer $token",
-          "Content-Type": "application/json",
-        },
-        body: jsonEncode(patch.toJson()),
+      final headers = await _authHeaders();
+
+      final res = await client.send(
+        RequestModel(
+          method: 'PATCH',
+          url: Uri.parse("$baseUrl/$id"),
+          headers: headers,
+          body: jsonEncode(patch.toJson()),
+        ),
       );
 
-      final json = jsonDecode(res.body) as Map<String, dynamic>;
+      final json = _decode(res.body);
       if (res.statusCode != 200) {
         dev.log("Update category failed: ${json["detail"]}");
         throw CouldnotUpdateCategory();
@@ -245,10 +268,9 @@ class FinanceCategoryService implements CategoryService {
         _cache.insert(0, updated);
       }
       _emitCache();
+
       return updated;
     } on CategoryException {
-      rethrow;
-    } catch (e) {
       rethrow;
     }
   }
@@ -256,13 +278,17 @@ class FinanceCategoryService implements CategoryService {
   @override
   Future<FinanceCategory> deactivateCategory(String id) async {
     try {
-      final token = await _readToken();
-      final res = await http.patch(
-        Uri.parse("$baseUrl/$id/deactivate"),
-        headers: {"Authorization": "Bearer $token"},
+      final headers = await _authHeaders();
+
+      final res = await client.send(
+        RequestModel(
+          method: 'PATCH',
+          url: Uri.parse("$baseUrl/$id/deactivate"),
+          headers: headers,
+        ),
       );
 
-      final json = jsonDecode(res.body) as Map<String, dynamic>;
+      final json = _decode(res.body);
       if (res.statusCode != 200) {
         dev.log("Deactivate category failed: ${json["detail"]}");
         throw CouldnotDeactivateCategory();
@@ -276,15 +302,13 @@ class FinanceCategoryService implements CategoryService {
         _cache.insert(0, deactivated);
       }
       _emitCache();
+
       return deactivated;
     } on CategoryException {
-      rethrow;
-    } catch (e) {
       rethrow;
     }
   }
 
-  // If you want to dispose the controller at app shutdown
   void dispose() {
     if (!_controller.isClosed) _controller.close();
   }

@@ -1,0 +1,155 @@
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
+
+// abstractions & implementations
+import 'package:finance_frontend/core/network/network_client.dart'; // NetworkClient
+import 'package:finance_frontend/core/network/http_network_client.dart'; // HttpNetworkClient
+
+import 'package:finance_frontend/features/auth/domain/services/secure_storage_service.dart'; // SecureStorageService
+import 'package:finance_frontend/features/auth/data/services/finance_secure_storage_service.dart'; // FinanceSecureStorageService
+
+import 'package:finance_frontend/features/settings/domain/services/shared_preferences_service.dart'; // SharedPreferencesService
+import 'package:finance_frontend/features/settings/data/services/finance_shared_preferences_service.dart'; // FinanceSharedPreferencesService
+
+import 'package:finance_frontend/features/auth/domain/services/auth_service.dart'; // AuthService
+import 'package:finance_frontend/features/auth/data/services/finance_auth_service.dart'; // FinanceAuthService
+
+import 'package:finance_frontend/features/accounts/domain/service/account_service.dart'; // AccountService
+import 'package:finance_frontend/features/accounts/data/services/finance_account_service.dart'; // FinanceAccountService
+
+import 'package:finance_frontend/features/categories/domain/service/category_service.dart'; // CategoryService
+import 'package:finance_frontend/features/categories/data/services/finance_category_service.dart'; // FinanceCategoryService
+
+import 'package:finance_frontend/features/transactions/domain/service/transaction_service.dart'; // TransactionService
+import 'package:finance_frontend/features/transactions/data/service/finance_transaction_service.dart'; // FinanceTransactionService
+
+import 'package:finance_frontend/features/transactions/domain/data_source/trans_data_source.dart'; // TransDataSource
+import 'package:finance_frontend/features/transactions/data/data_sources/remote_trans_data_source.dart'; // RemoteTransDataSource
+
+// Blocs / Cubits
+import 'package:finance_frontend/features/auth/presentation/cubits/auth_cubit.dart'; // AuthCubit
+import 'package:finance_frontend/features/settings/presentation/cubits/settings_cubit.dart'; // SettingsCubit
+import 'package:finance_frontend/features/accounts/presentation/blocs/accounts/accounts_bloc.dart'; // AccountsBloc
+import 'package:finance_frontend/features/accounts/presentation/blocs/account_form/account_form_bloc.dart'; // AccountFormBloc
+import 'package:finance_frontend/features/categories/presentation/blocs/categories/categories_bloc.dart'; // CategoriesBloc
+import 'package:finance_frontend/features/categories/presentation/blocs/category_form/category_form_bloc.dart'; // CategoryFormBloc
+import 'package:finance_frontend/features/transactions/presentation/bloc/transactions/transactions_bloc.dart'; // TransactionsBloc
+import 'package:finance_frontend/features/transactions/presentation/bloc/transaction_form/transaction_form_bloc.dart'; // TransactionFormBloc
+
+/// Low level / core providers ///
+
+/// http.Client provider 
+final httpClientProvider = Provider<http.Client>((ref) {
+  final client = http.Client();
+  ref.onDispose(() => client.close());
+  return client;
+});
+
+/// Shared preferences provider
+final sharedPreferencesProvider = Provider<SharedPreferencesService>((ref) {
+  return FinanceSharedPreferencesService();
+},);
+
+/// Secure storage provider 
+final secureStorageProvider = Provider<SecureStorageService>((ref) {
+  return FinanceSecureStorageService();
+});
+
+/// NetworkClient abstraction
+final networkClientProvider = Provider<NetworkClient>((ref) {
+  final httpClient = ref.read(httpClientProvider);
+  return HttpNetworkClient(httpClient);
+});
+
+/// Services & DataSources  ///
+
+/// AuthService exposed as AuthService (interface)
+final authServiceProvider = Provider<AuthService>((ref) {
+  return FinanceAuthService(
+    ref.read(secureStorageProvider),
+    ref.read(networkClientProvider),
+  );
+});
+
+/// AccountService exposed as AccountService (interface)
+final accountServiceProvider = Provider<AccountService>((ref) {
+  return FinanceAccountService(
+    ref.read(secureStorageProvider),
+    ref.read(networkClientProvider),
+  );
+});
+
+/// CategoryService exposed as CategoryService (interface)
+final categoryServiceProvider = Provider<CategoryService>((ref) {
+  return FinanceCategoryService(
+    ref.read(secureStorageProvider),
+    ref.read(networkClientProvider),
+  );
+});
+
+/// TransDataSource (remote) exposed as TransDataSource (interface)
+final transDataSourceProvider = Provider<TransDataSource>((ref) {
+  return RemoteTransDataSource(
+    ref.read(secureStorageProvider),
+    ref.read(networkClientProvider),
+  );
+});
+
+/// TransactionService exposed as TransactionService (interface)
+final transactionServiceProvider = Provider<TransactionService>((ref) {
+  // Note: depends on AccountService (interface) and TransDataSource (interface)
+  return FinanceTransactionService(
+    ref.read(accountServiceProvider),
+    ref.read(transDataSourceProvider),
+  );
+});
+
+/// Blocs / Cubits ///
+
+/// AuthCubit
+final authCubitProvider = Provider<AuthCubit>((ref) {
+  final service = ref.read(authServiceProvider);
+  return AuthCubit(service);
+});
+
+/// SettingsCubit
+final settingsCubitProvider = Provider.autoDispose<SettingsCubit>((ref) {
+  final service = ref.read(sharedPreferencesProvider);
+  return SettingsCubit(service);
+},);
+
+/// AccountsBloc
+final accountsBlocProvider = Provider.autoDispose<AccountsBloc>((ref) {
+  final service = ref.read(accountServiceProvider);
+  return AccountsBloc(service);
+});
+
+/// AccountFormBloc
+final accountFormBlocProvider = Provider.autoDispose<AccountFormBloc>((ref) {
+  final service = ref.read(accountServiceProvider);
+  return AccountFormBloc(service);
+});
+
+/// CategoriesBloc
+final categoriesBlocProvider = Provider.autoDispose<CategoriesBloc>((ref) {
+  final service = ref.read(categoryServiceProvider);
+  return CategoriesBloc(service);
+});
+
+/// CategoryFormBloc
+final categoryFormBlocProvider = Provider.autoDispose<CategoryFormBloc>((ref) {
+  final service = ref.read(categoryServiceProvider);
+  return CategoryFormBloc(service);
+});
+
+/// TransactionsBloc
+final transactionsBlocProvider = Provider.autoDispose<TransactionsBloc>((ref) {
+  final service = ref.read(transactionServiceProvider);
+  return TransactionsBloc(service);
+});
+
+/// TransactionFormBloc
+final transactionFormBlocProvider = Provider<TransactionFormBloc>((ref) {
+  final service = ref.read(transactionServiceProvider);
+  return TransactionFormBloc(service);
+});

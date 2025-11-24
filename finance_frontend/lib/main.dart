@@ -1,35 +1,33 @@
-import 'package:finance_frontend/features/auth/data/services/finance_auth_service.dart';
+import 'package:finance_frontend/core/provider/providers.dart';
 import 'package:finance_frontend/features/auth/presentation/cubits/auth_cubit.dart';
 import 'package:finance_frontend/features/auth/presentation/views/app_wrapper.dart';
-import 'package:finance_frontend/features/settings/data/services/finance_shared_preferences_service.dart';
 import 'package:finance_frontend/features/settings/presentation/cubits/settings_cubit.dart';
 import 'package:finance_frontend/features/settings/presentation/cubits/settings_state.dart';
 import 'package:finance_frontend/themes/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
-  runApp(const FinanceTracker());
+  runApp(const ProviderScope(child: FinanceTracker()));
 }
 
-class FinanceTracker extends StatelessWidget {
+class FinanceTracker extends ConsumerWidget {
   const FinanceTracker({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return MultiBlocProvider(
       providers: [
         BlocProvider<AuthCubit>(
-          create: (context) => AuthCubit(FinanceAuthService())..checkStatus(),
+          create: (context) => ref.read(authCubitProvider)..checkStatus(),
         ),
-        BlocProvider(
+        BlocProvider<SettingsCubit>(
           create:
-              (context) =>
-                  SettingsCubit(FinanceSharedPreferencesService())
-                    ..checkModeStatus(),
+              (context) => ref.read(settingsCubitProvider)..checkModeStatus(),
         ),
       ],
       child: BlocBuilder<SettingsCubit, SettingsState>(

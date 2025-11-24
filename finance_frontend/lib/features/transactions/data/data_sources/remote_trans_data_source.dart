@@ -7,14 +7,15 @@ import 'package:finance_frontend/features/transactions/data/model/dtos/transacti
 import 'package:finance_frontend/features/transactions/data/model/dtos/transaction_update.dart';
 import 'package:finance_frontend/features/transactions/data/model/dtos/transfer_transaction_create.dart';
 import 'package:finance_frontend/features/transactions/data/model/transaction_model.dart';
+import 'package:finance_frontend/features/transactions/domain/data_source/trans_data_source.dart';
 import 'package:finance_frontend/features/transactions/domain/exceptions/transaction_exceptions.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-class RemoteDataSource {
+class RemoteTransDataSource implements TransDataSource {
   final SecureStorageService secureStorageService;
   final NetworkClient client;
 
-  RemoteDataSource(this.secureStorageService, this.client);
+  RemoteTransDataSource(this.secureStorageService, this.client);
 
   final baseUrl = "${dotenv.env["API_BASE_URL_MOBILE"]}/transactions";
 
@@ -30,11 +31,11 @@ class RemoteDataSource {
     try {
       return jsonDecode(body) as Map<String, dynamic>;
     } catch (_) {
-      return {};
+      return <String, dynamic>{};
     }
   }
 
-
+  @override
   Future<TransactionModel> createTransaction(TransactionCreate create) async {
     try {
       final headers = await _authHeaders();
@@ -69,7 +70,7 @@ class RemoteDataSource {
     }
   }
 
-
+  @override
   Future<(TransactionModel, TransactionModel)> createTransferTransaction(
     TransferTransactionCreate create,
   ) async {
@@ -113,7 +114,7 @@ class RemoteDataSource {
     }
   }
 
-
+  @override
   Future<void> deleteTransaction(String id) async {
     try {
       final headers = await _authHeaders();
@@ -140,7 +141,7 @@ class RemoteDataSource {
       rethrow;
     }
   }
-
+  @override
   Future<void> deleteTransferTransaction(String transferGroupId) async {
     try {
       final headers = await _authHeaders();
@@ -170,7 +171,7 @@ class RemoteDataSource {
       rethrow;
     }
   }
-
+  @override
   Future<TransactionModel> getTransaction(String id) async {
     try {
       final headers = await _authHeaders();
@@ -196,7 +197,7 @@ class RemoteDataSource {
     }
   }
 
-
+  @override
   Future<List<TransactionModel>> getUserTransactions() async {
     try {
       final headers = await _authHeaders();
@@ -226,7 +227,7 @@ class RemoteDataSource {
     }
   }
 
-
+  @override
   Future<TransactionModel> updateTransaction(
     String id,
     TransactionPatch patch,

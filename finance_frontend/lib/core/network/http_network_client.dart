@@ -1,5 +1,4 @@
 import 'package:http/http.dart' as http;
-
 import 'network_client.dart';
 import 'request.dart';
 import 'response.dart';
@@ -31,8 +30,8 @@ class HttpNetworkClient implements NetworkClient {
           );
           break;
 
-        case 'PUT':
-          response = await client.put(
+        case 'PATCH':
+          response = await client.patch(
             request.url,
             headers: request.headers,
             body: request.body,

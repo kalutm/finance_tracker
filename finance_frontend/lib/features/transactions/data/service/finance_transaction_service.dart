@@ -1,18 +1,16 @@
 import 'dart:async';
-
-import 'package:finance_frontend/features/accounts/data/services/finance_account_service.dart';
 import 'package:finance_frontend/features/accounts/domain/service/account_service.dart';
-import 'package:finance_frontend/features/transactions/data/data_sources/remote_data_source.dart';
 import 'package:finance_frontend/features/transactions/data/model/dtos/transaction_create.dart';
 import 'package:finance_frontend/features/transactions/data/model/dtos/transaction_update.dart';
 import 'package:finance_frontend/features/transactions/data/model/dtos/transfer_transaction_create.dart';
+import 'package:finance_frontend/features/transactions/domain/data_source/trans_data_source.dart';
 import 'package:finance_frontend/features/transactions/domain/entities/transaction.dart';
 import 'package:finance_frontend/features/transactions/domain/entities/transaction_type.dart';
 import 'package:finance_frontend/features/transactions/domain/service/transaction_service.dart';
 
 class FinanceTransactionService implements TransactionService {
   final AccountService accountService;
-  final RemoteDataSource source;
+  final TransDataSource source;
 
   FinanceTransactionService(this.accountService, this.source);
 
@@ -84,7 +82,7 @@ class FinanceTransactionService implements TransactionService {
     _emitCache();
 
     // refresh accounts to update balances
-    await FinanceAccountService().getUserAccounts();
+    await accountService.getUserAccounts();
   }
 
   @override

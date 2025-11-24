@@ -5,7 +5,7 @@ abstract class AuthService {
   Future<AuthUser?> getCurrentUser();
 
   // get user cridentials from backend using access token
-  Future<AuthUser> _getUserCridentials(String accessToken);
+  Future<AuthUser> getUserCridentials(String accessToken);
 
   Future<AuthUser> loginWithEmailAndPassword(String email, String password);
 

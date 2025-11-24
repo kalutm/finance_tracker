@@ -111,7 +111,7 @@ class _HomeState extends State<Home> {
             ListTile(
               leading: Icon(
                 Icons.logout_rounded,
-                color: theme.colorScheme.onSurface.withOpacity(0.6),
+                color: theme.colorScheme.onSurface.withAlpha(153),
               ),
               title: Text('Logout', style: theme.textTheme.bodyLarge),
               onTap: () {
@@ -170,7 +170,7 @@ class _HomeState extends State<Home> {
         color:
             isSelected
                 ? theme.colorScheme.primary
-                : theme.colorScheme.onSurface.withOpacity(0.8),
+                : theme.colorScheme.onSurface.withAlpha(204),
       ),
       title: Text(
         title,
@@ -183,7 +183,7 @@ class _HomeState extends State<Home> {
         ),
       ),
       selected: isSelected,
-      selectedTileColor: theme.colorScheme.primary.withOpacity(0.1),
+      selectedTileColor: theme.colorScheme.primary.withAlpha(25),
       onTap: () => onTap(index),
     );
   }

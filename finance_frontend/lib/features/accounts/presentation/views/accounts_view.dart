@@ -4,10 +4,10 @@ import 'package:finance_frontend/features/accounts/presentation/components/accou
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:finance_frontend/features/accounts/domain/entities/account.dart'; 
-import 'package:finance_frontend/features/accounts/data/services/finance_account_service.dart';
 import 'package:finance_frontend/features/accounts/presentation/blocs/accounts/accounts_bloc.dart';
 import 'package:finance_frontend/features/accounts/presentation/blocs/accounts/accounts_state.dart';
 import 'package:finance_frontend/features/accounts/presentation/blocs/account_form/account_form_bloc.dart';
+
 
 
 class AccountsView extends StatelessWidget {
@@ -21,9 +21,7 @@ class AccountsView extends StatelessWidget {
         return MultiBlocProvider(
           providers: [
             BlocProvider.value(value: context.read<AccountsBloc>()),
-            BlocProvider<AccountFormBloc>(
-              create: (_) => AccountFormBloc(FinanceAccountService()),
-            ),
+            BlocProvider.value(value: context.read<AccountFormBloc>())
           ],
           child: AccountFormModal(
             isUpdate: account != null,
