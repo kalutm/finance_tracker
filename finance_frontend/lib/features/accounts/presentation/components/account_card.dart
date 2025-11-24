@@ -14,10 +14,10 @@ class AccountCard extends StatelessWidget {
 
   IconData _getIconForType(AccountType type) {
     switch (type) {
-      case AccountType.CASH: return Icons.money_rounded;
+      case AccountType.CASH: return Icons.money_outlined;
       case AccountType.BANK: return Icons.account_balance_rounded;
       case AccountType.CREDIT_CARD: return Icons.credit_card_rounded;
-
+      case AccountType.CRYPTO: return Icons.currency_bitcoin_outlined;
       default: return Icons.wallet_rounded;
     }
   }
