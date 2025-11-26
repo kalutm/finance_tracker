@@ -27,14 +27,14 @@ class ConfirmationDialog extends StatelessWidget {
           style: ElevatedButton.styleFrom(
             backgroundColor: Theme.of(context).colorScheme.error,
           ),
-          onPressed: () {
+          onPressed: () async {
             Navigator.of(context).pop();
             isDelete
                 ? showDialog(
                   context: context,
                   builder: (context) => DeleteUserAccountConfirmationDialog(),
                 )
-                : context.read<AuthCubit>().logOut();
+                : await context.read<AuthCubit>().logOut();
           },
           child: Text(isDelete ? "Delete" : "Logout"),
         ),
