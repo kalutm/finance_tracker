@@ -23,4 +23,6 @@ abstract class TransactionService {
   Future<void> deleteTransaction(String id);
 
   Future<void> deleteTransferTransaction(String transferGroupId);
+
+  Future<void> clearCache();
 }

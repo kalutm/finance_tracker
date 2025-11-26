@@ -20,4 +20,6 @@ abstract class CategoryService {
   Future<void> deleteCategory(String id);
 
   Future<FinanceCategory> restoreCategory(String id);
+
+  Future<void> clearCache();
 }

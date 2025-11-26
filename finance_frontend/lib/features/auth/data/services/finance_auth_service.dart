@@ -1,10 +1,13 @@
 import 'dart:convert';
 import 'package:finance_frontend/core/network/network_client.dart';
 import 'package:finance_frontend/core/network/request.dart';
+import 'package:finance_frontend/features/accounts/domain/service/account_service.dart';
 import 'package:finance_frontend/features/auth/domain/entities/auth_user.dart';
 import 'package:finance_frontend/features/auth/domain/exceptions/auth_exceptions.dart';
 import 'package:finance_frontend/features/auth/domain/services/auth_service.dart';
 import 'package:finance_frontend/features/auth/domain/services/secure_storage_service.dart';
+import 'package:finance_frontend/features/categories/domain/service/category_service.dart';
+import 'package:finance_frontend/features/transactions/domain/service/transaction_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:jwt_decoder/jwt_decoder.dart';
@@ -13,16 +16,21 @@ import 'dart:developer' as dev_tool show log;
 class FinanceAuthService implements AuthService {
   final SecureStorageService secureStorageService;
   final NetworkClient client;
+  final AccountService accountService;
+  final CategoryService categoryService;
+  final TransactionService transactionService;
 
-  FinanceAuthService(
-    this.secureStorageService,
-    this.client,
-  );
+  FinanceAuthService({
+    required this.secureStorageService,
+    required this.client,
+    required this.accountService,
+    required this.categoryService,
+    required this.transactionService,
+  });
 
   final baseUrl = "${dotenv.env["API_BASE_URL_MOBILE"]}/auth";
   final clientServerId = dotenv.env["GOOGLE_SERVER_CLIENT_ID_WEB"]!;
   final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
-
 
   Map<String, dynamic> _decode(String body) {
     try {
@@ -145,8 +153,14 @@ class FinanceAuthService implements AuthService {
       final accessToken = json["acc_jwt"] as String;
       final refreshToken = json["ref_jwt"] as String;
 
-      await secureStorageService.saveString(key: "access_token", value: accessToken);
-      await secureStorageService.saveString(key: "refresh_token", value: refreshToken);
+      await secureStorageService.saveString(
+        key: "access_token",
+        value: accessToken,
+      );
+      await secureStorageService.saveString(
+        key: "refresh_token",
+        value: refreshToken,
+      );
 
       return await getUserCridentials(accessToken);
     } on AuthException {
@@ -173,9 +187,7 @@ class FinanceAuthService implements AuthService {
         headers: <String, String>{
           'Content-Type': 'application/json; charset=UTF-8',
         },
-        body: jsonEncode(<String, String>{
-          'id_token': idToken,
-        }),
+        body: jsonEncode(<String, String>{'id_token': idToken}),
       );
 
       final response = await client.send(req);
@@ -191,8 +203,14 @@ class FinanceAuthService implements AuthService {
       final accessToken = json["acc_jwt"] as String;
       final refreshToken = json["ref_jwt"] as String;
 
-      await secureStorageService.saveString(key: "access_token", value: accessToken);
-      await secureStorageService.saveString(key: "refresh_token", value: refreshToken);
+      await secureStorageService.saveString(
+        key: "access_token",
+        value: accessToken,
+      );
+      await secureStorageService.saveString(
+        key: "refresh_token",
+        value: refreshToken,
+      );
 
       return await getUserCridentials(accessToken);
     } on AuthException {
@@ -231,8 +249,14 @@ class FinanceAuthService implements AuthService {
       final accessToken = json["acc_jwt"] as String;
       final refreshToken = json["ref_jwt"] as String;
 
-      await secureStorageService.saveString(key: "access_token", value: accessToken);
-      await secureStorageService.saveString(key: "refresh_token", value: refreshToken);
+      await secureStorageService.saveString(
+        key: "access_token",
+        value: accessToken,
+      );
+      await secureStorageService.saveString(
+        key: "refresh_token",
+        value: refreshToken,
+      );
 
       return await getUserCridentials(accessToken);
     } on AuthException {
@@ -265,13 +289,20 @@ class FinanceAuthService implements AuthService {
 
   @override
   Future<void> logout() async {
+    // clear the current user's cache data's
+    await accountService.clearCache();
+    await categoryService.clearCache();
+    await transactionService.clearCache();
+    // delete token's
     await secureStorageService.deleteAll();
   }
 
   @override
   Future<void> deleteCurrentUser() async {
     try {
-      final accessToken = await secureStorageService.readString(key: "access_token");
+      final accessToken = await secureStorageService.readString(
+        key: "access_token",
+      );
       if (accessToken == null) {
         throw NoUserToDelete();
       }
@@ -279,9 +310,7 @@ class FinanceAuthService implements AuthService {
       final req = RequestModel(
         method: 'DELETE',
         url: Uri.parse("$baseUrl/me"),
-        headers: {
-          "Authorization": "Bearer $accessToken",
-        },
+        headers: {"Authorization": "Bearer $accessToken"},
       );
 
       final res = await client.send(req);

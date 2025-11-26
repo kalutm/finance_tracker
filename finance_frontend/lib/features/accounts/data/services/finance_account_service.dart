@@ -323,6 +323,11 @@ class FinanceAccountService implements AccountService {
       rethrow;
     }
   }
+  @override
+  Future<void> clearCache() async {
+    _cachedAccounts.clear();
+    _emitCache();
+  }
 
   // close stream when app disposes
   void dispose() {

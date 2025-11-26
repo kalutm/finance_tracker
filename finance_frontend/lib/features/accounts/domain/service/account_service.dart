@@ -21,4 +21,6 @@ abstract class AccountService {
   Future<void> deleteAccount(String id);
 
   Future<Account> restoreAccount(String id);
+
+  Future<void> clearCache();
 }

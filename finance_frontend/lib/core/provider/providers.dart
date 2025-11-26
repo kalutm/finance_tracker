@@ -38,7 +38,7 @@ import 'package:finance_frontend/features/transactions/presentation/bloc/transac
 
 /// Low level / core providers ///
 
-/// http.Client provider 
+/// http.Client provider
 final httpClientProvider = Provider<http.Client>((ref) {
   final client = http.Client();
   ref.onDispose(() => client.close());
@@ -48,9 +48,9 @@ final httpClientProvider = Provider<http.Client>((ref) {
 /// Shared preferences provider
 final sharedPreferencesProvider = Provider<SharedPreferencesService>((ref) {
   return FinanceSharedPreferencesService();
-},);
+});
 
-/// Secure storage provider 
+/// Secure storage provider
 final secureStorageProvider = Provider<SecureStorageService>((ref) {
   return FinanceSecureStorageService();
 });
@@ -62,14 +62,6 @@ final networkClientProvider = Provider<NetworkClient>((ref) {
 });
 
 /// Services & DataSources  ///
-
-/// AuthService exposed as AuthService (interface)
-final authServiceProvider = Provider<AuthService>((ref) {
-  return FinanceAuthService(
-    ref.read(secureStorageProvider),
-    ref.read(networkClientProvider),
-  );
-});
 
 /// AccountService exposed as AccountService (interface)
 final accountServiceProvider = Provider<AccountService>((ref) {
@@ -104,6 +96,17 @@ final transactionServiceProvider = Provider<TransactionService>((ref) {
   );
 });
 
+/// AuthService exposed as AuthService (interface)
+final authServiceProvider = Provider<AuthService>((ref) {
+  return FinanceAuthService(
+    secureStorageService: ref.read(secureStorageProvider),
+    client: ref.read(networkClientProvider),
+    accountService: ref.read(accountServiceProvider),
+    categoryService: ref.read(categoryServiceProvider),
+    transactionService: ref.read(transactionServiceProvider),
+  );
+});
+
 /// Blocs / Cubits ///
 
 /// AuthCubit
@@ -116,7 +119,7 @@ final authCubitProvider = Provider<AuthCubit>((ref) {
 final settingsCubitProvider = Provider<SettingsCubit>((ref) {
   final service = ref.read(sharedPreferencesProvider);
   return SettingsCubit(service);
-},);
+});
 
 /// AccountsBloc
 final accountsBlocProvider = Provider<AccountsBloc>((ref) {

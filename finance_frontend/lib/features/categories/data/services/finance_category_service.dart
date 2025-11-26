@@ -309,6 +309,12 @@ class FinanceCategoryService implements CategoryService {
     }
   }
 
+  @override
+  Future<void> clearCache() async {
+    _cache.clear();
+    _emitCache();
+  }
+
   void dispose() {
     if (!_controller.isClosed) _controller.close();
   }

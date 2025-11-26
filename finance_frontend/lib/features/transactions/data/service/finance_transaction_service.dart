@@ -152,6 +152,12 @@ class FinanceTransactionService implements TransactionService {
     return entity;
   }
 
+  @override
+  Future<void> clearCache() async {
+    _cachedTransactions.clear();
+    _emitCache();
+  }
+
   // close stream when app disposes 
   void dispose() {
     if (!_controller.isClosed) _controller.close();
