@@ -9,19 +9,20 @@ import 'package:finance_frontend/features/accounts/domain/entities/dtos/account_
 import 'package:finance_frontend/features/accounts/domain/exceptions/account_exceptions.dart';
 import 'package:finance_frontend/features/accounts/domain/service/account_service.dart';
 import 'package:finance_frontend/features/auth/domain/services/secure_storage_service.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'dart:developer' as dev_tool show log;
 
 class FinanceAccountService implements AccountService {
   final SecureStorageService secureStorageService;
   final NetworkClient client;
+  final String baseUrl;
 
-  FinanceAccountService(
-    this.secureStorageService, 
-    this.client,
-  );
+  FinanceAccountService({
+    required this.secureStorageService,
+    required this.client,
+    required this.baseUrl,
+  });
 
-  final baseUrl = "${dotenv.env["API_BASE_URL_MOBILE"]}/accounts";
+  get accountsBaseUrl => "$baseUrl/accounts";
 
   final List<Account> _cachedAccounts = [];
   final StreamController<List<Account>> _controller =
@@ -52,18 +53,13 @@ class FinanceAccountService implements AccountService {
     }
   }
 
-
   @override
   Future<List<Account>> getUserAccounts() async {
     try {
       final headers = await _authHeaders();
 
       final res = await client.send(
-        RequestModel(
-          method: 'GET',
-          url: Uri.parse(baseUrl),
-          headers: headers,
-        ),
+        RequestModel(method: 'GET', url: Uri.parse(accountsBaseUrl), headers: headers),
       );
 
       final resBody = _decode(res.body);
@@ -98,7 +94,7 @@ class FinanceAccountService implements AccountService {
       final res = await client.send(
         RequestModel(
           method: 'POST',
-          url: Uri.parse("$baseUrl/"),
+          url: Uri.parse("$accountsBaseUrl/"),
           headers: headers,
           body: jsonEncode(create.toJson()),
         ),
@@ -130,7 +126,7 @@ class FinanceAccountService implements AccountService {
       final res = await client.send(
         RequestModel(
           method: 'PATCH',
-          url: Uri.parse("$baseUrl/$id/deactivate"),
+          url: Uri.parse("$accountsBaseUrl/$id/deactivate"),
           headers: headers,
         ),
       );
@@ -164,7 +160,7 @@ class FinanceAccountService implements AccountService {
       final res = await client.send(
         RequestModel(
           method: 'DELETE',
-          url: Uri.parse("$baseUrl/$id"),
+          url: Uri.parse("$accountsBaseUrl/$id"),
           headers: headers,
         ),
       );
@@ -201,15 +197,16 @@ class FinanceAccountService implements AccountService {
       // Try find in cache first
       final cached = _cachedAccounts.firstWhere(
         (a) => a.id == id,
-        orElse: () => Account(
-          id: '',
-          balance: '0',
-          name: '',
-          type: AccountType.values.first,
-          currency: '',
-          active: false,
-          createdAt: DateTime.now(),
-        ),
+        orElse:
+            () => Account(
+              id: '',
+              balance: '0',
+              name: '',
+              type: AccountType.values.first,
+              currency: '',
+              active: false,
+              createdAt: DateTime.now(),
+            ),
       );
 
       // If found in cache and has valid id, return it
@@ -221,7 +218,7 @@ class FinanceAccountService implements AccountService {
       final resp = await client.send(
         RequestModel(
           method: 'GET',
-          url: Uri.parse("$baseUrl/$id"),
+          url: Uri.parse("$accountsBaseUrl/$id"),
           headers: headers,
         ),
       );
@@ -257,7 +254,7 @@ class FinanceAccountService implements AccountService {
       final res = await client.send(
         RequestModel(
           method: 'PATCH',
-          url: Uri.parse("$baseUrl/$id/restore"),
+          url: Uri.parse("$accountsBaseUrl/$id/restore"),
           headers: headers,
         ),
       );
@@ -294,7 +291,7 @@ class FinanceAccountService implements AccountService {
       final res = await client.send(
         RequestModel(
           method: 'PATCH',
-          url: Uri.parse("$baseUrl/$id"),
+          url: Uri.parse("$accountsBaseUrl/$id"),
           headers: headers,
           body: jsonEncode(patch.toJson()),
         ),
@@ -323,6 +320,7 @@ class FinanceAccountService implements AccountService {
       rethrow;
     }
   }
+
   @override
   Future<void> clearCache() async {
     _cachedAccounts.clear();

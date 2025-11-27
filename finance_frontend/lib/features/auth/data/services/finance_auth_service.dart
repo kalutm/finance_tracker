@@ -19,6 +19,7 @@ class FinanceAuthService implements AuthService {
   final AccountService accountService;
   final CategoryService categoryService;
   final TransactionService transactionService;
+  final String baseUrl;
 
   FinanceAuthService({
     required this.secureStorageService,
@@ -26,9 +27,10 @@ class FinanceAuthService implements AuthService {
     required this.accountService,
     required this.categoryService,
     required this.transactionService,
+    required this.baseUrl,
   });
 
-  final baseUrl = "${dotenv.env["API_BASE_URL_MOBILE"]}/auth";
+  get authBaseUrl  => "$baseUrl/auth";
   final clientServerId = dotenv.env["GOOGLE_SERVER_CLIENT_ID_WEB"]!;
   final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
 
@@ -60,7 +62,7 @@ class FinanceAuthService implements AuthService {
             try {
               final req = RequestModel(
                 method: 'POST',
-                url: Uri.parse("$baseUrl/refresh"),
+                url: Uri.parse("$authBaseUrl/refresh"),
                 headers: {"Content-Type": "application/json"},
                 body: jsonEncode({"token": refreshToken}),
               );
@@ -108,7 +110,7 @@ class FinanceAuthService implements AuthService {
     try {
       final req = RequestModel(
         method: 'GET',
-        url: Uri.parse("$baseUrl/me"),
+        url: Uri.parse("$authBaseUrl/me"),
         headers: {"Authorization": "Bearer $accessToken"},
       );
 
@@ -135,7 +137,7 @@ class FinanceAuthService implements AuthService {
     try {
       final req = RequestModel(
         method: 'POST',
-        url: Uri.parse("$baseUrl/login"),
+        url: Uri.parse("$authBaseUrl/login"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"email": email, "password": password}),
       );
@@ -183,7 +185,7 @@ class FinanceAuthService implements AuthService {
 
       final req = RequestModel(
         method: 'POST',
-        url: Uri.parse("$baseUrl/login/google"),
+        url: Uri.parse("$authBaseUrl/login/google"),
         headers: <String, String>{
           'Content-Type': 'application/json; charset=UTF-8',
         },
@@ -231,7 +233,7 @@ class FinanceAuthService implements AuthService {
     try {
       final req = RequestModel(
         method: 'POST',
-        url: Uri.parse("$baseUrl/register"),
+        url: Uri.parse("$authBaseUrl/register"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"email": email, "password": password}),
       );
@@ -269,7 +271,7 @@ class FinanceAuthService implements AuthService {
     try {
       final req = RequestModel(
         method: 'POST',
-        url: Uri.parse("$baseUrl/resend-verification"),
+        url: Uri.parse("$authBaseUrl/resend-verification"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"email": email}),
       );
@@ -309,7 +311,7 @@ class FinanceAuthService implements AuthService {
 
       final req = RequestModel(
         method: 'DELETE',
-        url: Uri.parse("$baseUrl/me"),
+        url: Uri.parse("$authBaseUrl/me"),
         headers: {"Authorization": "Bearer $accessToken"},
       );
 

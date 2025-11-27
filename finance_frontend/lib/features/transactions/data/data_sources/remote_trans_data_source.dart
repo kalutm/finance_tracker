@@ -9,15 +9,19 @@ import 'package:finance_frontend/features/transactions/data/model/dtos/transfer_
 import 'package:finance_frontend/features/transactions/data/model/transaction_model.dart';
 import 'package:finance_frontend/features/transactions/domain/data_source/trans_data_source.dart';
 import 'package:finance_frontend/features/transactions/domain/exceptions/transaction_exceptions.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class RemoteTransDataSource implements TransDataSource {
   final SecureStorageService secureStorageService;
   final NetworkClient client;
+  final String baseUrl;
 
-  RemoteTransDataSource(this.secureStorageService, this.client);
+  RemoteTransDataSource({
+    required this.secureStorageService,
+    required this.client,
+    required this.baseUrl,
+  });
 
-  final baseUrl = "${dotenv.env["API_BASE_URL_MOBILE"]}/transactions";
+  get transactionsBaseUrl => "$baseUrl/transactions";
 
   Future<Map<String, String>> _authHeaders() async {
     final token = await secureStorageService.readString(key: "access_token");
@@ -43,7 +47,7 @@ class RemoteTransDataSource implements TransDataSource {
       final res = await client.send(
         RequestModel(
           method: 'POST',
-          url: Uri.parse("$baseUrl/"),
+          url: Uri.parse("$transactionsBaseUrl/"),
           headers: headers,
           body: jsonEncode(create.toJson()),
         ),
@@ -80,7 +84,7 @@ class RemoteTransDataSource implements TransDataSource {
       final res = await client.send(
         RequestModel(
           method: 'POST',
-          url: Uri.parse("$baseUrl/transfer"),
+          url: Uri.parse("$transactionsBaseUrl/transfer"),
           headers: headers,
           body: jsonEncode(create.toJson()),
         ),
@@ -102,12 +106,8 @@ class RemoteTransDataSource implements TransDataSource {
       }
 
       return (
-        TransactionModel.fromFinance(
-          json["outgoing_transaction"],
-        ),
-        TransactionModel.fromFinance(
-          json["incoming_transaction"],
-        ),
+        TransactionModel.fromFinance(json["outgoing_transaction"]),
+        TransactionModel.fromFinance(json["incoming_transaction"]),
       );
     } on TransactionException {
       rethrow;
@@ -122,7 +122,7 @@ class RemoteTransDataSource implements TransDataSource {
       final res = await client.send(
         RequestModel(
           method: 'DELETE',
-          url: Uri.parse("$baseUrl/$id"),
+          url: Uri.parse("$transactionsBaseUrl/$id"),
           headers: headers,
         ),
       );
@@ -141,6 +141,7 @@ class RemoteTransDataSource implements TransDataSource {
       rethrow;
     }
   }
+
   @override
   Future<void> deleteTransferTransaction(String transferGroupId) async {
     try {
@@ -149,7 +150,7 @@ class RemoteTransDataSource implements TransDataSource {
       final res = await client.send(
         RequestModel(
           method: 'DELETE',
-          url: Uri.parse("$baseUrl/transfer/$transferGroupId"),
+          url: Uri.parse("$transactionsBaseUrl/transfer/$transferGroupId"),
           headers: headers,
         ),
       );
@@ -171,6 +172,7 @@ class RemoteTransDataSource implements TransDataSource {
       rethrow;
     }
   }
+
   @override
   Future<TransactionModel> getTransaction(String id) async {
     try {
@@ -179,7 +181,7 @@ class RemoteTransDataSource implements TransDataSource {
       final res = await client.send(
         RequestModel(
           method: 'GET',
-          url: Uri.parse("$baseUrl/$id"),
+          url: Uri.parse("$transactionsBaseUrl/$id"),
           headers: headers,
         ),
       );
@@ -205,7 +207,7 @@ class RemoteTransDataSource implements TransDataSource {
       final res = await client.send(
         RequestModel(
           method: 'GET',
-          url: Uri.parse(baseUrl),
+          url: Uri.parse(transactionsBaseUrl),
           headers: headers,
         ),
       );
@@ -219,9 +221,7 @@ class RemoteTransDataSource implements TransDataSource {
 
       final data = (json["transactions"] ?? []) as List<dynamic>;
 
-      return data
-          .map((t) => TransactionModel.fromFinance(t))
-          .toList();
+      return data.map((t) => TransactionModel.fromFinance(t)).toList();
     } on TransactionException {
       rethrow;
     }
@@ -238,7 +238,7 @@ class RemoteTransDataSource implements TransDataSource {
       final res = await client.send(
         RequestModel(
           method: 'PATCH',
-          url: Uri.parse("$baseUrl/$id"),
+          url: Uri.parse("$transactionsBaseUrl/$id"),
           headers: headers,
           body: jsonEncode(patch.toJson()),
         ),
@@ -249,8 +249,7 @@ class RemoteTransDataSource implements TransDataSource {
       if (res.statusCode != 200) {
         final detail = json["detail"];
 
-        if (res.statusCode == 400 &&
-            detail['code'] == "INSUFFICIENT_BALANCE") {
+        if (res.statusCode == 400 && detail['code'] == "INSUFFICIENT_BALANCE") {
           throw AccountBalanceTnsufficient();
         } else if (res.statusCode == 400 &&
             detail['code'] == "INVALID_AMOUNT") {

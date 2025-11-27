@@ -10,18 +10,20 @@ import 'package:finance_frontend/features/categories/domain/entities/dtos/catego
 import 'package:finance_frontend/features/categories/domain/entities/dtos/category_patch.dart';
 import 'package:finance_frontend/features/categories/domain/exceptions/category_exceptions.dart';
 import 'package:finance_frontend/features/categories/domain/service/category_service.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 
 class FinanceCategoryService implements CategoryService {
   final SecureStorageService secureStorageService;
   final NetworkClient client;
+  final String baseUrl;
 
-  FinanceCategoryService(
-    this.secureStorageService,
-    this.client,
-  );
+  FinanceCategoryService({
+    required this.secureStorageService,
+    required this.client,
+    required this.baseUrl,
+});
 
-  final String baseUrl = "${dotenv.env["API_BASE_URL_MOBILE"]}/categories";
+  get categoriesBaseUrl => "$baseUrl/categories";
 
   final List<FinanceCategory> _cache = [];
   final StreamController<List<FinanceCategory>> _controller =
@@ -60,7 +62,7 @@ class FinanceCategoryService implements CategoryService {
       final resp = await client.send(
         RequestModel(
           method: 'GET',
-          url: Uri.parse(baseUrl),
+          url: Uri.parse(categoriesBaseUrl),
           headers: headers,
         ),
       );
@@ -95,7 +97,7 @@ class FinanceCategoryService implements CategoryService {
       final res = await client.send(
         RequestModel(
           method: 'POST',
-          url: Uri.parse("$baseUrl/"),
+          url: Uri.parse("$categoriesBaseUrl/"),
           headers: headers,
           body: jsonEncode(create.toJson()),
         ),
@@ -125,7 +127,7 @@ class FinanceCategoryService implements CategoryService {
       final res = await client.send(
         RequestModel(
           method: 'DELETE',
-          url: Uri.parse("$baseUrl/$id"),
+          url: Uri.parse("$categoriesBaseUrl/$id"),
           headers: headers,
         ),
       );
@@ -177,7 +179,7 @@ class FinanceCategoryService implements CategoryService {
       final resp = await client.send(
         RequestModel(
           method: 'GET',
-          url: Uri.parse("$baseUrl/$id"),
+          url: Uri.parse("$categoriesBaseUrl/$id"),
           headers: headers,
         ),
       );
@@ -211,7 +213,7 @@ class FinanceCategoryService implements CategoryService {
       final res = await client.send(
         RequestModel(
           method: 'PATCH',
-          url: Uri.parse("$baseUrl/$id/restore"),
+          url: Uri.parse("$categoriesBaseUrl/$id/restore"),
           headers: headers,
         ),
       );
@@ -248,7 +250,7 @@ class FinanceCategoryService implements CategoryService {
       final res = await client.send(
         RequestModel(
           method: 'PATCH',
-          url: Uri.parse("$baseUrl/$id"),
+          url: Uri.parse("$categoriesBaseUrl/$id"),
           headers: headers,
           body: jsonEncode(patch.toJson()),
         ),
@@ -283,7 +285,7 @@ class FinanceCategoryService implements CategoryService {
       final res = await client.send(
         RequestModel(
           method: 'PATCH',
-          url: Uri.parse("$baseUrl/$id/deactivate"),
+          url: Uri.parse("$categoriesBaseUrl/$id/deactivate"),
           headers: headers,
         ),
       );

@@ -1,3 +1,4 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 
@@ -38,6 +39,11 @@ import 'package:finance_frontend/features/transactions/presentation/bloc/transac
 
 /// Low level / core providers ///
 
+/// Rest Api base Url provider
+final baseUrlProvider = Provider<String>((ref) {
+  return dotenv.env["API_BASE_URL_MOBILE"]!;
+});
+
 /// http.Client provider
 final httpClientProvider = Provider<http.Client>((ref) {
   final client = http.Client();
@@ -66,24 +72,27 @@ final networkClientProvider = Provider<NetworkClient>((ref) {
 /// AccountService exposed as AccountService (interface)
 final accountServiceProvider = Provider<AccountService>((ref) {
   return FinanceAccountService(
-    ref.read(secureStorageProvider),
-    ref.read(networkClientProvider),
+    secureStorageService: ref.read(secureStorageProvider),
+    client: ref.read(networkClientProvider),
+    baseUrl: ref.read(baseUrlProvider),
   );
 });
 
 /// CategoryService exposed as CategoryService (interface)
 final categoryServiceProvider = Provider<CategoryService>((ref) {
   return FinanceCategoryService(
-    ref.read(secureStorageProvider),
-    ref.read(networkClientProvider),
+    secureStorageService: ref.read(secureStorageProvider),
+    client: ref.read(networkClientProvider),
+    baseUrl: ref.read(baseUrlProvider),
   );
 });
 
 /// TransDataSource (remote) exposed as TransDataSource (interface)
 final transDataSourceProvider = Provider<TransDataSource>((ref) {
   return RemoteTransDataSource(
-    ref.read(secureStorageProvider),
-    ref.read(networkClientProvider),
+   secureStorageService: ref.read(secureStorageProvider),
+   client: ref.read(networkClientProvider),
+   baseUrl: ref.read(baseUrlProvider),
   );
 });
 
@@ -104,6 +113,7 @@ final authServiceProvider = Provider<AuthService>((ref) {
     accountService: ref.read(accountServiceProvider),
     categoryService: ref.read(categoryServiceProvider),
     transactionService: ref.read(transactionServiceProvider),
+    baseUrl: ref.read(baseUrlProvider),
   );
 });
 
