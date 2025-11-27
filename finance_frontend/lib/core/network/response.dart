@@ -1,4 +1,3 @@
-// lib/src/core/network/response.dart
 class ResponseModel {
   final int statusCode;
   final Map<String, String> headers;
