@@ -12,6 +12,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
 import '../../../helpers/accounts/create_fake_account.dart';
+import '../../../helpers/accounts/create_fake_account_create.dart';
 import '../../../helpers/mocks.dart';
 import '../../../helpers/test_container.dart';
 
@@ -75,8 +76,6 @@ void main() {
 
       // Assert
       expect(list.length, 3);
-      // stream should have emitted at least once with those accounts
-      // wait a microtask for emission
       await Future<void>.delayed(Duration.zero);
       expect(emitted.isNotEmpty, true);
       expect(emitted.last.length, 3);
@@ -137,11 +136,7 @@ void main() {
     test(
       'createAccount - success returns created and updates stream & cache',
       () async {
-        final create = AccountCreate(
-          name: 'CBE',
-          type: AccountType.BANK,
-          currency: 'ETB',
-        );
+        final create = fakeAccountCreate();
 
         final respBody = jsonEncode(
           fakeAccountJson(id: 1, name: 'Telebirr', type: AccountType.WALLET),
