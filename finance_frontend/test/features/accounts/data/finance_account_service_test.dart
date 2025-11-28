@@ -4,327 +4,393 @@ import 'package:finance_frontend/core/network/request.dart';
 import 'package:finance_frontend/core/network/response.dart';
 import 'package:finance_frontend/core/provider/providers.dart';
 import 'package:finance_frontend/features/accounts/domain/entities/account_type_enum.dart';
+import 'package:finance_frontend/features/accounts/domain/entities/account.dart';
 import 'package:finance_frontend/features/accounts/domain/entities/dtos/account_create.dart';
 import 'package:finance_frontend/features/accounts/domain/exceptions/account_exceptions.dart';
-
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
+import '../../../helpers/accounts/create_fake_account.dart';
 import '../../../helpers/mocks.dart';
+import '../../../helpers/test_container.dart';
 
 void main() {
   late MockSecureStorageService mockStorage;
   late MockNetworkClient mockNetwork;
+  late ProviderContainer container;
 
   setUpAll(() {
     registerFallbackValue(
-      RequestModel(
-        method: "GET",
-        url: Uri.parse("http://fake.com/accounts"),
-        headers: {
-          "Authorization": "Bearer fake_access_token",
-          "Content-Type": "application/json",
-        },
-      ),
+      RequestModel(method: 'GET', url: Uri.parse('http://fake.com/accounts')),
     );
+  });
+
+  setUp(() {
     mockStorage = MockSecureStorageService();
     mockNetwork = MockNetworkClient();
-  });
 
-  test('test get user accounts success', () async {
-    final body = jsonEncode({
-      "total": 3,
-      "accounts": [
-        {
-          'id': 1,
-          'balance': '50',
-          'name': 'Telebirr',
-          'type': AccountType.WALLET.name,
-          'currency': 'ETB',
-          'active': true,
-          'created_at': DateTime.now().toIso8601String(),
-        },
-        {
-          'id': 2,
-          'balance': '50',
-          'name': 'Dashen',
-          'type': AccountType.BANK.name,
-          'currency': 'ETB',
-          'active': true,
-          'created_at': DateTime.now().toIso8601String(),
-        },
-        {
-          'id': 3,
-          'balance': '50',
-          'name': 'CBE',
-          'type': AccountType.BANK.name,
-          'currency': 'ETB',
-          'active': true,
-          'created_at': DateTime.now().toIso8601String(),
-        },
-      ],
-    });
-
-    final response = ResponseModel(statusCode: 200, headers: {}, body: body);
-
-    // Arrange
-    when(() => mockStorage.readString(key: "access_token")).thenAnswer((
-      _,
-    ) async {
-      return "fake_access_token";
-    });
-    when(() => mockNetwork.send(any())).thenAnswer((_) async {
-      return response;
-    });
-
-    final container = ProviderContainer(
+    container = createTestContainer(
       overrides: [
         networkClientProvider.overrideWithValue(mockNetwork),
         secureStorageProvider.overrideWithValue(mockStorage),
-        baseUrlProvider.overrideWithValue("http://fake.com"),
+        baseUrlProvider.overrideWithValue('http://fake.com'),
       ],
-    );
-    final accountService = container.read(accountServiceProvider);
-
-    // Act
-    final accounts = await accountService.getUserAccounts();
-
-    //Assert
-    expect(accounts.length, 3);
-  });
-
-  test('test get user accounts throws Error', () async {
-    // Arrange
-    when(() => mockStorage.readString(key: "access_token")).thenAnswer((
-      _,
-    ) async {
-      return "fake_access_token";
-    });
-    when(() => mockNetwork.send(any())).thenAnswer((_) async {
-      return ResponseModel(statusCode: 400, headers: {}, body: jsonEncode({}));
-    });
-
-    final container = ProviderContainer(
-      overrides: [
-        networkClientProvider.overrideWithValue(mockNetwork),
-        secureStorageProvider.overrideWithValue(mockStorage),
-        baseUrlProvider.overrideWithValue("http://fake.com"),
-      ],
-    );
-    final accountService = container.read(accountServiceProvider);
-
-    // Act & Assert
-    expect(
-      () => accountService.getUserAccounts(),
-      throwsA(isA<CouldnotFetchAccounts>()),
     );
   });
 
-  test('test create account success', () async {
-    // Arrange
-    final create = AccountCreate(
-      name: "CBE",
-      type: AccountType.BANK,
-      currency: "ETB",
-    );
-    final response = ResponseModel(
-      statusCode: 201,
-      headers: {},
-      body: jsonEncode({
-        'id': 1,
-        'balance': '50',
-        'name': 'Telebirr',
-        'type': AccountType.WALLET.name,
-        'currency': 'ETB',
-        'active': true,
-        'created_at': DateTime.now().toIso8601String(),
-      }),
-    );
-    when(() => mockStorage.readString(key: "access_token")).thenAnswer((
-      _,
-    ) async {
-      return "fake_access_token";
-    });
-    when(() => mockNetwork.send(any())).thenAnswer((_) async {
-      return response;
-    });
-
-    final container = ProviderContainer(
-      overrides: [
-        networkClientProvider.overrideWithValue(mockNetwork),
-        secureStorageProvider.overrideWithValue(mockStorage),
-        baseUrlProvider.overrideWithValue("http://fake.com"),
-      ],
-    );
-    final accountService = container.read(accountServiceProvider);
-
-    // Act
-    final account = await accountService.createAccount(create);
-
-    // Assert
-    expect(account.id, "1");
+  tearDown(() {
+    container.dispose();
+    reset(mockNetwork);
+    reset(mockStorage);
   });
 
-  test('test create account throws Error', () async {
-    // Arrange
-    final create = AccountCreate(
-      name: "CBE",
-      type: AccountType.BANK,
-      currency: "ETB",
-    );
+  group('FinanceAccountService - network integration & caching', () {
+    test('getUserAccounts - success returns list and emits cache', () async {
+      // Arrange
+      final body = jsonEncode({
+        'total': 3,
+        'accounts': [
+          fakeAccountJson(id: 1, name: 'Telebirr', type: AccountType.WALLET),
+          fakeAccountJson(id: 2, name: 'Dashen', type: AccountType.BANK),
+          fakeAccountJson(id: 3, name: 'CBE', type: AccountType.BANK),
+        ],
+      });
 
-    when(() => mockStorage.readString(key: "access_token")).thenAnswer((
-      _,
-    ) async {
-      return "fake_access_token";
-    });
-    when(() => mockNetwork.send(any())).thenAnswer((_) async {
-      return ResponseModel(statusCode: 400, headers: {}, body: jsonEncode({}));
-    });
+      final response = ResponseModel(statusCode: 200, headers: {}, body: body);
 
-    final container = ProviderContainer(
-      overrides: [
-        networkClientProvider.overrideWithValue(mockNetwork),
-        secureStorageProvider.overrideWithValue(mockStorage),
-        baseUrlProvider.overrideWithValue("http://fake.com"),
-      ],
-    );
-    final accountService = container.read(accountServiceProvider);
+      when(
+        () => mockStorage.readString(key: 'access_token'),
+      ).thenAnswer((_) async => 'fake_access_token');
 
-    // Act & Assert
-    expect(
-      () => accountService.createAccount(create),
-      throwsA(isA<CouldnotCreateAccount>()),
-    );
-  });
+      when(() => mockNetwork.send(any())).thenAnswer((_) async => response);
+      final svc = container.read(accountServiceProvider);
 
-  test('test deactivate account success', () async {
-    // Arrange
-    final response = ResponseModel(
-      statusCode: 200,
-      headers: {},
-      body: jsonEncode({
-        'id': 1,
-        'balance': '50',
-        'name': 'Telebirr',
-        'type': AccountType.WALLET.name,
-        'currency': 'ETB',
-        'active': false,
-        'created_at': DateTime.now().toIso8601String(),
-      }),
-    );
-    when(() => mockStorage.readString(key: "access_token")).thenAnswer((
-      _,
-    ) async {
-      return "fake_access_token";
-    });
-    when(() => mockNetwork.send(any())).thenAnswer((_) async {
-      return response;
+      // subscribe to stream before triggering
+      final emitted = <List<Account>>[];
+      final sub = svc.accountsStream.listen(emitted.add);
+
+      // Act
+      final list = await svc.getUserAccounts();
+
+      // Assert
+      expect(list.length, 3);
+      // stream should have emitted at least once with those accounts
+      // wait a microtask for emission
+      await Future<void>.delayed(Duration.zero);
+      expect(emitted.isNotEmpty, true);
+      expect(emitted.last.length, 3);
+
+      // verify interactions
+      verify(() => mockStorage.readString(key: 'access_token')).called(1);
+      verify(
+        () => mockNetwork.send(
+          any(
+            that: isA<RequestModel>()
+                .having((r) => r.method, 'method', 'GET')
+                .having((r) => r.url.toString(), 'url', contains('/accounts')),
+          ),
+        ),
+      ).called(1);
+
+      verifyNoMoreInteractions(mockStorage);
+      verifyNoMoreInteractions(mockNetwork);
+
+      await sub.cancel();
     });
 
-    final container = ProviderContainer(
-      overrides: [
-        networkClientProvider.overrideWithValue(mockNetwork),
-        secureStorageProvider.overrideWithValue(mockStorage),
-        baseUrlProvider.overrideWithValue("http://fake.com"),
-      ],
-    );
-    final accountService = container.read(accountServiceProvider);
+    test('getUserAccounts - non-200 -> throws CouldnotFetchAccounts', () async {
+      when(
+        () => mockStorage.readString(key: 'access_token'),
+      ).thenAnswer((_) async => 'fake_access_token');
 
-    // Act
-    final account = await accountService.deactivateAccount("1");
+      when(() => mockNetwork.send(any())).thenAnswer(
+        (_) async =>
+            ResponseModel(statusCode: 400, headers: {}, body: jsonEncode({})),
+      );
 
-    // Assert
-    expect(account.id, "1");
-    expect(account.active, false);
-  });
+      final svc = container.read(accountServiceProvider);
 
-  test('test deactivate account throws Error', () async {
-    // Arrange
-    when(() => mockStorage.readString(key: "access_token")).thenAnswer((
-      _,
-    ) async {
-      return "fake_access_token";
-    });
-    when(() => mockNetwork.send(any())).thenAnswer((_) async {
-      return ResponseModel(statusCode: 400, headers: {}, body: jsonEncode({}));
+      await expectLater(
+        svc.getUserAccounts(),
+        throwsA(isA<CouldnotFetchAccounts>()),
+      );
+
+      // verify interactions
+      verify(() => mockStorage.readString(key: 'access_token')).called(1);
+      verify(() => mockNetwork.send(any())).called(1);
+      verifyNoMoreInteractions(mockNetwork);
     });
 
-    final container = ProviderContainer(
-      overrides: [
-        networkClientProvider.overrideWithValue(mockNetwork),
-        secureStorageProvider.overrideWithValue(mockStorage),
-        baseUrlProvider.overrideWithValue("http://fake.com"),
-      ],
-    );
-    final accountService = container.read(accountServiceProvider);
+    test('getUserAccounts - network throws exception -> rethrows', () async {
+      when(
+        () => mockStorage.readString(key: 'access_token'),
+      ).thenAnswer((_) async => 'fake_access_token');
+      when(() => mockNetwork.send(any())).thenThrow(Exception('network down'));
+      final svc = container.read(accountServiceProvider);
 
-    // Act & Assert
-    expect(
-      () => accountService.deactivateAccount("1"),
-      throwsA(isA<CouldnotDeactivateAccount>()),
-    );
-  });
+      await expectLater(svc.getUserAccounts(), throwsA(isA<Exception>()));
 
-  test('test delete account success', () async {
-    // Arrange
-    final response = ResponseModel(
-      statusCode: 204,
-      headers: {},
-      body: jsonEncode({}),
-    );
-    when(() => mockStorage.readString(key: "access_token")).thenAnswer((
-      _,
-    ) async {
-      return "fake_access_token";
-    });
-    when(() => mockNetwork.send(any())).thenAnswer((_) async {
-      return response;
+      verify(() => mockNetwork.send(any())).called(1);
     });
 
-    final container = ProviderContainer(
-      overrides: [
-        networkClientProvider.overrideWithValue(mockNetwork),
-        secureStorageProvider.overrideWithValue(mockStorage),
-        baseUrlProvider.overrideWithValue("http://fake.com"),
-      ],
+    test(
+      'createAccount - success returns created and updates stream & cache',
+      () async {
+        final create = AccountCreate(
+          name: 'CBE',
+          type: AccountType.BANK,
+          currency: 'ETB',
+        );
+
+        final respBody = jsonEncode(
+          fakeAccountJson(id: 1, name: 'Telebirr', type: AccountType.WALLET),
+        );
+        final response = ResponseModel(
+          statusCode: 201,
+          headers: {},
+          body: respBody,
+        );
+
+        when(
+          () => mockStorage.readString(key: 'access_token'),
+        ).thenAnswer((_) async => 'fake_access_token');
+        when(() => mockNetwork.send(any())).thenAnswer((_) async => response);
+
+        final svc = container.read(accountServiceProvider);
+
+        final emitted = <List<Account>>[];
+        final sub = svc.accountsStream.listen(emitted.add);
+
+        final created = await svc.createAccount(create);
+
+        expect(created.id, '1');
+
+        await Future<void>.delayed(Duration.zero); // allow emission
+        expect(emitted.isNotEmpty, true);
+        expect(emitted.last.any((a) => a.id == '1'), true);
+
+        // verify the HTTP request happened
+        verify(
+          () => mockNetwork.send(
+            any(
+              that: isA<RequestModel>().having(
+                (r) => r.method,
+                'method',
+                'POST',
+              ),
+            ),
+          ),
+        ).called(1);
+
+        // also verify storage call before asserting no more interactions
+        verify(() => mockStorage.readString(key: 'access_token')).called(1);
+
+        verifyNoMoreInteractions(mockNetwork);
+        verifyNoMoreInteractions(mockStorage);
+
+        await sub.cancel();
+      },
     );
-    final accountService = container.read(accountServiceProvider);
 
-    // Act
-    await accountService.deleteAccount("1");
-    // final currAccounts = await accountService.accountsStream.last;
-    // final idx = currAccounts.indexWhere((a) => a.id == "1");
-    // // Assert
-    // expect(idx, -1);
-    
-  });
+    test('createAccount - 400 returns CouldnotCreateAccount', () async {
+      final create = AccountCreate(
+        name: 'CBE',
+        type: AccountType.BANK,
+        currency: 'ETB',
+      );
 
-  test('test delete account throws Error', () async {
-    // Arrange
-    when(() => mockStorage.readString(key: "access_token")).thenAnswer((
-      _,
-    ) async {
-      return "fake_access_token";
+      when(
+        () => mockStorage.readString(key: 'access_token'),
+      ).thenAnswer((_) async => 'fake_access_token');
+      when(() => mockNetwork.send(any())).thenAnswer(
+        (_) async =>
+            ResponseModel(statusCode: 400, headers: {}, body: jsonEncode({})),
+      );
+      final svc = container.read(accountServiceProvider);
+      await expectLater(
+        svc.createAccount(create),
+        throwsA(isA<CouldnotCreateAccount>()),
+      );
+
+      verify(() => mockNetwork.send(any())).called(1);
+      verifyNoMoreInteractions(mockNetwork);
     });
-    when(() => mockNetwork.send(any())).thenAnswer((_) async {
-      return ResponseModel(statusCode: 401, headers: {}, body: jsonEncode({}));
+
+    test('deactivateAccount - subscribe-first approach', () async {
+      // arrange same as above...
+      when(
+        () => mockStorage.readString(key: 'access_token'),
+      ).thenAnswer((_) async => 'fake_access_token');
+
+      when(() => mockNetwork.send(any())).thenAnswer((invocation) async {
+        final req = invocation.positionalArguments[0] as RequestModel;
+        if (req.method == 'POST') {
+          return ResponseModel(
+            statusCode: 201,
+            headers: {},
+            body: jsonEncode(fakeAccountJson(id: 1)),
+          );
+        } else if (req.method == 'PATCH') {
+          return ResponseModel(
+            statusCode: 200,
+            headers: {},
+            body: jsonEncode(fakeAccountJson(id: 1, active: false)),
+          );
+        }
+        return ResponseModel(
+          statusCode: 200,
+          headers: {},
+          body: jsonEncode({'accounts': []}),
+        );
+      });
+
+      final svc = container.read(accountServiceProvider);
+
+      final emitted = <List<Account>>[];
+      final sub = svc.accountsStream.listen(emitted.add);
+
+      final created = await svc.createAccount(
+        AccountCreate(name: 'A', type: AccountType.BANK, currency: 'ETB'),
+      );
+      expect(created.id, '1');
+
+      final deactivated = await svc.deactivateAccount('1');
+      expect(deactivated.active, false);
+
+      // allow microtask to run and emit
+      await Future<void>.delayed(Duration.zero);
+
+      expect(emitted.isNotEmpty, true);
+      expect(emitted.last.any((a) => a.id == '1' && a.active == false), true);
+
+      await sub.cancel();
+      verify(() => mockNetwork.send(any())).called(greaterThanOrEqualTo(2));
     });
 
-    final container = ProviderContainer(
-      overrides: [
-        networkClientProvider.overrideWithValue(mockNetwork),
-        secureStorageProvider.overrideWithValue(mockStorage),
-        baseUrlProvider.overrideWithValue("http://fake.com"),
-      ],
+    test(
+      'deleteAccount - success removes from cache and emits update',
+      () async {
+        // Arrange: seed cache with one account via createAccount
+        when(
+          () => mockStorage.readString(key: 'access_token'),
+        ).thenAnswer((_) async => 'fake_access_token');
+
+        when(() => mockNetwork.send(any())).thenAnswer((invocation) async {
+          final req = invocation.positionalArguments[0] as RequestModel;
+          if (req.method == 'POST') {
+            return ResponseModel(
+              statusCode: 201,
+              headers: {},
+              body: jsonEncode(fakeAccountJson(id: 42)),
+            );
+          } else if (req.method == 'DELETE') {
+            return ResponseModel(statusCode: 204, headers: {}, body: '');
+          }
+          return ResponseModel(
+            statusCode: 200,
+            headers: {},
+            body: jsonEncode({'accounts': []}),
+          );
+        });
+        final svc = container.read(accountServiceProvider);
+
+        final emitted = <List<Account>>[];
+        final sub = svc.accountsStream.listen(emitted.add);
+
+        final created = await svc.createAccount(
+          AccountCreate(name: 'Seed', type: AccountType.BANK, currency: 'ETB'),
+        );
+        expect(created.id, '42');
+
+        // Act: delete
+        await svc.deleteAccount('42');
+
+        // Wait for stream emission
+        await Future<void>.delayed(Duration.zero);
+        final last =
+            emitted.isNotEmpty ? emitted.last : await svc.accountsStream.first;
+        expect(
+          last.any((a) => a.id == '42'),
+          false,
+          reason: 'deleted account should be removed from cache',
+        );
+
+        await sub.cancel();
+      },
     );
-    final accountService = container.read(accountServiceProvider);
 
-    // Act & Assert
-    expect(
-      () => accountService.deleteAccount("1"),
-      throwsA(isA<CouldnotDeleteAccount>()),
+    test(
+      'deleteAccount - 400 returns CannotDeleteAccountWithTransactions',
+      () async {
+        when(
+          () => mockStorage.readString(key: 'access_token'),
+        ).thenAnswer((_) async => 'fake_access_token');
+        when(() => mockNetwork.send(any())).thenAnswer(
+          (_) async => ResponseModel(
+            statusCode: 400,
+            headers: {},
+            body: jsonEncode({'detail': {}}),
+          ),
+        );
+
+        final svc = container.read(accountServiceProvider);
+
+        await expectLater(
+          svc.deleteAccount('1'),
+          throwsA(isA<CannotDeleteAccountWithTransactions>()),
+        );
+
+        verify(() => mockNetwork.send(any())).called(1);
+      },
+    );
+
+    test(
+      'concurrent getUserAccounts calls lead to multiple network calls but no crash',
+      () async {
+        when(
+          () => mockStorage.readString(key: 'access_token'),
+        ).thenAnswer((_) async => 'fake_access_token');
+
+        when(() => mockNetwork.send(any())).thenAnswer((_) async {
+          final body = jsonEncode({
+            'total': 1,
+            'accounts': [fakeAccountJson(id: 7)],
+          });
+          return ResponseModel(statusCode: 200, headers: {}, body: body);
+        });
+        final svc = container.read(accountServiceProvider);
+
+        // Call twice concurrently
+        await Future.wait([svc.getUserAccounts(), svc.getUserAccounts()]);
+
+        // network should have been called at least twice
+        verify(() => mockNetwork.send(any())).called(greaterThanOrEqualTo(2));
+      },
+    );
+
+    test(
+      'token missing -> still attempts network call but response handling occurs',
+      () async {
+        // token null
+        when(
+          () => mockStorage.readString(key: 'access_token'),
+        ).thenAnswer((_) async => null);
+
+        when(() => mockNetwork.send(any())).thenAnswer(
+          (_) async =>
+              ResponseModel(statusCode: 401, headers: {}, body: jsonEncode({})),
+        );
+
+        final svc = container.read(accountServiceProvider);
+        await expectLater(
+          svc.getUserAccounts(),
+          throwsA(isA<CouldnotFetchAccounts>()),
+        );
+
+        verify(() => mockStorage.readString(key: 'access_token')).called(1);
+        verify(() => mockNetwork.send(any())).called(1);
+      },
     );
   });
 }
