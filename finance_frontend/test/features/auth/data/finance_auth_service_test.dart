@@ -271,15 +271,32 @@ void main() {
         "foo@max.com",
         "foobarbaz",
       );
-      
+
       // Assert
 
       expect(user.uid, '1');
       // verify that the token's are stored
-      verify(() => mockStorage.saveString(key: "access_token", value: "fake_access")).called(1);
-      verify(() => mockStorage.saveString(key: "refresh_token", value: "fake_ref"),).called(1);
-      
-      
+      verify(
+        () => mockStorage.saveString(key: "access_token", value: "fake_access"),
+      ).called(1);
+      verify(
+        () => mockStorage.saveString(key: "refresh_token", value: "fake_ref"),
+      ).called(1);
+    });
+
+    test("login with email and password - non 200 - throws", () async {
+      // Arrange
+      when(() => mockNetwork.send(any())).thenAnswer(
+        (invocation) async =>
+            ResponseModel(statusCode: 400, headers: {}, body: jsonEncode({"detail": "error"})),
+      );
+
+      // Act
+      final authService = container.read(authServiceProvider);
+      final user = authService.loginWithEmailAndPassword("foo@max.com", "foobarbaz");
+
+      // Assert
+      expect(() => user, throwsA(isA<CouldnotLogIn>()));
     });
   });
 }
