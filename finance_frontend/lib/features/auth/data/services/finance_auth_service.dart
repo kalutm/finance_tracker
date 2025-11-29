@@ -43,6 +43,9 @@ class FinanceAuthService implements AuthService {
   }
 
   @override
+  bool isExpired(String token) => JwtDecoder.isExpired(token);
+
+  @override
   Future<AuthUser?> getCurrentUser() async {
     String? accessToken = await secureStorageService.readString(
       key: "access_token",
@@ -53,11 +56,11 @@ class FinanceAuthService implements AuthService {
 
     if (accessToken != null) {
       // check if access token is expired or not
-      if (JwtDecoder.isExpired(accessToken)) {
+      if (isExpired(accessToken)) {
         // access token expired -> check if refresh token is not null
         if (refreshToken != null) {
           // we have refresh token -> check if refresh token is not expired
-          if (!JwtDecoder.isExpired(refreshToken)) {
+          if (!isExpired(refreshToken)) {
             // refresh token is not expired -> try to get access token with it
             try {
               final req = RequestModel(
