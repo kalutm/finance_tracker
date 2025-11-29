@@ -52,7 +52,7 @@ void main() {
     reset(mockStorage);
   });
 
-  group('FinanceAuthService - network integration & Security', () {
+  group('FinanceAuthService - UserStatus and token managment', () {
       final scenarios = <TokenScenario>[
         // 1. No tokens → return null
         TokenScenario(
@@ -109,6 +109,7 @@ void main() {
           returnsUser: false,
         ),
       ];
+
       for (final s in scenarios) {
         test("token scenario: acc: ${s.accessToken}, ref: ${s.refreshToken}, acc_exp: ${s.isAccessExpired}, ref_exp: ${s.isRefreshExpired}, return_user: ${s.returnsUser}", () async {
           // Arrange
@@ -200,13 +201,12 @@ void main() {
           } else {
             final user = await authService.getCurrentUser();
             if (s.returnsUser) {
-              expect(user, isNotNull);
+              expect(user!.uid, "1");
             } else {
               expect(user, isNull);
             }
           }
         });
       }
-
   });
 }
