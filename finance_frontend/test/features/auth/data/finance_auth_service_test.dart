@@ -53,65 +53,67 @@ void main() {
   });
 
   group('FinanceAuthService - UserStatus and token managment', () {
-      final scenarios = <TokenScenario>[
-        // 1. No tokens → return null
-        TokenScenario(
-          accessToken: null,
-          isAccessExpired: false,
-          refreshToken: null,
-          isRefreshExpired: false,
-          refreshRequestSucceeds: false,
-          expectedException: null,
-          returnsUser: false,
-        ),
+    final scenarios = <TokenScenario>[
+      // 1. No tokens → return null
+      TokenScenario(
+        accessToken: null,
+        isAccessExpired: false,
+        refreshToken: null,
+        isRefreshExpired: false,
+        refreshRequestSucceeds: false,
+        expectedException: null,
+        returnsUser: false,
+      ),
 
-        // 2. Access valid → return user
-        TokenScenario(
-          accessToken: "A",
-          isAccessExpired: false,
-          refreshToken: "R",
-          isRefreshExpired: false,
-          refreshRequestSucceeds: false,
-          expectedException: null,
-          returnsUser: true,
-        ),
+      // 2. Access valid → return user
+      TokenScenario(
+        accessToken: "A",
+        isAccessExpired: false,
+        refreshToken: "R",
+        isRefreshExpired: false,
+        refreshRequestSucceeds: false,
+        expectedException: null,
+        returnsUser: true,
+      ),
 
-        // 3. Access expired + refresh valid + refresh request OK → return user
-        TokenScenario(
-          accessToken: "A",
-          isAccessExpired: true,
-          refreshToken: "R",
-          isRefreshExpired: false,
-          refreshRequestSucceeds: true,
-          expectedException: null,
-          returnsUser: true,
-        ),
+      // 3. Access expired + refresh valid + refresh request OK → return user
+      TokenScenario(
+        accessToken: "A",
+        isAccessExpired: true,
+        refreshToken: "R",
+        isRefreshExpired: false,
+        refreshRequestSucceeds: true,
+        expectedException: null,
+        returnsUser: true,
+      ),
 
-        // 4. Access expired + refresh valid + refresh request FAIL → throws
-        TokenScenario(
-          accessToken: "A",
-          isAccessExpired: true,
-          refreshToken: "R",
-          isRefreshExpired: false,
-          refreshRequestSucceeds: false,
-          expectedException: CouldnotLoadUser,
-          returnsUser: false,
-        ),
+      // 4. Access expired + refresh valid + refresh request FAIL → throws
+      TokenScenario(
+        accessToken: "A",
+        isAccessExpired: true,
+        refreshToken: "R",
+        isRefreshExpired: false,
+        refreshRequestSucceeds: false,
+        expectedException: CouldnotLoadUser,
+        returnsUser: false,
+      ),
 
-        // 5. Access expired + refresh invalid -> return null
-        TokenScenario(
-          accessToken: "A",
-          isAccessExpired: true,
-          refreshToken: "R",
-          isRefreshExpired: true,
-          refreshRequestSucceeds: false,
-          expectedException: null,
-          returnsUser: false,
-        ),
-      ];
+      // 5. Access expired + refresh invalid -> return null
+      TokenScenario(
+        accessToken: "A",
+        isAccessExpired: true,
+        refreshToken: "R",
+        isRefreshExpired: true,
+        refreshRequestSucceeds: false,
+        expectedException: null,
+        returnsUser: false,
+      ),
+    ];
 
-      for (final s in scenarios) {
-        test("token scenario: acc: ${s.accessToken}, ref: ${s.refreshToken}, acc_exp: ${s.isAccessExpired}, ref_exp: ${s.isRefreshExpired}, return_user: ${s.returnsUser}", () async {
+    for (final s in scenarios) {
+      test(
+        "token scenario: acc: ${s.accessToken}, ref: ${s.refreshToken}, acc_exp: ${s.isAccessExpired}, ref_exp: ${s.isRefreshExpired}, return_user: ${s.returnsUser}",
+        () async {
           // Arrange
           when(
             () => mockStorage.readString(key: "access_token"),
@@ -120,11 +122,12 @@ void main() {
             () => mockStorage.readString(key: "refresh_token"),
           ).thenAnswer((_) async => s.refreshToken);
           when(
-            () => mockStorage.saveString(key: "access_token", value: "NEW_ACCESS"),
+            () => mockStorage.saveString(
+              key: "access_token",
+              value: "NEW_ACCESS",
+            ),
           ).thenAnswer((_) async {});
-          when(
-            () => mockStorage.deleteAll(),
-          ).thenAnswer((_) async {});
+          when(() => mockStorage.deleteAll()).thenAnswer((_) async {});
 
           final authService = container.read(authServiceProvider);
 
@@ -171,16 +174,18 @@ void main() {
             );
           }
 
-          // mock getUserCridentials
+          // mock getUserCridentials and verify correct url was used
           if (s.returnsUser) {
             when(
               () => mockNetwork.send(
                 any(
-                  that: isA<RequestModel>().having(
-                    (r) => r.method,
-                    "Rest method",
-                    "GET",
-                  ),
+                  that: isA<RequestModel>()
+                      .having((r) => r.method, "Rest method", "GET")
+                      .having(
+                        (r) => r.url.toString(),
+                        "get me url",
+                        contains("/me"),
+                      ),
                 ),
               ),
             ).thenAnswer(
@@ -206,7 +211,75 @@ void main() {
               expect(user, isNull);
             }
           }
-        });
-      }
+        },
+      );
+    }
+  });
+
+  group("FinanceAuthService - login and register", () {
+    test("login with email and password - success - return's user", () async {
+      // Arrange
+      when(
+        () => mockStorage.saveString(key: "access_token", value: "fake_access"),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockStorage.saveString(key: "refresh_token", value: "fake_ref"),
+      ).thenAnswer((_) async {});
+
+      // mock getUserCridentials
+      when(
+        () => mockNetwork.send(
+          any(
+            that: isA<RequestModel>().having(
+              (r) => r.method,
+              "Rest method",
+              "GET",
+            ),
+          ),
+        ),
+      ).thenAnswer(
+        (_) async => ResponseModel(
+          statusCode: 200,
+          headers: {},
+          body: jsonEncode(fakeAuthUserJson(uid: '1')),
+        ),
+      );
+
+      when(
+        () => mockNetwork.send(
+          any(
+            that: isA<RequestModel>()
+                .having((r) => r.method, "Rest method", "POST")
+                .having(
+                  (r) => r.url.toString(),
+                  "login url",
+                  contains("/login"),
+                ),
+          ),
+        ),
+      ).thenAnswer((_) async {
+        return ResponseModel(
+          statusCode: 200,
+          headers: {},
+          body: jsonEncode({'acc_jwt': 'fake_access', 'ref_jwt': 'fake_ref'}),
+        );
+      });
+
+      // Act
+      final authService = container.read(authServiceProvider);
+      final user = await authService.loginWithEmailAndPassword(
+        "foo@max.com",
+        "foobarbaz",
+      );
+      
+      // Assert
+
+      expect(user.uid, '1');
+      // verify that the token's are stored
+      verify(() => mockStorage.saveString(key: "access_token", value: "fake_access")).called(1);
+      verify(() => mockStorage.saveString(key: "refresh_token", value: "fake_ref"),).called(1);
+      
+      
+    });
   });
 }
