@@ -6,11 +6,10 @@ import 'package:finance_frontend/features/auth/domain/entities/auth_user.dart';
 import 'package:finance_frontend/features/auth/domain/exceptions/auth_exceptions.dart';
 import 'package:finance_frontend/features/auth/domain/services/auth_service.dart';
 import 'package:finance_frontend/features/auth/domain/services/secure_storage_service.dart';
+import 'package:finance_frontend/features/auth/domain/services/token_decoder_service.dart';
 import 'package:finance_frontend/features/categories/domain/service/category_service.dart';
 import 'package:finance_frontend/features/transactions/domain/service/transaction_service.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:google_sign_in/google_sign_in.dart';
-import 'package:jwt_decoder/jwt_decoder.dart';
 import 'dart:developer' as dev_tool show log;
 
 class FinanceAuthService implements AuthService {
@@ -19,6 +18,7 @@ class FinanceAuthService implements AuthService {
   final AccountService accountService;
   final CategoryService categoryService;
   final TransactionService transactionService;
+  final TokenDecoderService decoder;
   final String baseUrl;
   final String clientServerId;
 
@@ -28,6 +28,7 @@ class FinanceAuthService implements AuthService {
     required this.accountService,
     required this.categoryService,
     required this.transactionService,
+    required this.decoder,
     required this.baseUrl,
     required this.clientServerId,
   });
@@ -44,9 +45,6 @@ class FinanceAuthService implements AuthService {
   }
 
   @override
-  bool isExpired(String token) => JwtDecoder.isExpired(token);
-
-  @override
   Future<AuthUser?> getCurrentUser() async {
     String? accessToken = await secureStorageService.readString(
       key: "access_token",
@@ -57,11 +55,11 @@ class FinanceAuthService implements AuthService {
 
     if (accessToken != null) {
       // check if access token is expired or not
-      if (isExpired(accessToken)) {
+      if (decoder.isExpired(accessToken)) {
         // access token expired -> check if refresh token is not null
         if (refreshToken != null) {
           // we have refresh token -> check if refresh token is not expired
-          if (!isExpired(refreshToken)) {
+          if (!decoder.isExpired(refreshToken)) {
             // refresh token is not expired -> try to get access token with it
             try {
               final req = RequestModel(

@@ -1,3 +1,5 @@
+import 'package:finance_frontend/features/auth/data/finance_token_decoder_service.dart';
+import 'package:finance_frontend/features/auth/domain/services/token_decoder_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
@@ -35,7 +37,8 @@ import 'package:finance_frontend/features/accounts/presentation/blocs/account_fo
 import 'package:finance_frontend/features/categories/presentation/blocs/categories/categories_bloc.dart'; // CategoriesBloc
 import 'package:finance_frontend/features/categories/presentation/blocs/category_form/category_form_bloc.dart'; // CategoryFormBloc
 import 'package:finance_frontend/features/transactions/presentation/bloc/transactions/transactions_bloc.dart'; // TransactionsBloc
-import 'package:finance_frontend/features/transactions/presentation/bloc/transaction_form/transaction_form_bloc.dart'; // TransactionFormBloc
+import 'package:finance_frontend/features/transactions/presentation/bloc/transaction_form/transaction_form_bloc.dart';
+import 'package:jwt_decoder/jwt_decoder.dart'; // TransactionFormBloc
 
 /// Low level / core providers ///
 
@@ -74,7 +77,7 @@ final networkClientProvider = Provider<NetworkClient>((ref) {
 
 /// Services & DataSources  ///
 
-/// AccountService exposed as AccountService (interface)
+/// FinanceAccountService exposed as AccountService (interface)
 final accountServiceProvider = Provider<AccountService>((ref) {
   return FinanceAccountService(
     secureStorageService: ref.read(secureStorageProvider),
@@ -83,7 +86,7 @@ final accountServiceProvider = Provider<AccountService>((ref) {
   );
 });
 
-/// CategoryService exposed as CategoryService (interface)
+/// FinanceCategoryService exposed as CategoryService (interface)
 final categoryServiceProvider = Provider<CategoryService>((ref) {
   return FinanceCategoryService(
     secureStorageService: ref.read(secureStorageProvider),
@@ -92,7 +95,7 @@ final categoryServiceProvider = Provider<CategoryService>((ref) {
   );
 });
 
-/// TransDataSource (remote) exposed as TransDataSource (interface)
+/// RemoteTransDataSource exposed as TransDataSource (interface)
 final transDataSourceProvider = Provider<TransDataSource>((ref) {
   return RemoteTransDataSource(
    secureStorageService: ref.read(secureStorageProvider),
@@ -101,7 +104,7 @@ final transDataSourceProvider = Provider<TransDataSource>((ref) {
   );
 });
 
-/// TransactionService exposed as TransactionService (interface)
+/// FinanceTransactionService exposed as TransactionService (interface)
 final transactionServiceProvider = Provider<TransactionService>((ref) {
   // Note: depends on AccountService (interface) and TransDataSource (interface)
   return FinanceTransactionService(
@@ -109,6 +112,11 @@ final transactionServiceProvider = Provider<TransactionService>((ref) {
     ref.read(transDataSourceProvider),
   );
 });
+
+/// FinanceTokenDecoderService expose as TokenDecoderService (interface)
+final tokenDecoderServiceProvider = Provider<TokenDecoderService>((ref) {
+  return FinanceTokenDecoderService(JwtDecoder());
+},);
 
 /// AuthService exposed as AuthService (interface)
 final authServiceProvider = Provider<AuthService>((ref) {
@@ -120,6 +128,7 @@ final authServiceProvider = Provider<AuthService>((ref) {
     transactionService: ref.read(transactionServiceProvider),
     baseUrl: ref.read(baseUrlProvider),
     clientServerId: ref.read(clientServerIdProvider),
+    decoder: ref.read(tokenDecoderServiceProvider),
   );
 });
 

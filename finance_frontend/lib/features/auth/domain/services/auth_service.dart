@@ -18,6 +18,4 @@ abstract class AuthService {
   Future<void> deleteCurrentUser();
 
   Future<void> logout();
-
-  bool isExpired(String token);
 }
