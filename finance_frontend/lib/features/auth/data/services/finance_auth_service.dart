@@ -20,6 +20,7 @@ class FinanceAuthService implements AuthService {
   final CategoryService categoryService;
   final TransactionService transactionService;
   final String baseUrl;
+  final String clientServerId;
 
   FinanceAuthService({
     required this.secureStorageService,
@@ -28,10 +29,10 @@ class FinanceAuthService implements AuthService {
     required this.categoryService,
     required this.transactionService,
     required this.baseUrl,
+    required this.clientServerId,
   });
 
   get authBaseUrl  => "$baseUrl/auth";
-  final clientServerId = dotenv.env["GOOGLE_SERVER_CLIENT_ID_WEB"]!;
   final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
 
   Map<String, dynamic> _decode(String body) {

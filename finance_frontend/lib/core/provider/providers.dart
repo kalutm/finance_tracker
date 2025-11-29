@@ -44,6 +44,11 @@ final baseUrlProvider = Provider<String>((ref) {
   return dotenv.env["API_BASE_URL_MOBILE"]!;
 });
 
+/// Google client server id provvider
+final clientServerIdProvider = Provider<String>((ref) {
+  return dotenv.env["GOOGLE_SERVER_CLIENT_ID_WEB"]!;
+},);
+
 /// http.Client provider
 final httpClientProvider = Provider<http.Client>((ref) {
   final client = http.Client();
@@ -114,6 +119,7 @@ final authServiceProvider = Provider<AuthService>((ref) {
     categoryService: ref.read(categoryServiceProvider),
     transactionService: ref.read(transactionServiceProvider),
     baseUrl: ref.read(baseUrlProvider),
+    clientServerId: ref.read(clientServerIdProvider),
   );
 });
 
