@@ -14,6 +14,7 @@ import '../../../helpers/test_container.dart';
 
 void main() {
   late MockSecureStorageService mockStorage;
+  late MockTokenDecoderService mockDecoder;
   late MockNetworkClient mockNetwork;
   late MockAccountService mockAccountService;
   late MockCategoryService mockCategoryService;
@@ -28,6 +29,7 @@ void main() {
 
   setUp(() {
     mockStorage = MockSecureStorageService();
+    mockDecoder = MockTokenDecoderService();
     mockNetwork = MockNetworkClient();
     mockAccountService = MockAccountService();
     mockCategoryService = MockCategoryService();
@@ -36,6 +38,7 @@ void main() {
     container = createTestContainer(
       overrides: [
         networkClientProvider.overrideWithValue(mockNetwork),
+        tokenDecoderServiceProvider.overrideWithValue(mockDecoder),
         secureStorageProvider.overrideWithValue(mockStorage),
         baseUrlProvider.overrideWithValue('http://fake.com'),
         clientServerIdProvider.overrideWithValue('id'),
@@ -66,7 +69,7 @@ void main() {
         TokenScenario(
           accessToken: "A",
           isAccessExpired: false,
-          refreshToken: null,
+          refreshToken: "R",
           isRefreshExpired: false,
           refreshRequestSucceeds: false,
           expectedException: null,
@@ -107,7 +110,7 @@ void main() {
         ),
       ];
       for (final s in scenarios) {
-        test("token scenario: ${s.accessToken}, ${s.refreshToken}", () async {
+        test("token scenario: acc: ${s.accessToken}, ref: ${s.refreshToken}, acc_exp: ${s.isAccessExpired}, ref_exp: ${s.isRefreshExpired}, return_user: ${s.returnsUser}", () async {
           // Arrange
           when(
             () => mockStorage.readString(key: "access_token"),
@@ -115,12 +118,18 @@ void main() {
           when(
             () => mockStorage.readString(key: "refresh_token"),
           ).thenAnswer((_) async => s.refreshToken);
+          when(
+            () => mockStorage.saveString(key: "access_token", value: "NEW_ACCESS"),
+          ).thenAnswer((_) async {});
+          when(
+            () => mockStorage.deleteAll(),
+          ).thenAnswer((_) async {});
 
           final authService = container.read(authServiceProvider);
 
           // Mock token expiry check
-          when(() => authService.isExpired("A")).thenReturn(s.isAccessExpired);
-          when(() => authService.isExpired("R")).thenReturn(s.isRefreshExpired);
+          when(() => mockDecoder.isExpired("A")).thenReturn(s.isAccessExpired);
+          when(() => mockDecoder.isExpired("R")).thenReturn(s.isRefreshExpired);
 
           // Mock refresh request
           if (s.refreshRequestSucceeds) {
