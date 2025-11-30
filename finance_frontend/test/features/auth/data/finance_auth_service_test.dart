@@ -46,6 +46,9 @@ void main() {
         baseUrlProvider.overrideWithValue('http://fake.com'),
         clientServerIdProvider.overrideWithValue('id'),
         signInWithServiceProvider.overrideWithValue(mockSignInWith),
+        accountServiceProvider.overrideWithValue(mockAccountService),
+        categoryServiceProvider.overrideWithValue(mockCategoryService),
+        transactionServiceProvider.overrideWithValue(mockTransactionService),
       ],
     );
   });
@@ -607,7 +610,62 @@ void main() {
         );
       });
 
+      test("logout clear's cache and delete's token's", () async {
+        // Arrange
+        when(() => mockAccountService.clearCache()).thenAnswer((_) async {});
+        when(() => mockCategoryService.clearCache()).thenAnswer((_) async {});
+        when(
+          () => mockTransactionService.clearCache(),
+        ).thenAnswer((_) async {});
+
+        when(() => mockStorage.deleteAll()).thenAnswer((_) async {});
+
+        // Act
+        final authService = container.read(authServiceProvider);
+        await authService.logout();
+
+        // Assert
+
+        // verify that the account, category and transaction's cache's are cleared
+        verify(() => mockAccountService.clearCache()).called(1);
+        verify(() => mockCategoryService.clearCache()).called(1);
+        verify(() => mockTransactionService.clearCache()).called(1);
+
+        // verify that the token's are deleted after a logout
+        verify(() => mockStorage.deleteAll()).called(1);
+      });
+
+      test(
+        "delete current user - success - call's appropirate method's",
+        () async {
+          // Arrange
+          when(
+            () => mockStorage.readString(key: "access_token"),
+          ).thenAnswer((_) async => "fake_acc");
+          when(
+            () => mockNetwork.send(
+              any(
+                that: isA<RequestModel>()
+                    .having((r) => r.method, "RestApi mehtod", "DELETE")
+                    .having(
+                      (r) => r.url.toString(),
+                      "delete me url",
+                      contains("/me"),
+                    ),
+              ),
+            ),
+          ).thenAnswer(
+            (_) async => ResponseModel(
+              statusCode: 200,
+              headers: {},
+              body: jsonEncode("user account deleted succesfully"),
+            ),
+          );
+
+          // Act
+          
+        },
+      );
     });
-    
   });
 }
