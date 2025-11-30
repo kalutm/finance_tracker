@@ -363,7 +363,7 @@ void main() {
         // Act
         final authService = container.read(authServiceProvider);
         final user = authService.loginWithGoogle();
-        
+
         // Assert
         expect(() => user, throwsA(isA<CouldnotLogInWithGoogle>()));
       });
@@ -559,5 +559,38 @@ void main() {
         expect(() => user, throwsA(isA<CouldnotLogIn>()));
       });
     });
+
+    group("FinanceAuthService - send verificatoin, logout and delete", () {
+      test("send verification - success - sends appropirate body", () async {
+        // Arrange
+        when(
+          () => mockNetwork.send(
+            any(
+              that: isA<RequestModel>().having(
+                (r) => r.url.toString(),
+                "resend-verification url",
+                contains("/resend-verification"),
+              ),
+            ),
+          ),
+        ).thenAnswer(
+          (_) async => ResponseModel(
+            statusCode: 200,
+            headers: {},
+            body: "email verificatoin link sent successfully",
+          ),
+        );
+
+        // Act
+        final authService = container.read(authServiceProvider);
+        await authService.sendVerificationEmail("foo@max.com");
+
+        // nothing to Assert
+      });
+
+      
+
+    });
+
   });
 }
