@@ -298,5 +298,89 @@ void main() {
       // Assert
       expect(() => user, throwsA(isA<CouldnotLogIn>()));
     });
+    test("register with email and password - success - return's user", () async {
+      // Arrange
+      when(
+        () => mockStorage.saveString(key: "access_token", value: "fake_access"),
+      ).thenAnswer((_) async {});
+      when(
+        () => mockStorage.saveString(key: "refresh_token", value: "fake_ref"),
+      ).thenAnswer((_) async {});
+
+      // mock getUserCridentials
+      when(
+        () => mockNetwork.send(
+          any(
+            that: isA<RequestModel>().having(
+              (r) => r.method,
+              "Rest method",
+              "GET",
+            ),
+          ),
+        ),
+      ).thenAnswer(
+        (_) async => ResponseModel(
+          statusCode: 200,
+          headers: {},
+          body: jsonEncode(fakeAuthUserJson(uid: '1')),
+        ),
+      );
+
+      when(
+        () => mockNetwork.send(
+          any(
+            that: isA<RequestModel>()
+                .having((r) => r.method, "Rest method", "POST")
+                .having(
+                  (r) => r.url.toString(),
+                  "register url",
+                  contains("/register"),
+                ),
+          ),
+        ),
+      ).thenAnswer((_) async {
+        return ResponseModel(
+          statusCode: 200,
+          headers: {},
+          body: jsonEncode({'acc_jwt': 'fake_access', 'ref_jwt': 'fake_ref'}),
+        );
+      });
+
+      // Act
+      final authService = container.read(authServiceProvider);
+      final user = await authService.registerWithEmailAndPassword(
+        "foo@max.com",
+        "foobarbaz",
+      );
+
+      // Assert
+
+      expect(user.uid, '1');
+      // verify that the token's are stored
+      verify(
+        () => mockStorage.saveString(key: "access_token", value: "fake_access"),
+      ).called(1);
+      verify(
+        () => mockStorage.saveString(key: "refresh_token", value: "fake_ref"),
+      ).called(1);
+    });
+
+    test("register with email and password - non 200 - throws", () async {
+      // Arrange
+      when(() => mockNetwork.send(any())).thenAnswer(
+        (invocation) async =>
+            ResponseModel(statusCode: 400, headers: {}, body: jsonEncode({"detail": "error"})),
+      );
+
+      // Act
+      final authService = container.read(authServiceProvider);
+      final user = authService.loginWithEmailAndPassword("foo@max.com", "foobarbaz");
+
+      // Assert
+      expect(() => user, throwsA(isA<CouldnotLogIn>()));
+    });
+
   });
+
+  
 }
