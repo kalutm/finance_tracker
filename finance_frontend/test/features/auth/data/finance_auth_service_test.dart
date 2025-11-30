@@ -588,9 +588,26 @@ void main() {
         // nothing to Assert
       });
 
-      
+      test("send verification - non 200 - throws", () async {
+        // Arrange
+        when(() => mockNetwork.send(any())).thenAnswer(
+          (_) async => ResponseModel(
+            statusCode: 400,
+            headers: {},
+            body: jsonEncode({"detail": "error"}),
+          ),
+        );
+
+        final authService = container.read(authServiceProvider);
+
+        // Act & Assert
+        expect(
+          () => authService.sendVerificationEmail("foo@max.com"),
+          throwsA(isA<CouldnotSendEmailVerificatonLink>()),
+        );
+      });
 
     });
-
+    
   });
 }
