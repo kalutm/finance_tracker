@@ -673,6 +673,27 @@ void main() {
         },
       );
 
+      test("delete current user - non 200 - throwsA<CouldnotDeleteUser>", () async {
+        // Arrange
+        when(
+          () => mockStorage.readString(key: "access_token"),
+        ).thenAnswer((_) async => "fake_acc");
+        when(() => mockNetwork.send(any())).thenAnswer(
+          (_) async => ResponseModel(
+            statusCode: 400,
+            headers: {},
+            body: jsonEncode({"detail": "error"}),
+          ),
+        );
+        final authService = container.read(authServiceProvider);
+
+        // Act & Assert
+        expect(
+          () => authService.deleteCurrentUser(),
+          throwsA(isA<CouldnotDeleteUser>()),
+        );
+      });
+
       
     });
   });
