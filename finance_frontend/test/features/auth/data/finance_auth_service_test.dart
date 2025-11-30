@@ -52,34 +52,51 @@ void main() {
     reset(mockStorage);
   });
 
-  test(
-    'FinanceAuthService getUserCridentials - success - returns user',
-    () async {
-      // Arrange
-      when(
-        () => mockNetwork.send(
-          any(
-            that: isA<RequestModel>().having(
-              (r) => r.url.toString(),
-              "get me url",
-              contains("/me"),
+  group(
+    "Test For getUserCridential's all other's depend on this - crucial to test first",
+    () {
+      test('getUserCridentials - success - returns user', () async {
+        // Arrange
+        when(
+          () => mockNetwork.send(
+            any(
+              that: isA<RequestModel>().having(
+                (r) => r.url.toString(),
+                "get me url",
+                contains("/me"),
+              ),
             ),
           ),
-        ),
-      ).thenAnswer(
-        (_) async => ResponseModel(
-          statusCode: 200,
-          headers: {},
-          body: jsonEncode(fakeAuthUserJson(uid: '1')),
-        ),
-      );
+        ).thenAnswer(
+          (_) async => ResponseModel(
+            statusCode: 200,
+            headers: {},
+            body: jsonEncode(fakeAuthUserJson(uid: '1')),
+          ),
+        );
 
-      // Act
-      final authService = container.read(authServiceProvider);
-      final user = await authService.getUserCridentials("fake_access");
+        // Act
+        final authService = container.read(authServiceProvider);
+        final user = await authService.getUserCridentials("fake_access");
 
-      // Assert
-      expect(user.uid, '1');
+        // Assert
+        expect(user.uid, '1');
+      });
+
+      test("getUserCridentials - non 200 - throw's ", () async {
+        // Arrange
+        when(() => mockNetwork.send(any())).thenAnswer(
+          (_) async => ResponseModel(
+            statusCode: 400,
+            headers: {},
+            body: jsonEncode({"detail": "error"}),
+          ),
+        );
+        final authService = container.read(authServiceProvider);
+
+        // Act & Assert
+        expect(() => authService.getUserCridentials("fake_access"), throwsA(isA<CouldnotGetUser>()));
+      });
     },
   );
 
