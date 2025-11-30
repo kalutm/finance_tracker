@@ -14,25 +14,11 @@ class AuthUser {
   });
 
   factory AuthUser.fromFinance(Map<String, dynamic> json) {
-    final userProvider = json["provider"] as String;
-    final Provider provider;
-
-    switch (userProvider) {
-      case "LOCAL":
-        provider = Provider.LOCAL;
-      case "GOOGLE":
-        provider = Provider.GOOGLE;
-      case "LOCAL_GOOGLE":
-        provider = Provider.LOCAL_GOOGLE;
-      default:
-        provider = Provider.LOCAL;
-    }
-
     return AuthUser(
       uid: json["id"],
       email: json["email"],
       isVerified: json["is_verified"],
-      provider: provider,
+      provider: Provider.values.byName(json["provider"] as String),
     );
   }
 
