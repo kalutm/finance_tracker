@@ -694,7 +694,14 @@ void main() {
         );
       });
 
-      
+      test("delete current user - access token == null - throwsA<NoUserToDelete>", () async {
+        // Arrange 
+        when(() => mockStorage.readString(key: "access_token")).thenAnswer((_) async => null);
+        final authService = container.read(authServiceProvider);
+
+        // Act & Assert
+        expect(() => authService.deleteCurrentUser(), throwsA(isA<NoUserToDelete>()));
+      },);
     });
   });
 }
