@@ -642,6 +642,7 @@ void main() {
           when(
             () => mockStorage.readString(key: "access_token"),
           ).thenAnswer((_) async => "fake_acc");
+          when(() => mockStorage.deleteAll()).thenAnswer((_) async {});
           when(
             () => mockNetwork.send(
               any(
@@ -663,9 +664,16 @@ void main() {
           );
 
           // Act
-          
+          final authService = container.read(authServiceProvider);
+          await authService.deleteCurrentUser();
+
+          // Assert
+          // verify thta the token's are deleted on deletion
+          verify(() => mockStorage.deleteAll()).called(1);
         },
       );
+
+      
     });
   });
 }
