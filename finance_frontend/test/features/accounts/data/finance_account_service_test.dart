@@ -387,5 +387,6 @@ void main() {
         verify(() => mockNetwork.send(any())).called(1);
       },
     );
+    
   });
 }

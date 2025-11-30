@@ -16,6 +16,7 @@ void main() {
   late MockSecureStorageService mockStorage;
   late MockTokenDecoderService mockDecoder;
   late MockNetworkClient mockNetwork;
+  late MockSignInWithService mockSignInWith;
   late MockAccountService mockAccountService;
   late MockCategoryService mockCategoryService;
   late MockTransactionService mockTransactionService;
@@ -31,6 +32,7 @@ void main() {
     mockStorage = MockSecureStorageService();
     mockDecoder = MockTokenDecoderService();
     mockNetwork = MockNetworkClient();
+    mockSignInWith = MockSignInWithService();
     mockAccountService = MockAccountService();
     mockCategoryService = MockCategoryService();
     mockTransactionService = MockTransactionService();
@@ -42,6 +44,7 @@ void main() {
         secureStorageProvider.overrideWithValue(mockStorage),
         baseUrlProvider.overrideWithValue('http://fake.com'),
         clientServerIdProvider.overrideWithValue('id'),
+        signInWithServiceProvider.overrideWithValue(mockSignInWith),
       ],
     );
   });
@@ -269,11 +272,15 @@ void main() {
             }
           },
         );
-        
+
       }
     });
 
     group("FinanceAuthService - login and register", () {
+      test("login with google - success - return's user", () async{
+        
+      },);
+
       test("login with email and password - success - return's user", () async {
         // Arrange
         when(

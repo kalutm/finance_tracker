@@ -6,6 +6,7 @@ import 'package:finance_frontend/features/auth/domain/entities/auth_user.dart';
 import 'package:finance_frontend/features/auth/domain/exceptions/auth_exceptions.dart';
 import 'package:finance_frontend/features/auth/domain/services/auth_service.dart';
 import 'package:finance_frontend/features/auth/domain/services/secure_storage_service.dart';
+import 'package:finance_frontend/features/auth/domain/services/sign_in_with_service.dart';
 import 'package:finance_frontend/features/auth/domain/services/token_decoder_service.dart';
 import 'package:finance_frontend/features/categories/domain/service/category_service.dart';
 import 'package:finance_frontend/features/transactions/domain/service/transaction_service.dart';
@@ -20,7 +21,7 @@ class FinanceAuthService implements AuthService {
   final TransactionService transactionService;
   final TokenDecoderService decoder;
   final String baseUrl;
-  final String clientServerId;
+  final SignInWithService signInWithService;
 
   FinanceAuthService({
     required this.secureStorageService,
@@ -30,11 +31,10 @@ class FinanceAuthService implements AuthService {
     required this.transactionService,
     required this.decoder,
     required this.baseUrl,
-    required this.clientServerId,
+    required this.signInWithService,
   });
 
   get authBaseUrl  => "$baseUrl/auth";
-  final GoogleSignIn _googleSignIn = GoogleSignIn.instance;
 
   Map<String, dynamic> _decode(String body) {
     try {
@@ -175,12 +175,9 @@ class FinanceAuthService implements AuthService {
   @override
   Future<AuthUser?> loginWithGoogle() async {
     try {
-      await _googleSignIn.initialize(serverClientId: clientServerId);
-      final GoogleSignInAccount googleUser = await _googleSignIn.authenticate();
-
-      final GoogleSignInAuthentication googleAuth = googleUser.authentication;
-      final String? idToken = googleAuth.idToken;
-
+      final googleSignInAccount = await signInWithService.getAccount();
+      final idToken = googleSignInAccount.idToken;
+      
       if (idToken == null) {
         throw CouldnotLogInWithGoogle();
       }

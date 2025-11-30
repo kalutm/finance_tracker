@@ -1,7 +1,10 @@
-import 'package:finance_frontend/features/auth/data/finance_token_decoder_service.dart';
+import 'package:finance_frontend/features/auth/data/services/finance_token_decoder_service.dart';
+import 'package:finance_frontend/features/auth/data/services/google_sign_in_service.dart';
+import 'package:finance_frontend/features/auth/domain/services/sign_in_with_service.dart';
 import 'package:finance_frontend/features/auth/domain/services/token_decoder_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 
 // abstractions & implementations
@@ -50,7 +53,7 @@ final baseUrlProvider = Provider<String>((ref) {
 /// Google client server id provvider
 final clientServerIdProvider = Provider<String>((ref) {
   return dotenv.env["GOOGLE_SERVER_CLIENT_ID_WEB"]!;
-},);
+});
 
 /// http.Client provider
 final httpClientProvider = Provider<http.Client>((ref) {
@@ -98,9 +101,9 @@ final categoryServiceProvider = Provider<CategoryService>((ref) {
 /// RemoteTransDataSource exposed as TransDataSource (interface)
 final transDataSourceProvider = Provider<TransDataSource>((ref) {
   return RemoteTransDataSource(
-   secureStorageService: ref.read(secureStorageProvider),
-   client: ref.read(networkClientProvider),
-   baseUrl: ref.read(baseUrlProvider),
+    secureStorageService: ref.read(secureStorageProvider),
+    client: ref.read(networkClientProvider),
+    baseUrl: ref.read(baseUrlProvider),
   );
 });
 
@@ -113,10 +116,18 @@ final transactionServiceProvider = Provider<TransactionService>((ref) {
   );
 });
 
-/// FinanceTokenDecoderService expose as TokenDecoderService (interface)
+/// FinanceTokenDecoderService exposed as TokenDecoderService (interface)
 final tokenDecoderServiceProvider = Provider<TokenDecoderService>((ref) {
   return FinanceTokenDecoderService(JwtDecoder());
-},);
+});
+
+/// GoogleSignInService exposed as SignInWithService (interface)
+final signInWithServiceProvider = Provider<SignInWithService>((ref) {
+  return GoogleSignInService(
+    clientServerId: ref.read(clientServerIdProvider),
+    googleSignIn: GoogleSignIn.instance,
+  );
+});
 
 /// AuthService exposed as AuthService (interface)
 final authServiceProvider = Provider<AuthService>((ref) {
@@ -127,7 +138,7 @@ final authServiceProvider = Provider<AuthService>((ref) {
     categoryService: ref.read(categoryServiceProvider),
     transactionService: ref.read(transactionServiceProvider),
     baseUrl: ref.read(baseUrlProvider),
-    clientServerId: ref.read(clientServerIdProvider),
+    signInWithService: ref.read(signInWithServiceProvider),
     decoder: ref.read(tokenDecoderServiceProvider),
   );
 });

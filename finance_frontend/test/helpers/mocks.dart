@@ -1,6 +1,7 @@
 import 'package:finance_frontend/core/network/network_client.dart';
 import 'package:finance_frontend/features/accounts/domain/service/account_service.dart';
 import 'package:finance_frontend/features/auth/domain/services/secure_storage_service.dart';
+import 'package:finance_frontend/features/auth/domain/services/sign_in_with_service.dart';
 import 'package:finance_frontend/features/auth/domain/services/token_decoder_service.dart';
 import 'package:finance_frontend/features/categories/domain/service/category_service.dart';
 import 'package:finance_frontend/features/transactions/domain/data_source/trans_data_source.dart';
@@ -8,25 +9,20 @@ import 'package:finance_frontend/features/transactions/domain/service/transactio
 import 'package:mocktail/mocktail.dart';
 import 'package:http/http.dart' as http;
 
-class MockTokenDecoderService extends Mock
-    implements TokenDecoderService {}
-class MockSecureStorageService extends Mock
-    implements SecureStorageService {}
+class MockTokenDecoderService extends Mock implements TokenDecoderService {}
 
-class MockNetworkClient extends Mock
-    implements NetworkClient {}
+class MockSignInWithService extends Mock implements SignInWithService {}
 
-class MockHttpClient extends Mock
-    implements http.Client {}
+class MockSecureStorageService extends Mock implements SecureStorageService {}
 
-class MockAccountService extends Mock
-    implements AccountService {}
+class MockNetworkClient extends Mock implements NetworkClient {}
 
-class MockCategoryService extends Mock
-    implements CategoryService {}
+class MockHttpClient extends Mock implements http.Client {}
 
-class MockTransactionService extends Mock
-    implements TransactionService {}
+class MockAccountService extends Mock implements AccountService {}
 
-class MockTransDataSource extends Mock
-    implements TransDataSource {}
+class MockCategoryService extends Mock implements CategoryService {}
+
+class MockTransactionService extends Mock implements TransactionService {}
+
+class MockTransDataSource extends Mock implements TransDataSource {}
