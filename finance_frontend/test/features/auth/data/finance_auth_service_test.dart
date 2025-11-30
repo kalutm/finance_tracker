@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:finance_frontend/core/network/request.dart';
 import 'package:finance_frontend/core/network/response.dart';
 import 'package:finance_frontend/core/provider/providers.dart';
+import 'package:finance_frontend/features/auth/domain/entities/sign_in_account.dart';
 import 'package:finance_frontend/features/auth/domain/exceptions/auth_exceptions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mocktail/mocktail.dart';
@@ -272,14 +273,100 @@ void main() {
             }
           },
         );
-
       }
     });
 
     group("FinanceAuthService - login and register", () {
-      test("login with google - success - return's user", () async{
+      test("login with google - success - return's user", () async {
+        // Arrange
+        when(
+          () => mockStorage.saveString(key: "access_token", value: "fake_acc"),
+        ).thenAnswer((_) async {});
+        when(
+          () => mockStorage.saveString(key: "refresh_token", value: "fake_ref"),
+        ).thenAnswer((_) async {});
+
+        // mock getUserCridentials
+        when(
+          () => mockNetwork.send(
+            any(
+              that: isA<RequestModel>().having(
+                (r) => r.method,
+                "Rest method",
+                "GET",
+              ),
+            ),
+          ),
+        ).thenAnswer(
+          (_) async => ResponseModel(
+            statusCode: 200,
+            headers: {},
+            body: jsonEncode(fakeAuthUserJson(uid: '1')),
+          ),
+        );
+
+        // mock google sign in's idToken
+        when(() => mockSignInWith.getAccount()).thenAnswer(
+          (_) async =>
+              SignInAccount(email: "foo@max.com", idToken: "fake_id_token"),
+        );
+        when(
+          () => mockNetwork.send(
+            any(
+              that: isA<RequestModel>().having(
+                (r) => r.url.toString(),
+                "login with google url",
+                contains("login/google"),
+              ),
+            ),
+          ),
+        ).thenAnswer(
+          (_) async => ResponseModel(
+            statusCode: 200,
+            headers: {},
+            body: jsonEncode({"acc_jwt": "fake_acc", "ref_jwt": "fake_ref"}),
+          ),
+        );
+
+        // Act
+        final authService = container.read(authServiceProvider);
+        final user = await authService.loginWithGoogle();
+
+        // Assert
+        expect(user!.uid, "1");
+        // verify that the token's are stored
+        verify(
+          () => mockStorage.saveString(key: "access_token", value: "fake_acc"),
+        ).called(1);
+        verify(
+          () => mockStorage.saveString(key: "refresh_token", value: "fake_ref"),
+        ).called(1);
+      });
+
+      test("login with google - non 200 - throw's", () async {
+        // Arrange
+
+        // mock google sign in's idToken
+        when(() => mockSignInWith.getAccount()).thenAnswer(
+          (_) async =>
+              SignInAccount(email: "foo@max.com", idToken: "fake_id_token"),
+        );
+
+        when(() => mockNetwork.send(any())).thenAnswer(
+          (_) async => ResponseModel(
+            statusCode: 400,
+            headers: {},
+            body: jsonEncode({"detail": "error"}),
+          ),
+        );
+
+        // Act
+        final authService = container.read(authServiceProvider);
+        final user = authService.loginWithGoogle();
         
-      },);
+        // Assert
+        expect(() => user, throwsA(isA<CouldnotLogInWithGoogle>()));
+      });
 
       test("login with email and password - success - return's user", () async {
         // Arrange
@@ -338,7 +425,6 @@ void main() {
         );
 
         // Assert
-
         expect(user.uid, '1');
         // verify that the token's are stored
         verify(
@@ -472,8 +558,6 @@ void main() {
         // Assert
         expect(() => user, throwsA(isA<CouldnotLogIn>()));
       });
-
     });
-
   });
 }
