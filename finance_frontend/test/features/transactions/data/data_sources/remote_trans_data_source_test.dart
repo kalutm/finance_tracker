@@ -278,38 +278,36 @@ void main() {
     });
 
     group("tests for delete Transaction", () {
-      test("createTransaction - success - call's appiropirate mehtod's", () async {
+      test("deleteTransaction - success - call's appiropirate mehtod's", () async {
         // Arrange
         when(
           () => mockStorage.readString(key: "access_token"),
         ).thenAnswer((_) async => "fake_acc");
         when(() => mockNetwork.send(any())).thenAnswer(
           (_) async => ResponseModel(
-            statusCode: 201,
+            statusCode: 204,
             headers: {},
-            body: jsonEncode(fakeTransactionJson(id: 1)),
+            body: jsonEncode({}),
           ),
         );
 
         // Act
         final transDs = container.read(transDataSourceProvider);
-        final created = await transDs.createTransaction(
-          fakeTransactionCreate(),
-        );
+        final id = "to_be_deleted_id";
+        await transDs.deleteTransaction(id);
 
         // Assert
-        expect(created.id, "1");
         // verify the dependencies method's have been called with proper input's
         verify(() => mockStorage.readString(key: "access_token")).called(1);
         verify(
           () => mockNetwork.send(
             any(
               that: isA<RequestModel>()
-                  .having((r) => r.method, "RestApi method", "POST")
+                  .having((r) => r.method, "RestApi method", "DELETE")
                   .having(
                     (r) => r.url.toString(),
                     "transaction's url",
-                    contains("/transactions"),
+                    contains("/transactions/$id"),
                   ),
             ),
           ),
@@ -323,24 +321,19 @@ void main() {
       final scenarios = [
         TransactionErrorScenario(
           statusCode: 400,
-          code: "INVALID_AMOUNT",
-          expectedException: InvalidInputtedAmount,
-        ),
-        TransactionErrorScenario(
-          statusCode: 400,
           code: "INSUFFICIENT_BALANCE",
           expectedException: AccountBalanceTnsufficient,
         ),
         TransactionErrorScenario(
           statusCode: 400,
           code: "Error",
-          expectedException: CouldnotCreateTransaction,
+          expectedException: CouldnotDeleteTransaction,
         ),
       ];
 
       for (TransactionErrorScenario s in scenarios) {
         test(
-          "createTransaction - non 201 :${s.code} - throws ${s.expectedException.toString()}",
+          "deleteTransaction - non 204 :${s.code} - throws ${s.expectedException.toString()}",
           () async {
             // Arrange
             when(
@@ -359,17 +352,14 @@ void main() {
             final transDs = container.read(transDataSourceProvider);
 
             Object typeMatcher;
-            typeMatcher = isA<CouldnotCreateTransaction>();
-            if (s.expectedException == InvalidInputtedAmount) {
-              typeMatcher = isA<InvalidInputtedAmount>();
-            }
+            typeMatcher = isA<CouldnotDeleteTransaction>();
             if (s.expectedException == AccountBalanceTnsufficient) {
               typeMatcher = isA<AccountBalanceTnsufficient>();
             }
 
             // Act & Assert
             expect(
-              () => transDs.createTransaction(fakeTransactionCreate()),
+              () => transDs.deleteTransaction("to_be_deleted_id"),
               throwsA(typeMatcher),
             );
           },
