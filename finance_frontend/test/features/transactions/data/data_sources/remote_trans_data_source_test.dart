@@ -534,6 +534,78 @@ void main() {
           throwsA(isA<CouldnotGetTransaction>()),
         );
       });
+
+      test("getUserTransactions - success - return's transaction's", () async {
+        // Arrange
+        final body = {
+          "total": 3,
+          "transactions": [
+            fakeTransactionJson(id: 1),
+            fakeTransactionJson(id: 2),
+            fakeTransactionJson(id: 3),
+          ]
+        };
+        when(
+          () => mockStorage.readString(key: "access_token"),
+        ).thenAnswer((_) async => "fake_acc");
+        when(() => mockNetwork.send(any())).thenAnswer(
+          (_) async => ResponseModel(
+            statusCode: 200,
+            headers: {},
+            body: jsonEncode(body),
+          ),
+        );
+
+        // Act
+        final transDs = container.read(transDataSourceProvider);
+        final transactions = await transDs.getUserTransactions();
+
+        // Assert
+        expect(transactions, isNotEmpty);
+        expect(transactions.length, 3);
+        expect(transactions.any((t) => t.id == "1"), true);
+        // verify the dependencies method's have been called with proper input's
+        verify(() => mockStorage.readString(key: "access_token")).called(1);
+        verify(
+          () => mockNetwork.send(
+            any(
+              that: isA<RequestModel>()
+                  .having((r) => r.method, "RestApi method", "GET")
+                  .having(
+                    (r) => r.url.toString(),
+                    "get transaction's url",
+                    contains("/transactions"),
+                  ),
+            ),
+          ),
+        );
+
+        verifyNoMoreInteractions(mockStorage);
+        verifyNoMoreInteractions(mockNetwork);
+      });
+
+      test("getTransaction - non 200 - throws", () async {
+        // Arrange
+        when(
+          () => mockStorage.readString(key: "access_token"),
+        ).thenAnswer((_) async => "fake_acc");
+        when(() => mockNetwork.send(any())).thenAnswer(
+          (_) async => ResponseModel(
+            statusCode: 400,
+            headers: {},
+            body: jsonEncode({"detail": "Error"}),
+          ),
+        );
+
+        final transDs = container.read(transDataSourceProvider);
+
+        // Act & Assert
+        expect(
+          () => transDs.getTransaction("1"),
+          throwsA(isA<CouldnotGetTransaction>()),
+        );
+      });
+
     });
   });
 }
