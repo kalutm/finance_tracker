@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:finance_frontend/core/network/request.dart';
 import 'package:finance_frontend/core/network/response.dart';
 import 'package:finance_frontend/core/provider/providers.dart';
+import 'package:finance_frontend/features/transactions/data/model/dtos/transaction_update.dart';
 import 'package:finance_frontend/features/transactions/domain/entities/transaction_type.dart';
 import 'package:finance_frontend/features/transactions/domain/exceptions/transaction_exceptions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -543,7 +544,7 @@ void main() {
             fakeTransactionJson(id: 1),
             fakeTransactionJson(id: 2),
             fakeTransactionJson(id: 3),
-          ]
+          ],
         };
         when(
           () => mockStorage.readString(key: "access_token"),
@@ -605,7 +606,111 @@ void main() {
           throwsA(isA<CouldnotFetchTransactions>()),
         );
       });
+    });
 
+    group("tests for updateTransaction", () {
+      test(
+        "updateTransaction - success - return's the updated transaction",
+        () async {
+          // Arrange
+          when(
+            () => mockStorage.readString(key: "access_token"),
+          ).thenAnswer((_) async => "fake_acc");
+          when(() => mockNetwork.send(any())).thenAnswer(
+            (_) async => ResponseModel(
+              statusCode: 200,
+              headers: {},
+              body: jsonEncode(fakeTransactionJson(id: 1)),
+            ),
+          );
+
+          // Act
+          final transDs = container.read(transDataSourceProvider);
+          final id = "1";
+          final updated = await transDs.updateTransaction(
+            id,
+            TransactionPatch(),
+          );
+
+          // Assert
+          expect(updated.id, "1");
+          // verify the dependencies method's have been called with proper input's
+          verify(() => mockStorage.readString(key: "access_token")).called(1);
+          verify(
+            () => mockNetwork.send(
+              any(
+                that: isA<RequestModel>()
+                    .having((r) => r.method, "RestApi method", "PATCH")
+                    .having(
+                      (r) => r.url.toString(),
+                      "update transaction url",
+                      contains("/transactions/$id"),
+                    ),
+              ),
+            ),
+          );
+
+          verifyNoMoreInteractions(mockStorage);
+          verifyNoMoreInteractions(mockNetwork);
+        },
+      );
+
+      /// create transaction error test's
+      final scenarios = [
+        TransactionErrorScenario(
+          statusCode: 400,
+          code: "INVALID_AMOUNT",
+          expectedException: InvalidInputtedAmount,
+        ),
+        TransactionErrorScenario(
+          statusCode: 400,
+          code: "INSUFFICIENT_BALANCE",
+          expectedException: AccountBalanceTnsufficient,
+        ),
+        TransactionErrorScenario(
+          statusCode: 400,
+          code: "Error",
+          expectedException: CouldnotCreateTransaction,
+        ),
+      ];
+
+      for (TransactionErrorScenario s in scenarios) {
+        test(
+          "createTransaction - non 201 :${s.code} - throws ${s.expectedException.toString()}",
+          () async {
+            // Arrange
+            when(
+              () => mockStorage.readString(key: "access_token"),
+            ).thenAnswer((_) async => "fake_acc");
+            when(() => mockNetwork.send(any())).thenAnswer(
+              (_) async => ResponseModel(
+                statusCode: s.statusCode,
+                headers: {},
+                body: jsonEncode({
+                  "detail": {"code": s.code},
+                }),
+              ),
+            );
+
+            final transDs = container.read(transDataSourceProvider);
+
+            Object typeMatcher;
+            typeMatcher = isA<CouldnotCreateTransaction>();
+            if (s.expectedException == InvalidInputtedAmount) {
+              typeMatcher = isA<InvalidInputtedAmount>();
+            }
+            if (s.expectedException == AccountBalanceTnsufficient) {
+              typeMatcher = isA<AccountBalanceTnsufficient>();
+            }
+
+            // Act & Assert
+            expect(
+              () => transDs.createTransaction(fakeTransactionCreate()),
+              throwsA(typeMatcher),
+            );
+          },
+        );
+      }
     });
   });
 }
