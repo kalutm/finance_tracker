@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:math';
 
 import 'package:finance_frontend/core/network/request.dart';
 import 'package:finance_frontend/core/network/response.dart';
@@ -207,7 +206,7 @@ void main() {
                     .having((r) => r.method, "RestApi method", "POST")
                     .having(
                       (r) => r.url.toString(),
-                      "transaction's url",
+                      "transfer transaction's url",
                       contains("/transfer"),
                     ),
               ),
@@ -259,7 +258,7 @@ void main() {
             final transDs = container.read(transDataSourceProvider);
 
             Object typeMatcher;
-            typeMatcher = isA<CouldnotCreateTransaction>();
+            typeMatcher = isA<CouldnotCreateTransferTransaction>();
             if (s.expectedException == InvalidInputtedAmount) {
               typeMatcher = isA<InvalidInputtedAmount>();
             }
@@ -269,7 +268,7 @@ void main() {
 
             // Act & Assert
             expect(
-              () => transDs.createTransaction(fakeTransactionCreate()),
+              () => transDs.createTransferTransaction(fakeTransferTransactionCreate()),
               throwsA(typeMatcher),
             );
           },
@@ -306,7 +305,7 @@ void main() {
                   .having((r) => r.method, "RestApi method", "DELETE")
                   .having(
                     (r) => r.url.toString(),
-                    "transaction's url",
+                    "delete transaction's url",
                     contains("/transactions/$id"),
                   ),
             ),
@@ -369,7 +368,7 @@ void main() {
 
     group("tests for deleteTransferTransaction", () {
       test(
-        "createTransferTransaction - success - return's the two transaction's",
+        "deleteTransferTransaction - success - call's appropirate method's",
         () async {
           // Arrange
           when(
@@ -377,54 +376,29 @@ void main() {
           ).thenAnswer((_) async => "fake_acc");
           when(() => mockNetwork.send(any())).thenAnswer(
             (_) async => ResponseModel(
-              statusCode: 201,
+              statusCode: 204,
               headers: {},
-              body: jsonEncode({
-                "outgoing_transaction": fakeTransactionJson(
-                  id: 1,
-                  accountId: 1,
-                  transferGroupId: "fake_transfer_id",
-                  type: TransactionType.TRANSFER,
-                  isOutGoing: true,
-                ),
-                "incoming_transaction": fakeTransactionJson(
-                  id: 2,
-                  accountId: 2,
-                  transferGroupId: "fake_transfer_id",
-                  type: TransactionType.TRANSFER,
-                  isOutGoing: false,
-                ),
-              }),
+              body: jsonEncode({}),
             ),
           );
 
           // Act
           final transDs = container.read(transDataSourceProvider);
-          final (outgoing, incoming) = await transDs.createTransferTransaction(
-            fakeTransferTransactionCreate(),
-          );
+          final transferGroupId = "to_be_deleted_trans_id";
+          await transDs.deleteTransferTransaction(transferGroupId);
 
           // Assert
-          expect(outgoing.id, "1");
-          expect(incoming.id, "2");
-          expect(outgoing.isOutGoing, true);
-          expect(incoming.isOutGoing, false);
-          expect(outgoing.accountId, "1");
-          expect(incoming.accountId, "2");
-          expect(outgoing.transferGroupId, "fake_transfer_id");
-          expect(incoming.transferGroupId, "fake_transfer_id");
-
           // verify the dependencies method's have been called with proper input's
           verify(() => mockStorage.readString(key: "access_token")).called(1);
           verify(
             () => mockNetwork.send(
               any(
                 that: isA<RequestModel>()
-                    .having((r) => r.method, "RestApi method", "POST")
+                    .having((r) => r.method, "RestApi method", "DELETE")
                     .having(
                       (r) => r.url.toString(),
-                      "transaction's url",
-                      contains("/transfer"),
+                      "delete transfer transaction's url",
+                      contains("/transfer/$transferGroupId"),
                     ),
               ),
             ),
@@ -439,8 +413,8 @@ void main() {
       final scenarios = [
         TransactionErrorScenario(
           statusCode: 400,
-          code: "INVALID_AMOUNT",
-          expectedException: InvalidInputtedAmount,
+          code: "INVALID_TRANSFER_TRANSACTION",
+          expectedException: InvalidTransferTransaction,
         ),
         TransactionErrorScenario(
           statusCode: 400,
@@ -450,13 +424,13 @@ void main() {
         TransactionErrorScenario(
           statusCode: 400,
           code: "Error",
-          expectedException: CouldnotCreateTransferTransaction,
+          expectedException: CouldnotDeleteTransferTransaction,
         ),
       ];
 
       for (TransactionErrorScenario s in scenarios) {
         test(
-          "createTransferTransaction - non 201 :${s.code} - throws ${s.expectedException.toString()}",
+          "createTransferTransaction - non 204 :${s.code} - throws ${s.expectedException.toString()}",
           () async {
             // Arrange
             when(
@@ -475,9 +449,9 @@ void main() {
             final transDs = container.read(transDataSourceProvider);
 
             Object typeMatcher;
-            typeMatcher = isA<CouldnotCreateTransaction>();
-            if (s.expectedException == InvalidInputtedAmount) {
-              typeMatcher = isA<InvalidInputtedAmount>();
+            typeMatcher = isA<CouldnotDeleteTransferTransaction>();
+            if (s.expectedException == InvalidTransferTransaction) {
+              typeMatcher = isA<InvalidTransferTransaction>();
             }
             if (s.expectedException == AccountBalanceTnsufficient) {
               typeMatcher = isA<AccountBalanceTnsufficient>();
@@ -485,13 +459,15 @@ void main() {
 
             // Act & Assert
             expect(
-              () => transDs.createTransaction(fakeTransactionCreate()),
+              () => transDs.deleteTransferTransaction("to_be_deleted_trans_id"),
               throwsA(typeMatcher),
             );
           },
         );
       }
     },);
+
+  
   });
 
 
