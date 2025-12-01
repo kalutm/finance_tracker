@@ -114,7 +114,7 @@ void main() {
 
       for (TransactionErrorScenario s in scenarios) {
         test(
-          "createTransaction - non 200 :${s.code} - throws ${s.expectedException.runtimeType.toString()}",
+          "createTransaction - non 201 :${s.code} - throws ${s.expectedException.toString()}",
           () async {
             // Arrange
             when(
@@ -234,13 +234,13 @@ void main() {
         TransactionErrorScenario(
           statusCode: 400,
           code: "Error",
-          expectedException: CouldnotCreateTransaction,
+          expectedException: CouldnotCreateTransferTransaction,
         ),
       ];
 
       for (TransactionErrorScenario s in scenarios) {
         test(
-          "createTransaction - non 200 :${s.code} - throws ${s.expectedException.runtimeType.toString()}",
+          "createTransferTransaction - non 201 :${s.code} - throws ${s.expectedException.toString()}",
           () async {
             // Arrange
             when(
