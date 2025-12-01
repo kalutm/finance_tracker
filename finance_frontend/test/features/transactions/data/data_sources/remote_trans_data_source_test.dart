@@ -268,7 +268,9 @@ void main() {
 
             // Act & Assert
             expect(
-              () => transDs.createTransferTransaction(fakeTransferTransactionCreate()),
+              () => transDs.createTransferTransaction(
+                fakeTransferTransactionCreate(),
+              ),
               throwsA(typeMatcher),
             );
           },
@@ -277,44 +279,47 @@ void main() {
     });
 
     group("tests for delete Transaction", () {
-      test("deleteTransaction - success - call's appiropirate mehtod's", () async {
-        // Arrange
-        when(
-          () => mockStorage.readString(key: "access_token"),
-        ).thenAnswer((_) async => "fake_acc");
-        when(() => mockNetwork.send(any())).thenAnswer(
-          (_) async => ResponseModel(
-            statusCode: 204,
-            headers: {},
-            body: jsonEncode({}),
-          ),
-        );
-
-        // Act
-        final transDs = container.read(transDataSourceProvider);
-        final id = "to_be_deleted_id";
-        await transDs.deleteTransaction(id);
-
-        // Assert
-        // verify the dependencies method's have been called with proper input's
-        verify(() => mockStorage.readString(key: "access_token")).called(1);
-        verify(
-          () => mockNetwork.send(
-            any(
-              that: isA<RequestModel>()
-                  .having((r) => r.method, "RestApi method", "DELETE")
-                  .having(
-                    (r) => r.url.toString(),
-                    "delete transaction's url",
-                    contains("/transactions/$id"),
-                  ),
+      test(
+        "deleteTransaction - success - call's appiropirate mehtod's",
+        () async {
+          // Arrange
+          when(
+            () => mockStorage.readString(key: "access_token"),
+          ).thenAnswer((_) async => "fake_acc");
+          when(() => mockNetwork.send(any())).thenAnswer(
+            (_) async => ResponseModel(
+              statusCode: 204,
+              headers: {},
+              body: jsonEncode({}),
             ),
-          ),
-        );
+          );
 
-        verifyNoMoreInteractions(mockStorage);
-        verifyNoMoreInteractions(mockNetwork);
-      });
+          // Act
+          final transDs = container.read(transDataSourceProvider);
+          final id = "to_be_deleted_id";
+          await transDs.deleteTransaction(id);
+
+          // Assert
+          // verify the dependencies method's have been called with proper input's
+          verify(() => mockStorage.readString(key: "access_token")).called(1);
+          verify(
+            () => mockNetwork.send(
+              any(
+                that: isA<RequestModel>()
+                    .having((r) => r.method, "RestApi method", "DELETE")
+                    .having(
+                      (r) => r.url.toString(),
+                      "delete transaction's url",
+                      contains("/transactions/$id"),
+                    ),
+              ),
+            ),
+          );
+
+          verifyNoMoreInteractions(mockStorage);
+          verifyNoMoreInteractions(mockNetwork);
+        },
+      );
 
       /// create transaction error test's
       final scenarios = [
@@ -364,7 +369,7 @@ void main() {
           },
         );
       }
-    },);
+    });
 
     group("tests for deleteTransferTransaction", () {
       test(
@@ -465,10 +470,70 @@ void main() {
           },
         );
       }
-    },);
+    });
 
-  
+    group("tests for getTransaction & getUserTransactions", () {
+      test("getTransaction - success - return's transaction", () async {
+        // Arrange
+        when(
+          () => mockStorage.readString(key: "access_token"),
+        ).thenAnswer((_) async => "fake_acc");
+        when(() => mockNetwork.send(any())).thenAnswer(
+          (_) async => ResponseModel(
+            statusCode: 200,
+            headers: {},
+            body: jsonEncode(fakeTransactionJson(id: 1)),
+          ),
+        );
+
+        // Act
+        final transDs = container.read(transDataSourceProvider);
+        final id = "1";
+        final trans = await transDs.getTransaction(id);
+
+        // Assert
+        expect(trans.id, "1");
+        // verify the dependencies method's have been called with proper input's
+        verify(() => mockStorage.readString(key: "access_token")).called(1);
+        verify(
+          () => mockNetwork.send(
+            any(
+              that: isA<RequestModel>()
+                  .having((r) => r.method, "RestApi method", "GET")
+                  .having(
+                    (r) => r.url.toString(),
+                    "get transaction url",
+                    contains("/transactions/$id"),
+                  ),
+            ),
+          ),
+        );
+
+        verifyNoMoreInteractions(mockStorage);
+        verifyNoMoreInteractions(mockNetwork);
+      });
+
+      test("getTransaction - non 200 - throws", () async {
+        // Arrange
+        when(
+          () => mockStorage.readString(key: "access_token"),
+        ).thenAnswer((_) async => "fake_acc");
+        when(() => mockNetwork.send(any())).thenAnswer(
+          (_) async => ResponseModel(
+            statusCode: 400,
+            headers: {},
+            body: jsonEncode({"detail": "Error"}),
+          ),
+        );
+
+        final transDs = container.read(transDataSourceProvider);
+
+        // Act & Assert
+        expect(
+          () => transDs.getTransaction("1"),
+          throwsA(isA<CouldnotGetTransaction>()),
+        );
+      });
+    });
   });
-
-
 }
