@@ -1,8 +1,10 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:finance_frontend/core/network/request.dart';
 import 'package:finance_frontend/core/network/response.dart';
 import 'package:finance_frontend/core/provider/providers.dart';
+import 'package:finance_frontend/features/transactions/domain/entities/transaction_type.dart';
 import 'package:finance_frontend/features/transactions/domain/exceptions/transaction_exceptions.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:mocktail/mocktail.dart';
@@ -12,6 +14,7 @@ import '../../../../helpers/mocks.dart';
 import '../../../../helpers/test_container.dart';
 import '../../../../helpers/transactions/create_fake_transaction.dart';
 import '../../../../helpers/transactions/create_fake_transaction_create.dart';
+import '../../../../helpers/transactions/create_fake_transfer_transaction_create.dart';
 import '../../../../helpers/transactions/transaction_error_scenario.dart';
 
 void main() {
@@ -149,46 +152,72 @@ void main() {
     });
 
     group("tests for createTransferTransaction", () {
-      test("createTransferTransaction - success - return's transaction", () async {
-        // Arrange
-        when(
-          () => mockStorage.readString(key: "access_token"),
-        ).thenAnswer((_) async => "fake_acc");
-        when(() => mockNetwork.send(any())).thenAnswer(
-          (_) async => ResponseModel(
-            statusCode: 201,
-            headers: {},
-            body: jsonEncode(fakeTransactionJson(id: 1)),
-          ),
-        );
-
-        // Act
-        final transDs = container.read(transDataSourceProvider);
-        final created = await transDs.createTransaction(
-          fakeTransactionCreate(),
-        );
-
-        // Assert
-        expect(created.id, "1");
-        // verify the dependencies method's have been called with proper input's
-        verify(() => mockStorage.readString(key: "access_token")).called(1);
-        verify(
-          () => mockNetwork.send(
-            any(
-              that: isA<RequestModel>()
-                  .having((r) => r.method, "RestApi method", "POST")
-                  .having(
-                    (r) => r.url.toString(),
-                    "transaction's url",
-                    contains("/transactions"),
-                  ),
+      test(
+        "createTransferTransaction - success - return's the two transaction's",
+        () async {
+          // Arrange
+          when(
+            () => mockStorage.readString(key: "access_token"),
+          ).thenAnswer((_) async => "fake_acc");
+          when(() => mockNetwork.send(any())).thenAnswer(
+            (_) async => ResponseModel(
+              statusCode: 201,
+              headers: {},
+              body: jsonEncode({
+                "outgoing_transaction": fakeTransactionJson(
+                  id: 1,
+                  accountId: 1,
+                  transferGroupId: "fake_transfer_id",
+                  type: TransactionType.TRANSFER,
+                  isOutGoing: true,
+                ),
+                "incoming_transaction": fakeTransactionJson(
+                  id: 2,
+                  accountId: 2,
+                  transferGroupId: "fake_transfer_id",
+                  type: TransactionType.TRANSFER,
+                  isOutGoing: false,
+                ),
+              }),
             ),
-          ),
-        );
+          );
 
-        verifyNoMoreInteractions(mockStorage);
-        verifyNoMoreInteractions(mockNetwork);
-      });
+          // Act
+          final transDs = container.read(transDataSourceProvider);
+          final (outgoing, incoming) = await transDs.createTransferTransaction(
+            fakeTransferTransactionCreate(),
+          );
+
+          // Assert
+          expect(outgoing.id, "1");
+          expect(incoming.id, "2");
+          expect(outgoing.isOutGoing, true);
+          expect(incoming.isOutGoing, false);
+          expect(outgoing.accountId, "1");
+          expect(incoming.accountId, "2");
+          expect(outgoing.transferGroupId, "fake_transfer_id");
+          expect(incoming.transferGroupId, "fake_transfer_id");
+
+          // verify the dependencies method's have been called with proper input's
+          verify(() => mockStorage.readString(key: "access_token")).called(1);
+          verify(
+            () => mockNetwork.send(
+              any(
+                that: isA<RequestModel>()
+                    .having((r) => r.method, "RestApi method", "POST")
+                    .having(
+                      (r) => r.url.toString(),
+                      "transaction's url",
+                      contains("/transfer"),
+                    ),
+              ),
+            ),
+          );
+
+          verifyNoMoreInteractions(mockStorage);
+          verifyNoMoreInteractions(mockNetwork);
+        },
+      );
 
       /// create transaction error test's
       final scenarios = [
@@ -247,7 +276,5 @@ void main() {
         );
       }
     });
-
-
   });
 }
