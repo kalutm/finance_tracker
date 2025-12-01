@@ -584,7 +584,7 @@ void main() {
         verifyNoMoreInteractions(mockNetwork);
       });
 
-      test("getTransaction - non 200 - throws", () async {
+      test("getUserTransaction's - non 200 - throws", () async {
         // Arrange
         when(
           () => mockStorage.readString(key: "access_token"),
@@ -601,8 +601,8 @@ void main() {
 
         // Act & Assert
         expect(
-          () => transDs.getTransaction("1"),
-          throwsA(isA<CouldnotGetTransaction>()),
+          () => transDs.getUserTransactions(),
+          throwsA(isA<CouldnotFetchTransactions>()),
         );
       });
 
