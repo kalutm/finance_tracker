@@ -276,5 +276,107 @@ void main() {
         );
       }
     });
+
+    group("tests for delete Transaction", () {
+      test("createTransaction - success - call's appiropirate mehtod's", () async {
+        // Arrange
+        when(
+          () => mockStorage.readString(key: "access_token"),
+        ).thenAnswer((_) async => "fake_acc");
+        when(() => mockNetwork.send(any())).thenAnswer(
+          (_) async => ResponseModel(
+            statusCode: 201,
+            headers: {},
+            body: jsonEncode(fakeTransactionJson(id: 1)),
+          ),
+        );
+
+        // Act
+        final transDs = container.read(transDataSourceProvider);
+        final created = await transDs.createTransaction(
+          fakeTransactionCreate(),
+        );
+
+        // Assert
+        expect(created.id, "1");
+        // verify the dependencies method's have been called with proper input's
+        verify(() => mockStorage.readString(key: "access_token")).called(1);
+        verify(
+          () => mockNetwork.send(
+            any(
+              that: isA<RequestModel>()
+                  .having((r) => r.method, "RestApi method", "POST")
+                  .having(
+                    (r) => r.url.toString(),
+                    "transaction's url",
+                    contains("/transactions"),
+                  ),
+            ),
+          ),
+        );
+
+        verifyNoMoreInteractions(mockStorage);
+        verifyNoMoreInteractions(mockNetwork);
+      });
+
+      /// create transaction error test's
+      final scenarios = [
+        TransactionErrorScenario(
+          statusCode: 400,
+          code: "INVALID_AMOUNT",
+          expectedException: InvalidInputtedAmount,
+        ),
+        TransactionErrorScenario(
+          statusCode: 400,
+          code: "INSUFFICIENT_BALANCE",
+          expectedException: AccountBalanceTnsufficient,
+        ),
+        TransactionErrorScenario(
+          statusCode: 400,
+          code: "Error",
+          expectedException: CouldnotCreateTransaction,
+        ),
+      ];
+
+      for (TransactionErrorScenario s in scenarios) {
+        test(
+          "createTransaction - non 201 :${s.code} - throws ${s.expectedException.toString()}",
+          () async {
+            // Arrange
+            when(
+              () => mockStorage.readString(key: "access_token"),
+            ).thenAnswer((_) async => "fake_acc");
+            when(() => mockNetwork.send(any())).thenAnswer(
+              (_) async => ResponseModel(
+                statusCode: s.statusCode,
+                headers: {},
+                body: jsonEncode({
+                  "detail": {"code": s.code},
+                }),
+              ),
+            );
+
+            final transDs = container.read(transDataSourceProvider);
+
+            Object typeMatcher;
+            typeMatcher = isA<CouldnotCreateTransaction>();
+            if (s.expectedException == InvalidInputtedAmount) {
+              typeMatcher = isA<InvalidInputtedAmount>();
+            }
+            if (s.expectedException == AccountBalanceTnsufficient) {
+              typeMatcher = isA<AccountBalanceTnsufficient>();
+            }
+
+            // Act & Assert
+            expect(
+              () => transDs.createTransaction(fakeTransactionCreate()),
+              throwsA(typeMatcher),
+            );
+          },
+        );
+      }
+    },);
   });
+
+
 }
