@@ -669,14 +669,19 @@ void main() {
         ),
         TransactionErrorScenario(
           statusCode: 400,
+          code: "CANNOT_UPDATE_TRANSACTION",
+          expectedException: CannotUpdateTransferTransactions,
+        ),
+        TransactionErrorScenario(
+          statusCode: 400,
           code: "Error",
-          expectedException: CouldnotCreateTransaction,
+          expectedException: CouldnotUpdateTransaction,
         ),
       ];
 
       for (TransactionErrorScenario s in scenarios) {
         test(
-          "createTransaction - non 201 :${s.code} - throws ${s.expectedException.toString()}",
+          "createTransaction - non 200 :${s.code} - throws ${s.expectedException.toString()}",
           () async {
             // Arrange
             when(
@@ -695,17 +700,20 @@ void main() {
             final transDs = container.read(transDataSourceProvider);
 
             Object typeMatcher;
-            typeMatcher = isA<CouldnotCreateTransaction>();
+            typeMatcher = isA<CouldnotUpdateTransaction>();
             if (s.expectedException == InvalidInputtedAmount) {
               typeMatcher = isA<InvalidInputtedAmount>();
             }
             if (s.expectedException == AccountBalanceTnsufficient) {
               typeMatcher = isA<AccountBalanceTnsufficient>();
             }
+            if (s.expectedException == CannotUpdateTransferTransactions){
+              typeMatcher = isA<CannotUpdateTransferTransactions>();
+            }
 
             // Act & Assert
             expect(
-              () => transDs.createTransaction(fakeTransactionCreate()),
+              () => transDs.updateTransaction("1", TransactionPatch()),
               throwsA(typeMatcher),
             );
           },
