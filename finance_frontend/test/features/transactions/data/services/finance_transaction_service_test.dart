@@ -305,7 +305,9 @@ void main() {
           () => mockTransDataSource.deleteTransferTransaction(transferGroup),
         ).called(1);
 
-        verify(() => mockTransDataSource.createTransferTransaction(create)).called(1);
+        verify(
+          () => mockTransDataSource.createTransferTransaction(create),
+        ).called(1);
 
         verifyNoMoreInteractions(mockAccountService);
         verifyNoMoreInteractions(mockTransDataSource);
@@ -315,16 +317,17 @@ void main() {
     );
 
     test(
-      "getTransaction - success - return's transaction and update's cache with the recent transaction plus emit's to the stream",
+      "getTransaction - success - return's transaction if in cache and will insert to if not in cache",
       () async {
         // Arrange: seed cache with  a Transaction via createTransaction
         final create = fakeTransactionCreate();
         when(
           () => mockTransDataSource.createTransaction(create),
         ).thenAnswer((_) async => fakeTransactionModel(id: "1"));
+        // this one is to test that getTransaction will insert the transaction if not found in the cache
         when(
-          () => mockTransDataSource.getTransaction("1"),
-        ).thenAnswer((_) async => fakeTransactionModel(id: "1", amount: "100"));
+          () => mockTransDataSource.getTransaction("2"),
+        ).thenAnswer((_) async => fakeTransactionModel(id: "2"));
 
         when(
           () => mockAccountService.getUserAccounts(),
@@ -333,39 +336,49 @@ void main() {
 
         final emitted = <List<Transaction>>[];
         final sub = svc.transactionsStream.listen(emitted.add);
-
+        // create a transaction with id one so that it will be cached
         final created = await svc.createTransaction(create);
         expect(created.id, '1');
 
-        // Act: get
-        await svc.getTransaction('1');
+        // Act
+        // will get returned from cache
+        final cachedTrans = await svc.getTransaction('1');
+
+        /// will get inserted to the cache since it's not initially found in the cache
+        final uncachedTrans = await svc.getTransaction('2');
+
+        expect(cachedTrans.id, "1");
+        expect(uncachedTrans.id, "2");
 
         // Wait for stream emission
         await Future<void>.delayed(Duration.zero);
         final last = emitted.last;
         expect(emitted.last, isNotEmpty);
-        expect(last.length, 1);
+        expect(last.length, 2);
         expect(
-          last.firstWhere((t) => t.amount == '100'),
-          isNotNull,
+          last.any((t) => t.id == "1"),
+          true,
           reason:
-              "the recent transaction's amount is 100, and that must be reflected in the stream and cache",
+              "transaction created via createTransaction should be in the cache",
         );
         expect(
-          last.firstWhere((t) => t.amount == '50'),
-          isNull,
+          last.any((t) => t.id == "2"),
+          true,
           reason:
-              "the recent transaction's amount is 100, so the old one must be overwritten and should be null",
+              "transaction will be inserted to the cacahe via getTransaction",
         );
 
         // verify the accountService.getUserAccounts have been called
-        verify(() => mockAccountService.getUserAccounts()).called(2);
+        // called via createTransaction
+        verify(() => mockAccountService.getUserAccounts()).called(1);
 
         // also verify data source call before asserting no more interactions
-        verify(() => mockTransDataSource.getTransaction("1")).called(1);
+        // the get transaction will only be called if not found in the cache so in our case it will only be called once for the transaction with id : 2
+        // but for the transaction with id : 1 getTransaction won't be called since it will be inserted to the cache via createTransaction
+        verify(() => mockTransDataSource.getTransaction("2")).called(1);
 
         verify(() => mockTransDataSource.createTransaction(create)).called(1);
-        
+
         verifyNoMoreInteractions(mockAccountService);
         verifyNoMoreInteractions(mockTransDataSource);
 
@@ -385,6 +398,10 @@ void main() {
         when(
           () => mockTransDataSource.updateTransaction("1", patch),
         ).thenAnswer((_) async => fakeTransactionModel(id: "1", amount: "100"));
+        // this one is to test that updateTransaction will insert the transaction in to the cache if not found
+        when(
+          () => mockTransDataSource.updateTransaction("2", patch),
+        ).thenAnswer((_) async => fakeTransactionModel(id: "2", amount: "150"));
 
         when(
           () => mockAccountService.getUserAccounts(),
@@ -398,32 +415,47 @@ void main() {
         expect(created.id, '1');
 
         // Act: update
-        await svc.updateTransaction('1', patch);
+        final cachedUpdated = await svc.updateTransaction('1', patch);
+        final uncachedUpdated = await svc.updateTransaction('2', patch);
+
+        expect(cachedUpdated.id, "1");
+        expect(uncachedUpdated.id, "2");
 
         // Wait for stream emission
         await Future<void>.delayed(Duration.zero);
         final last = emitted.last;
         expect(emitted.last, isNotEmpty);
-        expect(last.length, 1);
+        expect(last.length, 2);
         expect(
-          last.firstWhere((t) => t.amount == '100'),
-          isNotNull,
+          last.any((t) => t.id == "2"),
+          true,
+          reason:
+              "although not found in the cache initially update should insert it to the cache",
+        );
+        expect(
+          last.any((t) => t.amount == '100'),
+          true,
           reason: "we updated the transaction's amount to be 100",
         );
         expect(
-          last.firstWhere((t) => t.amount == '50'),
-          isNull,
+          last.any((t) => t.amount == '50'),
+          false,
           reason:
               "we updated the transaction's amount to be 100 so the old one must be overwritten",
         );
 
         // verify the accountService.getUserAccounts have been called
-        verify(() => mockAccountService.getUserAccounts()).called(1);
+        // two for updateTransaction & one for createTransaction
+        verify(() => mockAccountService.getUserAccounts()).called(3);
 
         // also verify data source call before asserting no more interactions
         verify(
           () => mockTransDataSource.updateTransaction("1", patch),
         ).called(1);
+        verify(
+          () => mockTransDataSource.updateTransaction("2", patch),
+        ).called(1);
+        verify(() => mockTransDataSource.createTransaction(create)).called(1);
 
         verifyNoMoreInteractions(mockAccountService);
         verifyNoMoreInteractions(mockTransDataSource);
