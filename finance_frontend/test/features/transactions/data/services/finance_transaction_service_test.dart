@@ -317,7 +317,7 @@ void main() {
     );
 
     test(
-      "getTransaction - success - return's transaction if in cache and will insert to if not in cache",
+      "getTransaction - success - return's transaction if in cache and will insert to if not in cache, most importantly it will update the stream",
       () async {
         // Arrange: seed cache with  a Transaction via createTransaction
         final create = fakeTransactionCreate();
@@ -387,7 +387,7 @@ void main() {
     );
 
     test(
-      "updateTransaction - success - return's the update transaction and update's cache plus emit's to the stream",
+      "updateTransaction - success - return's the updated transaction and update's the cache, insert to the cache if not found, and most importantly it emit's to the stream",
       () async {
         // Arrange: seed cache with  a Transaction via createTransaction
         final patch = TransactionPatch();
@@ -464,4 +464,5 @@ void main() {
       },
     );
   });
+  
 }
