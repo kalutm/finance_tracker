@@ -4,7 +4,7 @@ A personal finance management app built with Flutter (BLoC) and a FastAPI + SQLM
 
 📸 Preview
 
-![App Preview](![alt text](image.png))
+(c:\Users\hp\Downloads\Telegram Desktop\animation.gif.mp4)
 
 
 🚀 Overview
