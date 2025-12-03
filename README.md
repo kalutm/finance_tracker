@@ -4,7 +4,7 @@ A personal finance management app built with Flutter (BLoC) and a FastAPI + SQLM
 
 📸 Preview
 
-(<video controls src="animation.gif.mp4" title="Title"></video>)
+(<video controls src="animation.gif-1.mp4" title="Title"></video>)
 
 
 🚀 Overview
