@@ -1,211 +1,124 @@
-📊 FinanceTracker
+# 📊 FinanceTracker
 
-A personal finance management app built with Flutter (BLoC) and a FastAPI + SQLModel backend. FinanceTracker helps users track accounts, categories, and transactions with clean UI, charts, filters, and secure authentication.
+![Flutter](https://img.shields.io/badge/Flutter-%2302569B.svg?style=for-the-badge&logo=Flutter&logoColor=white)
+![Dart](https://img.shields.io/badge/dart-%230175C2.svg?style=for-the-badge&logo=dart&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)
+![Postgres](https://img.shields.io/badge/postgres-%23316192.svg?style=for-the-badge&logo=postgresql&logoColor=white)
 
-📸 Preview
+**FinanceTracker** is a comprehensive personal finance management application featuring a **Flutter** frontend and a **FastAPI** backend. It allows users to track accounts, categorize transactions, and visualize financial data with a clean, responsive UI.
 
+This project was built to demonstrate full-stack capabilities, focusing on **Clean Architecture**, **State Management (BLoC)**, and secure **Authentication flows**.
+
+---
+
+## 📸 App Preview
+
+### Live Demo
 ![Screen_Recording_20251203_080959(1)](https://github.com/user-attachments/assets/a47e6245-bbce-4375-8937-38840f3d6b8e)
 
-🚀 Overview
-
-FinanceTracker is designed as a practical, real-world application showcasing:
-
-Backend Skills
-
-JWT Authentication (access + refresh tokens)
-
-SQL relations (1-to-N)
-
-Pagination & search
-
-Scheduled jobs (e.g., monthly summaries)
-
-Caching for frequently accessed data
-
-Frontend (Flutter) Skills
-
-Modular feature-based architecture
-
-BLoC state management
-
-Repository + service layer
-
-Complex forms and filtering
-
-Responsive layouts
-
-Clean UI with financial dashboards
-
-BLoC & Cubit Layers Used
-
-AuthCubit
-
-AccountsBloc
-
-TransactionsBloc
-
-CategoriesBloc 
-
-✨ Core Features
-👤 User Accounts
-
-Individual user data
-
-Secure login/register
-
-<img width="250" height="500" alt="image" src="https://github.com/user-attachments/assets/1c78a5f9-f563-4d00-b186-3aa5aacbe865" />
-<img width="250" height="500" alt="image" src="https://github.com/user-attachments/assets/be9f84ae-c1aa-493b-9636-217671635693" />
-
-Password hashing
-
-JWT authentication with refresh flow
-
-💼 Accounts
-
-Represents where the user's money is stored.
-Examples: Cash, Bank Account, Savings, Credit Card
-
-<img width="250" height="500" alt="image" src="https://github.com/user-attachments/assets/00b007f2-7bc7-4d67-ae56-9812a9144cc8" />
-
-
-Fields:
-
-name
-
-type (cash, bank, wallet, credit, etc.)
-
-balance
-
-currency (USD, ETB, EUR, etc.)
-
-💸 Transactions
-
-Records movement of money.
-
-<img width="250" height="500" alt="image" src="https://github.com/user-attachments/assets/8d23ed92-b012-43db-a18f-a8e5c22ea378" />
-
-Types:
-
-Income (+)
-
-Expense (–)
-
-Linked to an account and optionally to a category.
-
-Fields:
-
-amount
-
-date
-
-description
-
-category
-
-account
-
-Example:
-
-Expense: 50 USD — Category: Food — Account: Cash — Date: 2025-08-22
-
-🏷 Categories
-
-Groups transactions for better organization.
-
-<img width="250" height="500" alt="image" src="https://github.com/user-attachments/assets/1ad24213-9112-4338-bf84-1f534ba16a5c" />
-
-Examples:
-
-Food
-
-Transport
-
-Entertainment
-
-Rent
-
-Salary
-
-Freelance
-
-📱 App Icon Attribution
-
-Icon by Flaticon
-Source: https://www.flaticon.com/free-icon/financial-analysis_11568968?term=financial+app&page=1&position=3&origin=tag&related_id=11568968
-
-🛠 Tech Stack
-Frontend
-
-Dart & Flutter
-
-BLoC
-
-http
-
-Flutter charts library
-
-FutterSecureStorage / for storing access and refresh token's
-
-GoogleSignIn / to allow user to sign in with their google account
-
-SharedPreferences / Local caching
-
-Backend
-
-FastAPI
-
-SQLModel
-
-pydantic
-
-Alembic (for data base migrations)
-
-Database
-
-PostgreSQL
-
-📦 Folder Structure (High-Level)
-backend/
-  alembic/
-  app/
-    api/
-    accounts/
-      tests/
-    auth/
-      tests/
-    categories/
-      tests/
-    core/
-    db/
-    models/
-    transactions/
-    tests/
-
-frontend/
-  lib/
-    features/
-      auth/
-        data/
-        domain/
-        presentation/
-      accounts/
-        data/
-        domain/
-        presentation/
-      categories/
-        data/
-        domain/
-        presentation/
-      transactions/
-        data/
-        domain/
-        presentation/
-    core/
-    themes/
-    widgets/
-  tests/
-    features/
-      auth/
-      accounts/
-      categories/
-      transactions/
+### UI Screenshots
+| Authentication | User Profile | Accounts Overview |
+|:---:|:---:|:---:|
+| <img src="https://github.com/user-attachments/assets/1c78a5f9-f563-4d00-b186-3aa5aacbe865" width="200"> | <img src="https://github.com/user-attachments/assets/be9f84ae-c1aa-493b-9636-217671635693" width="200"> | <img src="https://github.com/user-attachments/assets/00b007f2-7bc7-4d67-ae56-9812a9144cc8" width="200"> |
+
+| Transactions | Categories |
+|:---:|:---:|
+| <img src="https://github.com/user-attachments/assets/8d23ed92-b012-43db-a18f-a8e5c22ea378" width="200"> | <img src="https://github.com/user-attachments/assets/1ad24213-9112-4338-bf84-1f534ba16a5c" width="200"> |
+
+---
+
+## 🚀 Architecture & Technical Highlights
+
+This project follows a **Feature-First** architecture with a separation of concerns between Data, Domain, and Presentation layers.
+
+### 📱 Frontend (Flutter)
+* **State Management:** BLoC (Business Logic Component) & Cubit.
+    * *AuthCubit, AccountsBloc, TransactionsBloc, CategoriesBloc.*
+* **Architecture:** Clean Architecture (Repository Pattern + Service Layer).
+* **UI/UX:** Custom complex forms, filtering logic, and financial charting.
+* **Local Storage:** Secure storage for JWTs and Shared Preferences for caching.
+
+### ⚙️ Backend (FastAPI)
+* **Authentication:** Full JWT implementation (Access + Refresh token rotation).
+* **Database:** PostgreSQL with SQLModel (ORM).
+* **Performance:** Pagination, Search implementation, and data caching.
+* **Background Tasks:** Scheduled jobs for monthly summaries.
+* **Migrations:** Database version control using Alembic.
+
+---
+
+## ✨ Key Features
+
+### 👤 Secure Authentication
+* User registration and secure login.
+* Password hashing.
+* Auto-refreshing JWT tokens for seamless user experience.
+
+### 💼 Account Management
+* Track multiple asset types: *Cash, Bank Account, Savings, Credit Cards*.
+* Support for multiple currencies (USD, ETB, EUR).
+* Real-time balance updates.
+
+### 💸 Transaction Tracking
+* Record **Income** and **Expenses**.
+* Link transactions to specific accounts and categories.
+* Rich data: Amount, Date, Description, Category, Account.
+
+### 🏷 Categorization
+* Organize spending with custom categories (e.g., *Food, Transport, Rent, Salary*).
+* Visual icons for quick identification.
+
+---
+
+## 🛠 Tech Stack
+
+### Frontend
+| Category | Technology | Usage |
+| :--- | :--- | :--- |
+| **Framework** | Flutter / Dart | UI & Logic |
+| **State Mgmt** | flutter_bloc | BLoC pattern implementation |
+| **Networking** | http | API communication |
+| **Storage** | flutter_secure_storage | Storing Access/Refresh Tokens |
+| **Caching** | shared_preferences | Local settings caching |
+| **Auth** | google_sign_in | Google OAuth integration |
+| **Visualization** | fl_chart | Financial graphs |
+
+### Backend
+| Category | Technology | Usage |
+| :--- | :--- | :--- |
+| **Framework** | FastAPI | REST API |
+| **Language** | Python | Server logic |
+| **ORM** | SQLModel | Database interaction |
+| **Validation** | Pydantic | Data validation |
+| **Database** | PostgreSQL | Relational Data Store |
+| **Migrations** | Alembic | Schema management |
+
+---
+
+## 📦 Folder Structure
+
+The project is divided into a dedicated backend and frontend directory.
+
+```bash
+├── backend/
+│   ├── alembic/              # DB Migrations
+│   ├── app/
+│   │   ├── api/              # API Routes
+│   │   ├── core/             # Config & Security
+│   │   ├── db/               # Database connection
+│   │   ├── models/           # SQLModel classes
+│   │   ├── accounts/         # Account logic & tests
+│   │   ├── auth/             # Auth logic & tests
+│   │   ├── categories/       # Category logic & tests
+│   │   └── transactions/     # Transaction logic & tests
+│
+├── frontend/
+│   ├── lib/
+│   │   ├── core/             # Shared utils, themes, widgets
+│   │   ├── features/
+│   │   │   ├── auth/         # Login/Register (Data, Domain, Presentation)
+│   │   │   ├── accounts/     # Account mgmt (Data, Domain, Presentation)
+│   │   │   ├── categories/   # Category mgmt (Data, Domain, Presentation)
+│   │   │   └── transactions/ # Transaction mgmt (Data, Domain, Presentation)
+│   │   └── main.dart
+│   └── tests/                # Widget & Unit tests
