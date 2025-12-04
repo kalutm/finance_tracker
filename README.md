@@ -84,7 +84,6 @@ Records movement of money.
 
 <img width="250" height="500" alt="image" src="https://github.com/user-attachments/assets/8d23ed92-b012-43db-a18f-a8e5c22ea378" />
 
-
 Types:
 
 Income (+)
@@ -112,6 +111,8 @@ Expense: 50 USD — Category: Food — Account: Cash — Date: 2025-08-22
 🏷 Categories
 
 Groups transactions for better organization.
+
+<img width="250" height="500" alt="image" src="https://github.com/user-attachments/assets/1ad24213-9112-4338-bf84-1f534ba16a5c" />
 
 Examples:
 
