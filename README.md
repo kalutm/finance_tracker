@@ -17,7 +17,7 @@ This project was built to demonstrate full-stack capabilities, focusing on **Cle
 ![Screen_Recording_20251203_080959(1)](https://github.com/user-attachments/assets/a47e6245-bbce-4375-8937-38840f3d6b8e)
 
 ### UI Screenshots
-| Authentication | User Profile | Accounts Overview |
+| Authentication/Login | Authentication/Register | Accounts Overview |
 |:---:|:---:|:---:|
 | <img src="https://github.com/user-attachments/assets/1c78a5f9-f563-4d00-b186-3aa5aacbe865" width="200"> | <img src="https://github.com/user-attachments/assets/be9f84ae-c1aa-493b-9636-217671635693" width="200"> | <img src="https://github.com/user-attachments/assets/00b007f2-7bc7-4d67-ae56-9812a9144cc8" width="200"> |
 
@@ -81,7 +81,6 @@ This project follows a **Feature-First** architecture with a separation of conce
 | **Storage** | flutter_secure_storage | Storing Access/Refresh Tokens |
 | **Caching** | shared_preferences | Local settings caching |
 | **Auth** | google_sign_in | Google OAuth integration |
-| **Visualization** | fl_chart | Financial graphs |
 
 ### Backend
 | Category | Technology | Usage |
