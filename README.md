@@ -19,13 +19,9 @@ SQL relations (1-to-N)
 
 Pagination & search
 
-CSV import for transactions
-
 Scheduled jobs (e.g., monthly summaries)
 
 Caching for frequently accessed data
-
-Aggregation queries for charts & analytics
 
 Frontend (Flutter) Skills
 
@@ -35,15 +31,15 @@ BLoC state management
 
 Repository + service layer
 
-Complex forms, filtering, and chart UI
+Complex forms and filtering
 
 Responsive layouts
 
 Clean UI with financial dashboards
 
-BLoC Layers Used
+BLoC & Cubit Layers Used
 
-AuthBloc
+AuthCubit
 
 AccountsBloc
 
@@ -75,7 +71,7 @@ type (cash, bank, wallet, credit, etc.)
 
 balance
 
-currency
+currency (USD, ETB, EUR, etc.)
 
 💸 Transactions
 
@@ -87,7 +83,7 @@ Income (+)
 
 Expense (–)
 
-Linked to an account and a category.
+Linked to an account and optionally to a category.
 
 Fields:
 
@@ -135,9 +131,13 @@ Dart & Flutter
 
 BLoC
 
-Dio
+http
 
 Flutter charts library
+
+FutterSecureStorage / for storing access and refresh token's
+
+GoogleSignIn / to allow user to sign in with their google account
 
 SharedPreferences / Local caching
 
@@ -147,27 +147,56 @@ FastAPI
 
 SQLModel
 
-PostgreSQL
+pydantic
 
-APScheduler for scheduled tasks
+Alembic (for data base migrations)
+
+Database
+
+PostgreSQL
 
 📦 Folder Structure (High-Level)
 backend/
+  alembic/
   app/
+    api/
     accounts/
+      tests/
     auth/
+      tests/
     categories/
+      tests/
+    core/
+    db/
+    models/
     transactions/
-    utils/
     tests/
 
 frontend/
   lib/
     features/
       auth/
+        data/
+        domain/
+        presentation/
+      accounts/
+        data/
+        domain/
+        presentation/
+      categories/
+        data/
+        domain/
+        presentation/
+      transactions/
+        data/
+        domain/
+        presentation/
+    core/
+    themes/
+    widgets/
+  tests/
+    features/
+      auth/
       accounts/
       categories/
       transactions/
-    core/
-    data/
-    widgets/
