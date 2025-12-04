@@ -6,10 +6,6 @@ A personal finance management app built with Flutter (BLoC) and a FastAPI + SQLM
 
 ![Screen_Recording_20251203_080959(1)](https://github.com/user-attachments/assets/a47e6245-bbce-4375-8937-38840f3d6b8e)
 
-
-
-<img width="250" height="500" alt="image" src="https://github.com/user-attachments/assets/5131bde9-9e7a-4ac3-94ca-46b0e8c64de0" />
-
 🚀 Overview
 
 FinanceTracker is designed as a practical, real-world application showcasing:
@@ -56,6 +52,8 @@ CategoriesBloc
 Individual user data
 
 Secure login/register
+<img width="250" height="500" alt="image" src="https://github.com/user-attachments/assets/1c78a5f9-f563-4d00-b186-3aa5aacbe865" />
+<img width="250" height="500" alt="image" src="https://github.com/user-attachments/assets/be9f84ae-c1aa-493b-9636-217671635693" />
 
 Password hashing
 
