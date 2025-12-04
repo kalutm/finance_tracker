@@ -52,6 +52,7 @@ CategoriesBloc
 Individual user data
 
 Secure login/register
+
 <img width="250" height="500" alt="image" src="https://github.com/user-attachments/assets/1c78a5f9-f563-4d00-b186-3aa5aacbe865" />
 <img width="250" height="500" alt="image" src="https://github.com/user-attachments/assets/be9f84ae-c1aa-493b-9636-217671635693" />
 
@@ -63,6 +64,9 @@ JWT authentication with refresh flow
 
 Represents where the user's money is stored.
 Examples: Cash, Bank Account, Savings, Credit Card
+
+<img width="250" height="500" alt="image" src="https://github.com/user-attachments/assets/00b007f2-7bc7-4d67-ae56-9812a9144cc8" />
+
 
 Fields:
 
