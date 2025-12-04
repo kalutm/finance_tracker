@@ -82,6 +82,9 @@ currency (USD, ETB, EUR, etc.)
 
 Records movement of money.
 
+<img width="250" height="500" alt="image" src="https://github.com/user-attachments/assets/8d23ed92-b012-43db-a18f-a8e5c22ea378" />
+
+
 Types:
 
 Income (+)
