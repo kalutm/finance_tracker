@@ -6,6 +6,7 @@ python-dotenv
 passlib[bcrypt]
 python-jose[cryptography]
 pydantic[email]
+pydantic_settings
 httpx
 black
 PyJWT
