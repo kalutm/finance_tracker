@@ -20,6 +20,7 @@ class RemoteTransDataSource implements TransDataSource {
     required this.client,
     required this.baseUrl,
   });
+  
 
   get transactionsBaseUrl => "$baseUrl/transactions";
 
