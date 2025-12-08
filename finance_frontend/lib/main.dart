@@ -3,6 +3,7 @@ import 'package:finance_frontend/features/auth/presentation/cubits/auth_cubit.da
 import 'package:finance_frontend/features/auth/presentation/views/app_wrapper.dart';
 import 'package:finance_frontend/features/settings/presentation/cubits/settings_cubit.dart';
 import 'package:finance_frontend/features/settings/presentation/cubits/settings_state.dart';
+import 'package:finance_frontend/features/transactions/data/service/sms_service.dart';
 import 'package:finance_frontend/themes/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -20,6 +21,10 @@ class FinanceTracker extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final smsService = SmsService(transactionService: ref.read(transactionServiceProvider));
+    smsService.init();
+    smsService.start(listenInBackground: true);
+    
     return MultiBlocProvider(
       providers: [
         BlocProvider<AuthCubit>(
