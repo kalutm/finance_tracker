@@ -3,21 +3,19 @@
 // Drop this file into your project (suggested path):
 // lib/features/transactions/services/sms_service.dart
 //
-// What it does:
-// - Requests SMS permissions
-// - Listens to incoming SMS (telephony)
-// - Parses CBE + Telebirr messages using regexes
-// - Emits parsed transactions via a Stream and an optional callback for UI confirmation
-// - Performs deduplication using SharedPreferences (persists seen tx refs for N days)
-// - Calls your TransactionService.createTransaction(...) to create the transaction remotely
-// - Keeps a tiny in-memory retry queue for failed sends
-//
-// TODO: adapt the toTransactionCreate() helper to match your TransactionCreate DTO fields
+// Real-time listener + Inbox fallback integrated.
+// See comments for usage.
 
 import 'dart:async';
 import 'dart:convert';
-import 'package:telephony/telephony.dart';
+import 'package:finance_frontend/features/accounts/domain/entities/account.dart';
+import 'package:finance_frontend/features/accounts/domain/entities/account_type_enum.dart';
+import 'package:finance_frontend/features/accounts/domain/entities/dtos/account_create.dart';
+import 'package:finance_frontend/features/accounts/domain/service/account_service.dart';
+import 'package:finance_frontend/features/auth/domain/services/secure_storage_service.dart';
+import 'package:finance_frontend/features/transactions/domain/entities/transaction_type.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:telephony_fix/telephony.dart';
 import 'package:uuid/uuid.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
@@ -29,13 +27,12 @@ import 'package:finance_frontend/features/transactions/data/model/dtos/transacti
 /// Minimal parsed transaction model used inside this service
 class ParsedTransaction {
   final String id; // internal uuid
-  final double amount;
+  final String amount;
   final String merchant; // empty if unknown
   final bool debit; // true = expense, false = income
   final DateTime occuredAt;
   final String source; // e.g., 'cbe_sms' | 'telebirr_sms'
-  final String?
-  transactionRef; // e.g., CL55OHQFK3 or FT2534... - used for dedupe
+  String? transactionRef; // e.g., CL55OHQFK3 or FT2534... - used for dedupe
   final String rawText;
 
   ParsedTransaction({
@@ -68,14 +65,13 @@ class ParsedTransaction {
 /// Usage:
 /// final smsService = SmsService(transactionService: yourTransactionService);
 /// await smsService.init();
-/// smsService.onParsedTransaction = (parsed) async {
-///   // optional: show review dialog to user; return true to proceed with creation
-///   return true;
-/// };
+/// smsService.onParsedTransaction = (parsed) async { return true; };
 /// smsService.start();
 class SmsService {
   final Telephony _telephony = Telephony.instance;
   final TransactionService transactionService;
+  final AccountService accountService;
+  final SecureStorageService secureStorageService;
   final Duration _dedupeRetention; // how long to keep seen tx refs
   final Connectivity _connectivity = Connectivity();
 
@@ -94,36 +90,170 @@ class SmsService {
   // in-memory retry queue
   final List<ParsedTransaction> _retryQueue = [];
 
+  // in-memory cache of seen keys (fast check to avoid races)
+  final Set<String> _seenCache = {};
+
+  // small guard so we persist seen keys less often (debounce)
+  Timer? _persistSeenTimer;
+
   // config keys
   static const _kSeenTxKey = 'sms_seen_tx_refs_v1';
+  static const _kLastInboxSyncKey = 'sms_last_inbox_sync_v1';
+
+  // cbe and telebirr id's
+  String? cbeId;
+  String? teleId;
 
   SmsService({
     required this.transactionService,
+    required this.accountService,
+    required this.secureStorageService,
     Duration dedupeRetention = const Duration(days: 7),
   }) : _dedupeRetention = dedupeRetention;
 
   /// Call once during app init (async)
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
+
+    // warm in-memory cache from persisted map
+    try {
+      final mapStr = _prefs.getString(_kSeenTxKey);
+      if (mapStr != null) {
+        final Map<String, dynamic> map = jsonDecode(mapStr) as Map<String, dynamic>;
+        _seenCache.addAll(map.keys);
+      }
+    } catch (_) {
+      // ignore
+    }
+
+    await _createSetUpAccounts();
+    await _fetchCbeAndTelebirrIds();
     // cleanup old entries if any
     _cleanupOldSeenTxRefs();
     // attempt to flush retry queue when connectivity changes to online
     _connectivity.onConnectivityChanged.listen((results) {
-      final hasConnection =
-          results.contains(ConnectivityResult.mobile) ||
-          results.contains(ConnectivityResult.wifi) ||
-          results.contains(ConnectivityResult.ethernet);
-
-      if (hasConnection) {
-        _flushRetryQueue();
+      // newer connectivity_plus returns ConnectivityResult (single) — but some APIs may differ
+      try {
+        final hasConnection = results.any((c) => c == ConnectivityResult.mobile) ||
+            results.any((c) => c == ConnectivityResult.wifi) ||
+            results.any((c) => c == ConnectivityResult.ethernet);
+        if (hasConnection) {
+          _flushRetryQueue();
+        }
+      } catch (_) {
+        // in case results is List<ConnectivityResult> (older/newer plugin variations), handle that
+          final iter = results as Iterable;
+          final has = iter.any((r) => r != ConnectivityResult.none);
+          if (has) _flushRetryQueue();
       }
     });
   }
 
   Stream<ParsedTransaction> get parsedStream => _parsedStreamCtrl.stream;
 
+  // corrected: fetch stored ids from secure storage (and keep them if present)
+  Future<void> _fetchCbeAndTelebirrIds() async {
+    try {
+      final cbId = await secureStorageService.readString(key: "cbe_account_id");
+      final teId = await secureStorageService.readString(
+        key: "tele_account_id",
+      );
+      if (cbId != null && cbId.isNotEmpty) {
+        cbeId = cbId;
+      }
+      if (teId != null && teId.isNotEmpty) {
+        teleId = teId;
+      }
+      debugPrint('SmsService: fetched stored ids cbe=$cbeId tele=$teleId');
+    } catch (e) {
+      debugPrint('SmsService: failed to fetch stored ids: $e');
+    }
+  }
+
+  Future<void> _createSetUpAccounts() async {
+    try {
+      // get latest snapshot of accounts (await first/last event; choose appropriate for your stream)
+      final accounts = await accountService.accountsStream.first;
+
+      // Try to find existing accounts
+      final existingCbe = accounts.firstWhere(
+        (a) => a.name.toLowerCase() == "cbe",
+        orElse:
+            () => Account(
+                  id: "",
+                  balance: "",
+                  name: "",
+                  type: AccountType.values.first,
+                  currency: "",
+                  active: false,
+                  createdAt: DateTime.now(),
+                ),
+      );
+      final existingTele = accounts.firstWhere(
+        (a) => a.name.toLowerCase() == "telebirr",
+        orElse:
+            () => Account(
+                  id: "",
+                  balance: "",
+                  name: "",
+                  type: AccountType.values.first,
+                  currency: "",
+                  active: false,
+                  createdAt: DateTime.now(),
+                ),
+      );
+
+      if (existingCbe.id.isNotEmpty) {
+        cbeId = existingCbe.id;
+        // persist if not already saved
+        await secureStorageService.saveString(
+          key: "cbe_account_id",
+          value: existingCbe.id,
+        );
+      }
+      if (existingTele.id.isNotEmpty) {
+        teleId = existingTele.id;
+        await secureStorageService.saveString(
+          key: "tele_account_id",
+          value: existingTele.id,
+        );
+      }
+
+      // If either missing, create them
+      if (existingCbe.id.isEmpty) {
+        final cbeAccount = await accountService.createAccount(
+          AccountCreate(name: "CBE", type: AccountType.BANK, currency: "ETB"),
+        );
+        cbeId = cbeAccount.id;
+        await secureStorageService.saveString(
+          key: "cbe_account_id",
+          value: cbeId!,
+        );
+      }
+
+      if (existingTele.id.isEmpty) {
+        final telebirrAccount = await accountService.createAccount(
+          AccountCreate(
+            name: "telebirr",
+            type: AccountType.WALLET,
+            currency: "ETB",
+          ),
+        );
+        teleId = telebirrAccount.id;
+        await secureStorageService.saveString(
+          key: "tele_account_id",
+          value: teleId!,
+        );
+      }
+
+      debugPrint('SmsService: accounts ready cbe=$cbeId tele=$teleId');
+    } catch (e, st) {
+      debugPrint('SmsService: _createSetUpAccounts failed: $e\n$st');
+    }
+  }
+
   /// Start listening to incoming SMS. Should be called after init().
-  /// Note: on Android you must add RECEIVE_SMS permission to AndroidManifest and configure background.
+  /// Note: on Android you must add RECEIVE_SMS/READ_SMS permission to AndroidManifest and configure background.
   Future<void> start({bool listenInBackground = true}) async {
     if (_listening) return;
     final granted = await _telephony.requestPhoneAndSmsPermissions;
@@ -135,7 +265,9 @@ class SmsService {
     // The telephony plugin supports listenInBackground: true with additional setup.
     _telephony.listenIncomingSms(
       onNewMessage: (SmsMessage message) {
-        _handleSms(message.body ?? '', DateTime.now());
+        // Defensive: message.date may be int (ms since epoch) or null
+        final smsDate = _smsMessageDateToDateTime(message);
+        _handleSms(message.body ?? '', smsDate);
       },
       listenInBackground: listenInBackground,
     );
@@ -155,6 +287,113 @@ class SmsService {
 
   void dispose() {
     if (!_parsedStreamCtrl.isClosed) _parsedStreamCtrl.close();
+    _persistSeenTimer?.cancel();
+  }
+
+  // -------------------------
+  // Inbox fallback: public API
+  // Call this when app resumes or on user pull-to-refresh.
+  // -------------------------
+  Future<void> syncInboxOnResume({int limit = 50}) async {
+    try {
+      final granted = await _telephony.requestPhoneAndSmsPermissions;
+      if (granted != true) {
+        debugPrint(
+          'SmsService: SMS permission not granted - cannot sync inbox',
+        );
+        return;
+      }
+
+      // fetch last sync millis (defaults to 0 to process all messages once)
+      final lastSyncMillis = _prefs.getInt(_kLastInboxSyncKey) ?? 0;
+      debugPrint('SmsService: syncInboxOnResume (lastSync=$lastSyncMillis)');
+
+      // fetch inbox messages
+      final List<SmsMessage> inbox = await _telephony.getInboxSms(
+        columns: [SmsColumn.ADDRESS, SmsColumn.BODY, SmsColumn.DATE],
+      );
+
+      if (inbox.isEmpty) {
+        debugPrint('SmsService: inbox empty');
+        // update last sync timestamp if none (avoid scanning repeatedly)
+        await _prefs.setInt(
+          _kLastInboxSyncKey,
+          DateTime.now().millisecondsSinceEpoch,
+        );
+        return;
+      }
+
+      // convert/normalize date values and sort ascending (oldest first)
+      final List<_MsgWrapper> wrapped =
+          inbox.map((m) {
+            final millis = _smsMessageDateToMillis(m);
+            return _MsgWrapper(msg: m, dateMillis: millis);
+          }).toList();
+
+      wrapped.sort((a, b) => a.dateMillis.compareTo(b.dateMillis));
+
+      int newestProcessed = lastSyncMillis;
+      int processedCount = 0;
+
+      final List<String> unparsedSamples = [];
+
+      for (final w in wrapped) {
+        if (w.dateMillis <= lastSyncMillis) continue; // already processed previously
+
+        final body = w.msg.body ?? '';
+        final smsDate = DateTime.fromMillisecondsSinceEpoch(w.dateMillis);
+
+        final parsed = _parseForBanks(body, smsDate);
+        if (parsed == null) {
+          if (unparsedSamples.length < 10) {
+            unparsedSamples.add('date:${smsDate.toIso8601String()} addr:${w.msg.address} body:$body');
+          }
+          continue; // not a transaction message
+        }
+
+        final dedupeKey = _dedupeKeyFor(parsed);
+
+        // fast in-memory check + reserve the key to prevent race conditions
+        if (_seenCache.contains(dedupeKey)) {
+          debugPrint('SmsService: inbox duplicate (cache) ignored (key=$dedupeKey)');
+          if (w.dateMillis > newestProcessed) newestProcessed = w.dateMillis;
+          continue;
+        }
+        // reserve immediately (persist will follow in _markSeen)
+        _seenCache.add(dedupeKey);
+
+        // attempt to create (same behavior as realtime: mark seen regardless,
+        // and queue on failure)
+        final sent = await _attemptCreate(parsed);
+        if (sent) {
+          await _markSeen(dedupeKey);
+          processedCount++;
+        } else {
+          _retryQueue.add(parsed);
+          // mark seen to avoid repeated duplicate attempts from same SMS
+          await _markSeen(dedupeKey);
+          debugPrint(
+            'SmsService: inbox message queued for retry (${parsed.id})',
+          );
+        }
+
+        if (w.dateMillis > newestProcessed) newestProcessed = w.dateMillis;
+      }
+
+      if (unparsedSamples.isNotEmpty) {
+        debugPrint('SmsService: sample unparsed messages (first ${unparsedSamples.length}):');
+        for (final s in unparsedSamples) debugPrint(s);
+      }
+
+      // persist newest processed timestamp so we only process newer messages later
+      await _prefs.setInt(_kLastInboxSyncKey, newestProcessed);
+
+      debugPrint(
+        'SmsService: sync complete. processed=$processedCount, newestProcessed=$newestProcessed',
+      );
+    } catch (e, st) {
+      debugPrint('SmsService: syncInboxOnResume failed: $e\n$st');
+    }
   }
 
   // -------------------------
@@ -175,10 +414,14 @@ class SmsService {
 
     // dedupe using transactionRef if available; otherwise use a computed hash
     final dedupeKey = _dedupeKeyFor(parsed);
-    if (await _isSeen(dedupeKey)) {
-      debugPrint('SmsService: duplicate SMS ignored (key=$dedupeKey)');
+
+    // fast in-memory check + reserve the key to prevent race conditions
+    if (_seenCache.contains(dedupeKey)) {
+      debugPrint('SmsService: duplicate SMS ignored (cache) (key=$dedupeKey)');
       return;
     }
+    // reserve immediately (persist will follow in _markSeen)
+    _seenCache.add(dedupeKey);
 
     // emit parsed for UI or logs
     _parsedStreamCtrl.add(parsed);
@@ -215,7 +458,7 @@ class SmsService {
   Future<bool> _attemptCreate(ParsedTransaction parsed) async {
     // If offline, bail out early
     final conn = await _connectivity.checkConnectivity();
-    if (conn == ConnectivityResult.none) {
+    if (conn.any((c) => c == ConnectivityResult.none)) {
       debugPrint('SmsService: offline — will retry later');
       return false;
     }
@@ -263,8 +506,6 @@ class SmsService {
 
   // Parses CBE sample formats you provided
   ParsedTransaction? _parseCbe(String body, DateTime smsDate) {
-    final lower = body.toLowerCase();
-
     // transactionRef - many messages include FT... or TT... id in the url or text
     final refMatch = RegExp(
       r'\b(FT|TT)\w+\b',
@@ -283,6 +524,7 @@ class SmsService {
       final merchant = mTransfer.group(2)!.trim();
       final dateStr = mTransfer.group(3)!.trim();
       final dt = _tryParseDate(dateStr, smsDate);
+
       return ParsedTransaction(
         id: _uuid.v4(),
         amount: amt,
@@ -341,8 +583,6 @@ class SmsService {
 
   // Parses Telebirr formats you provided
   ParsedTransaction? _parseTelebirr(String body, DateTime smsDate) {
-    final lower = body.toLowerCase();
-
     // transaction number e.g., CL55OHQFK3
     final txRefMatch = RegExp(r'\b[A-Z0-9]{6,}\b').firstMatch(body);
     final txRef = txRefMatch?.group(0);
@@ -445,9 +685,9 @@ class SmsService {
   // -------------------------
   // Helpers
   // -------------------------
-  double _cleanAmount(String raw) {
+  String _cleanAmount(String raw) {
     final cleaned = raw.replaceAll(',', '').replaceAll('ETB', '').trim();
-    return double.tryParse(cleaned) ?? 0.0;
+    return cleaned;
   }
 
   DateTime _tryParseDate(String candidate, DateTime fallback) {
@@ -490,41 +730,37 @@ class SmsService {
           p.occuredAt.hour,
           p.occuredAt.minute,
         ).toIso8601String();
-    final raw = '${p.source}::${p.amount}::${p.merchant}::${minuteTs}';
+    final raw = '${p.source}::${p.amount}::${p.merchant}::$minuteTs';
     return base64.encode(utf8.encode(raw));
   }
 
-  Future<bool> _isSeen(String key) async {
-    final mapStr = _prefs.getString(_kSeenTxKey);
-    if (mapStr == null) return false;
-    try {
-      final Map<String, dynamic> map =
-          jsonDecode(mapStr) as Map<String, dynamic>;
-      if (!map.containsKey(key)) return false;
-      final ts = DateTime.parse(map[key] as String);
-      final expired = DateTime.now().difference(ts) > _dedupeRetention;
-      if (expired) {
-        // lazy cleanup
-        map.remove(key);
-        await _prefs.setString(_kSeenTxKey, jsonEncode(map));
-        return false;
-      }
-      return true;
-    } catch (_) {
-      return false;
-    }
-  }
 
   Future<void> _markSeen(String key) async {
     try {
-      final mapStr = _prefs.getString(_kSeenTxKey);
-      final Map<String, dynamic> map =
-          mapStr == null
-              ? <String, dynamic>{}
-              : jsonDecode(mapStr) as Map<String, dynamic>;
-      map[key] = DateTime.now().toIso8601String();
-      await _prefs.setString(_kSeenTxKey, jsonEncode(map));
-    } catch (_) {}
+      // fast in-memory add (prevents races)
+      _seenCache.add(key);
+
+      // Persist lazily (debounce writes to prefs)
+      _persistSeenTimer?.cancel();
+      _persistSeenTimer = Timer(const Duration(seconds: 2), () async {
+        try {
+          final mapStr = _prefs.getString(_kSeenTxKey);
+          final Map<String, dynamic> map =
+              mapStr == null ? <String, dynamic>{} : jsonDecode(mapStr) as Map<String, dynamic>;
+          final nowIso = DateTime.now().toIso8601String();
+          for (final k in _seenCache) {
+            if (!map.containsKey(k)) {
+              map[k] = nowIso;
+            }
+          }
+          await _prefs.setString(_kSeenTxKey, jsonEncode(map));
+        } catch (e) {
+          debugPrint('SmsService: _markSeen persist failed: $e');
+        }
+      });
+    } catch (e) {
+      debugPrint('SmsService: _markSeen error: $e');
+    }
   }
 
   // cleanup old entries
@@ -551,30 +787,57 @@ class SmsService {
   // Mapping to your TransactionCreate DTO
   // -------------------------
   TransactionCreate _toTransactionCreate(ParsedTransaction p) {
-    // NOTE: adapt this to your TransactionCreate constructor fields.
-    //
-    // Typical fields your DTO probably needs:
-    // - amount (string or double)
-    // - description or merchant
-    // - occuredAt / timestamp
-    // - accountId (if multiple accounts exist; you may pick default)
-    // - currency (e.g., 'ETB')
-    //
-    // Example (replace to match your actual DTO):
-    //
-    // return TransactionCreate(
-    //   amount: p.amount.toString(),
-    //   description: p.merchant.isEmpty ? 'SMS transaction' : p.merchant,
-    //   occuredAt: p.occuredAt.toIso8601String(),
-    //   accountId: "<your_account_id_here>", // you need to provide default
-    //   currency: 'ETB',
-    //   type: p.debit ? 'expense' : 'income',
-    // );
-    //
-    // ---- FALLBACK: if your DTO takes a Map or named fields differ, change here ----
-    //
-    throw UnimplementedError(
-      'Adapt _toTransactionCreate() to match your TransactionCreate DTO. See comments in file.',
+    final accountId = p.source == "cbe_sms" ? cbeId : teleId;
+    if (accountId == null || accountId.isEmpty) {
+      // Defensive: if ids are not ready, throw or return a DTO that your service can handle.
+      // I recommend throwing so the failure is visible and retries will happen later.
+      throw StateError(
+        'SmsService: accountId for ${p.source} is not available yet',
+      );
+    }
+
+    return TransactionCreate(
+      amount: p.amount,
+      occuredAt: p.occuredAt,
+      accountId: accountId,
+      currency: "ETB",
+      merchant: p.merchant,
+      type: p.debit ? TransactionType.EXPENSE : TransactionType.INCOME,
     );
   }
+
+  // -------------------------
+  // Utilities
+  // -------------------------
+  // Convert SmsMessage.date to millis defensively
+  int _smsMessageDateToMillis(SmsMessage m) {
+    try {
+      final dynamic d = m.date;
+      if (d == null) return DateTime.now().millisecondsSinceEpoch;
+      if (d is int) return d;
+      if (d is String) {
+        // try parse numeric string
+        final parsed = int.tryParse(d);
+        if (parsed != null) return parsed;
+        // otherwise try parse date string
+        final dt = DateTime.tryParse(d);
+        if (dt != null) return dt.millisecondsSinceEpoch;
+      }
+    } catch (_) {}
+    return DateTime.now().millisecondsSinceEpoch;
+  }
+
+  // Convert to DateTime with fallback
+  DateTime _smsMessageDateToDateTime(SmsMessage m) {
+    final millis = _smsMessageDateToMillis(m);
+    return DateTime.fromMillisecondsSinceEpoch(millis);
+  }
 }
+
+/// Small wrapper for sorting inbox messages
+class _MsgWrapper {
+  final SmsMessage msg;
+  final int dateMillis;
+  _MsgWrapper({required this.msg, required this.dateMillis});
+}
+

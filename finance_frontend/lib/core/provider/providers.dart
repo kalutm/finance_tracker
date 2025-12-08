@@ -2,6 +2,7 @@ import 'package:finance_frontend/features/auth/data/services/finance_token_decod
 import 'package:finance_frontend/features/auth/data/services/google_sign_in_service.dart';
 import 'package:finance_frontend/features/auth/domain/services/sign_in_with_service.dart';
 import 'package:finance_frontend/features/auth/domain/services/token_decoder_service.dart';
+import 'package:finance_frontend/features/transactions/data/service/sms_service.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -140,6 +141,15 @@ final authServiceProvider = Provider<AuthService>((ref) {
     baseUrl: ref.read(baseUrlProvider),
     signInWithService: ref.read(signInWithServiceProvider),
     decoder: ref.read(tokenDecoderServiceProvider),
+  );
+});
+
+/// SmsService exposed as SmsService (concreate)
+final smsServiceProvider = Provider<SmsService>((ref) {
+  return SmsService(
+    transactionService: ref.read(transactionServiceProvider),
+    accountService: ref.read(accountServiceProvider),
+    secureStorageService: ref.read(secureStorageProvider),
   );
 });
 

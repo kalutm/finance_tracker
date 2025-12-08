@@ -148,9 +148,9 @@ class FinanceAuthService implements AuthService {
 
       final json = _decode(res.body);
       if (res.statusCode != 200) {
-        final errorDetail = json["detail"] as String;
+        final errorDetail = json["detail"] != null ? json["detail"] as String : null;
         dev_tool.log("EERROORR, EERROORR: $errorDetail");
-        throw CouldnotLogIn(errorDetail);
+        throw CouldnotLogIn(errorDetail?? "Couldn't Login");
       }
 
       // request successful -> save tokens in secure storage

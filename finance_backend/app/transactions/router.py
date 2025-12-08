@@ -32,7 +32,7 @@ router = APIRouter(prefix="/transactions", tags=["Transaction"])
 @router.get("/", response_model=TransactionsOut)
 def get_user_transactions(
     limit: int = Query(
-        50, ge=1, le=500, title="limit", description="amount of result per page"
+        500, ge=1, le=1000, title="limit", description="amount of result per page"
     ),
     offset: int = Query(
         0, ge=0, title="offset", description="position compared to 0th result"
