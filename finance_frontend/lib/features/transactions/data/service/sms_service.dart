@@ -36,6 +36,7 @@ class ParsedTransaction {
   final SmsSource source; // e.g., 'cbe_sms' | 'telebirr_sms'
   String? transactionRef; // e.g., CL55OHQFK3 or FT2534... - used for dedupe
   final String rawText;
+  String? description;
 
   ParsedTransaction({
     required this.id,
@@ -46,6 +47,7 @@ class ParsedTransaction {
     required this.source,
     this.transactionRef,
     required this.rawText,
+    this.description,
   });
 
   Map<String, dynamic> toMap() {
@@ -271,7 +273,11 @@ class SmsService {
       onNewMessage: (SmsMessage message) {
         // Defensive: message.date may be int (ms since epoch) or null
         final smsDate = _smsMessageDateToDateTime(message);
-        _handleSms(raw: message.body ?? '',smsDate: smsDate, address: message.address);
+        _handleSms(
+          raw: message.body ?? '',
+          smsDate: smsDate,
+          address: message.address,
+        );
       },
       listenInBackground: listenInBackground,
     );
@@ -349,7 +355,11 @@ class SmsService {
         final address = w.msg.address;
         final smsDate = DateTime.fromMillisecondsSinceEpoch(w.dateMillis);
 
-        final parsed = _parseForBanks(body: body, date: smsDate, address: address);
+        final parsed = _parseForBanks(
+          body: body,
+          date: smsDate,
+          address: address,
+        );
         if (parsed == null) {
           if (unparsedSamples.length < 10) {
             unparsedSamples.add(
@@ -411,7 +421,11 @@ class SmsService {
   // -------------------------
   // Internal flow
   // -------------------------
-  Future<void> _handleSms({required String raw, required DateTime smsDate, String? address}) async {
+  Future<void> _handleSms({
+    required String raw,
+    required DateTime smsDate,
+    String? address,
+  }) async {
     if (!_listening) return;
 
     final text = raw.trim();
@@ -502,28 +516,28 @@ class SmsService {
   }
 
   SmsSource _detectSource(String body, String? address) {
-  final a = (address??"").toLowerCase();
+    final a = (address ?? "").toLowerCase();
 
-  // signals (address)
-  if (a.contains('cbe')) return SmsSource.cbe;
-  if (a.contains('127')) return SmsSource.telebirr;
+    // signals (address)
+    if (a.contains('cbe')) return SmsSource.cbe;
+    if (a.contains('127')) return SmsSource.telebirr;
 
-  // content signals
-  if (body.contains('Thank you for using telebirr')) {
-    return SmsSource.telebirr;
+    // content signals
+    if (body.contains('Thank you for using telebirr')) {
+      return SmsSource.telebirr;
+    }
+    // content signals
+    if (body.contains('Thank you for Banking with CBE')) {
+      return SmsSource.cbe;
+    }
+
+    // URLs signals
+    if (body.contains('apps.cbe.com.et')) return SmsSource.cbe;
+
+    return SmsSource.unknown;
   }
-  // content signals
-  if (body.contains('Thank you for Banking with CBE')) {
-    return SmsSource.cbe;
-  }
 
-  // URLs signals
-  if (body.contains('apps.cbe.com.et')) return SmsSource.cbe;
-
-  return SmsSource.unknown;
-}
-
-  // Parsing logic 
+  // Parsing logic
   ParsedTransaction? _parseForBanks({
     required String body,
     required DateTime date,
@@ -543,7 +557,6 @@ class SmsService {
         return null;
     }
   }
-
 
   ParsedTransaction? _parseCbe(String body, DateTime smsDate) {
     // transactionRef - many messages include FT... or TT... id in the url or text
@@ -662,7 +675,9 @@ class SmsService {
       final mchnt = (mCredit.group(2) ?? '').trim();
       final length = mchnt.length;
       final merchant =
-          mchnt.isNotEmpty ? mchnt.replaceRange(length - 5, null, "") : ""; // this is only temporary (need's fix)
+          mchnt.isNotEmpty
+              ? mchnt.replaceRange(length - 5, null, "")
+              : ""; // this is only temporary (need's fix)
 
       return ParsedTransaction(
         id: _uuid.v4(),
@@ -700,23 +715,133 @@ class SmsService {
     return null;
   }
 
-  // Parses Telebirr formats you provided
   ParsedTransaction? _parseTelebirr(String body, DateTime smsDate) {
-    // transaction number e.g., CL55OHQFK3
-    final txRefMatch = RegExp(r'\b[A-Z0-9]{6,}\b').firstMatch(body);
-    final txRef = txRefMatch?.group(0);
+    // helper: try to extract tx ref from explicit text or receipt link
+    String? extractTxRef(String text) {
+      final expl = RegExp(
+        r'transaction(?:\s+number)?\s*(?:is|:)\s*([A-Z0-9]{6,})',
+        caseSensitive: false,
+      ).firstMatch(text)?.group(1);
+      if (expl != null) return expl;
 
-    // paid for goods: "You have paid ETB 217.01 for goods purchased from 506167 - QUEENS SUPER MARKET PLC 4 KILO Branch on 05/12/2025 20:20:15."
-    final paidRegex = RegExp(
-      r'you have paid\s+etb\s*([0-9,]+(?:\.\d+)?)\s+for\s+goods(?:.*?from\s+([A-Za-z0-9 .,\-()]+?))?\s+on\s+([0-9/:\s]+)',
+      final link = RegExp(
+        r'/receipt/([A-Z0-9]{6,})',
+        caseSensitive: false,
+      ).firstMatch(text)?.group(1);
+      if (link != null) return link;
+
+      final any = RegExp(
+        r'\bCL[A-Z0-9]{6,}\b',
+        caseSensitive: false,
+      ).firstMatch(text)?.group(0);
+      if (any != null) return any;
+
+      final loose = RegExp(
+        r'\b[A-Z0-9]{6,}\b',
+        caseSensitive: false,
+      ).firstMatch(text)?.group(0);
+      return loose;
+    }
+
+    final txRef = extractTxRef(body);
+    final lower = body.toLowerCase();
+
+    // IGNORE noisy 'received airtime confirmation' messages
+    if (lower.contains('airtime') &&
+        lower.contains('you have received') &&
+        RegExp(r'from\s*\d{6,}').hasMatch(lower)) {
+      return null;
+    }
+
+    // 1) Received via bank -> telebirr (explicit bank -> capture bank name and use it in merchant)
+    // Example:
+    // "You have received  ETB 600.00 by transaction number ****** on 2025-12-07 20:15:22 from Commercial Bank of Ethiopia to your telebirr Account 2519***94 - KALEB TESFAHUN TAYE."
+    final receivedByBankRegex = RegExp(
+      r'you\s+have\s+received\s+etb\s*([0-9,]+(?:\.\d+)?)\s+by\s+transaction\s+number\s+([A-Z0-9]{6,})\s+on\s+([0-9\-\s:/:]{8,})\s+from\s+([\s\S]{1,200}?)\s+to\s+your\s+telebirr\s+account\s+([0-9+() \-]{6,})\s*[-–—]?\s*([\s\S]{1,120}?)\.',
       caseSensitive: false,
+      dotAll: true,
     );
-    final mPaid = paidRegex.firstMatch(body);
-    if (mPaid != null) {
-      final amt = _cleanAmount(mPaid.group(1)!);
-      final merchant = (mPaid.group(2) ?? '').trim();
-      final dateStr = mPaid.group(3)!.trim();
+    final mReceivedByBank = receivedByBankRegex.firstMatch(body);
+    if (mReceivedByBank != null) {
+      final amt = _cleanAmount(mReceivedByBank.group(1)!);
+      final extractedRef = mReceivedByBank.group(2) ?? txRef;
+      final dateStr = mReceivedByBank.group(3)!.trim();
+      final bankName = (mReceivedByBank.group(4) ?? '').trim();
+      final recipientName = (mReceivedByBank.group(6) ?? '').trim();
+
       final dt = _tryParseDate(dateStr, smsDate);
+
+      final description =
+          'transfer from - ${bankName.isNotEmpty ? bankName : 'Unknown Bank'}';
+
+      return ParsedTransaction(
+        id: _uuid.v4(),
+        amount: amt,
+        merchant: '',
+        debit: false,
+        occuredAt: dt,
+        source: SmsSource.telebirr,
+        transactionRef: extractedRef ?? txRef,
+        rawText: body,
+        description: description,
+      );
+    }
+
+    // 2) : Telebirr -> Bank transfer (telebirr paid to a bank account)
+    // Example:
+    // "You have transferred ETB 1.00 successfully from your telebirr account 2519***94 to Commercial Bank of Ethiopia account number 100******4326 on 09/12/2025 14:37:32. Your telebirr transaction number is ***8 and your bank transaction number is ******. ..."
+    final teleToBankRegex = RegExp(
+      r'you\s+have\s+transferred\s+etb\s*([0-9,]+(?:\.\d+)?).*?from\s+your\s+telebirr\s+account\s+[0-9+()\- ]+.*?to\s+([\s\S]{1,200}?)\s+account\s+number\s+([0-9]+).*?on\s+([0-9/:\- ]+)(?:.*?your\s+telebirr\s+transaction\s+number\s+(?:is|:)\s*([A-Z0-9]{6,}))?(?:.*?your\s+bank\s+transaction\s+number\s+(?:is|:)\s*([A-Z0-9]{6,}))?',
+      caseSensitive: false,
+      dotAll: true,
+    );
+
+    final mTeleToBank = teleToBankRegex.firstMatch(body);
+    if (mTeleToBank != null) {
+      final amt = _cleanAmount(mTeleToBank.group(1)!);
+      final bankName = (mTeleToBank.group(2) ?? '').trim();
+      final bankAccount = (mTeleToBank.group(3) ?? '').trim();
+      final dateStr = (mTeleToBank.group(4) ?? '').trim();
+      final teleRefFromMsg = mTeleToBank.group(5); // optional CL...
+      final bankRefFromMsg = mTeleToBank.group(6); // optional FT/TT...
+      final dt = _tryParseDate(dateStr, smsDate);
+
+      // Prefer bank transaction number (FT/TT) for dedupe if present, otherwise use telebirr CL... or fallback loose txRef.
+      final chosenRef =
+          (bankRefFromMsg != null && bankRefFromMsg.isNotEmpty)
+              ? bankRefFromMsg
+              : (teleRefFromMsg != null && teleRefFromMsg.isNotEmpty)
+              ? teleRefFromMsg
+              : txRef; // txRef was earlier extracted by other heuristics
+
+      var description = 'transfer to - ${bankName.isNotEmpty ? bankName : 'Bank'}';
+      if (bankAccount.isNotEmpty) description += ' (acct $bankAccount)';
+
+      return ParsedTransaction(
+        id: _uuid.v4(),
+        amount: amt,
+        merchant: '',
+        debit: true,
+        occuredAt: dt,
+        source: SmsSource.telebirr,
+        transactionRef: chosenRef,
+        rawText: body,
+        description: description,
+      );
+    }
+
+    // 3) Airtime recharge (debit)
+    final rechargeRegex = RegExp(
+      r'(?:you\s+have\s+)?recharg(?:e|ed)\s+etb\s*([0-9,]+(?:\.\d+)?)\s+airtime(?:.*?for\s+([0-9+()\-*#\s]+))?\s+on\s+([0-9/:\s]+)',
+      caseSensitive: false,
+      dotAll: true,
+    );
+    final mRecharge = rechargeRegex.firstMatch(body);
+    if (mRecharge != null) {
+      final amt = _cleanAmount(mRecharge.group(1)!);
+      final dateStr = mRecharge.group(3)!.trim();
+      final dt = _tryParseDate(dateStr, smsDate);
+      final merchant = 'Ethio Telecom';
       return ParsedTransaction(
         id: _uuid.v4(),
         amount: amt,
@@ -729,15 +854,51 @@ class SmsService {
       );
     }
 
-    // transferred: "You have transferred ETB 105.00 to Tesfa Mergia (2519****6334) on 03/12/2025 15:07:16."
-    final transferRegex = RegExp(
-      r'you have transferred\s+etb\s*([0-9,]+(?:\.\d+)?)\s+to\s+([A-Za-z0-9 .,\-()]+?)\s+on\s+([0-9/:\s]+)',
+    // 4) Paid for goods (merchant)
+    final paidGoodsRegex = RegExp(
+      r'you\s+have\s+paid\s+etb\s*([0-9,]+(?:\.\d+)?)\s+(?:for\s+goods(?:\s+purchased)?(?:\s+from)?|for)\s*([\s\S]{1,200}?)\s+on\s+([0-9/:\s]+)',
       caseSensitive: false,
+      dotAll: true,
+    );
+    final mPaidGoods = paidGoodsRegex.firstMatch(body);
+    if (mPaidGoods != null) {
+      final amt = _cleanAmount(mPaidGoods.group(1)!);
+      var merchant = (mPaidGoods.group(2) ?? '').trim();
+      merchant = merchant
+          .replaceAll(RegExp(r'\s+to\s*$'), '')
+          .replaceAll(RegExp(r'\s*[\.\,;:]?\s*$'), '');
+      merchant = merchant.replaceFirst(RegExp(r'^\d+\s*[-:]\s*'), '');
+      final dateStr = mPaidGoods.group(3)!.trim();
+      final dt = _tryParseDate(dateStr, smsDate);
+      if (merchant.toLowerCase().contains('package') ||
+          merchant.toLowerCase().contains('monthly') ||
+          merchant.toLowerCase().contains('student pack')) {
+        merchant = 'Ethio Telecom';
+      }
+      return ParsedTransaction(
+        id: _uuid.v4(),
+        amount: amt,
+        merchant: merchant,
+        debit: true,
+        occuredAt: dt,
+        source: SmsSource.telebirr,
+        transactionRef: txRef,
+        rawText: body,
+      );
+    }
+
+    // 5) Transfer to person
+    final transferRegex = RegExp(
+      r'you\s+have\s+transferred\s+etb\s*([0-9,]+(?:\.\d+)?)\s+to\s+([\s\S]{1,200}?)\s+on\s+([0-9/:\s]+)',
+      caseSensitive: false,
+      dotAll: true,
     );
     final mTrans = transferRegex.firstMatch(body);
     if (mTrans != null) {
       final amt = _cleanAmount(mTrans.group(1)!);
-      final merchant = mTrans.group(2)!.trim();
+      var merchant = (mTrans.group(2) ?? '').trim();
+      merchant =
+          merchant.replaceAll(RegExp(r'\s*\(?\d{3,}[\d\*\-\)\s]*$'), '').trim();
       final dateStr = mTrans.group(3)!.trim();
       final dt = _tryParseDate(dateStr, smsDate);
       return ParsedTransaction(
@@ -752,15 +913,18 @@ class SmsService {
       );
     }
 
-    // received: "You have received ETB 160.00 from mokenene teganu(2519****3371) on 29/11/2025 20:07:37."
-    final receivedRegex = RegExp(
-      r'you have received\s+etb\s*([0-9,]+(?:\.\d+)?)\s+from\s+([A-Za-z0-9 .,\-()]+?)\s+on\s+([0-9/:\s]+)',
+    // 6) Received money (income) - generic
+    final receivedMoneyRegex = RegExp(
+      r'you\s+have\s+received\s+etb\s*([0-9,]+(?:\.\d+)?)\s+from\s+([\s\S]{1,200}?)\s+on\s+([0-9/:\s]+)',
       caseSensitive: false,
+      dotAll: true,
     );
-    final mRecv = receivedRegex.firstMatch(body);
+    final mRecv = receivedMoneyRegex.firstMatch(body);
     if (mRecv != null) {
       final amt = _cleanAmount(mRecv.group(1)!);
-      final merchant = mRecv.group(2)!.trim();
+      var merchant = (mRecv.group(2) ?? '').trim();
+      merchant =
+          merchant.replaceAll(RegExp(r'\s*\(?\d{3,}[\d\*\-\)\s]*$'), '').trim();
       final dateStr = mRecv.group(3)!.trim();
       final dt = _tryParseDate(dateStr, smsDate);
       return ParsedTransaction(
@@ -775,23 +939,51 @@ class SmsService {
       );
     }
 
-    // recharge/airtime: "You have recharged ETB 5.00 airtime for 945606894" or "You have received ETB 5.00 airtime from 251945606894"
-    final rechargeRegex = RegExp(
-      r'(recharged|received)\s+etb\s*([0-9,]+(?:\.\d+)?)\s+airtime(?:.*?for\s+([0-9]+))?',
+    // 7) Package purchase (treat as Ethio Telecom)
+    final packagePurchaseRegex = RegExp(
+      r'you\s+have\s+paid\s+etb\s*([0-9,]+(?:\.\d+)?)\s+for\s+(?:package|purchase)[\s\S]*?for\s+([0-9+()\- ]{6,})\s+on\s+([0-9/:\s]+)',
       caseSensitive: false,
+      dotAll: true,
     );
-    final mRecharge = rechargeRegex.firstMatch(body);
-    if (mRecharge != null) {
-      final amt = _cleanAmount(mRecharge.group(2)!);
-      final merchant = 'telebirr'; // airtime recharge merchant
-      final debit =
-          (mRecharge.group(1)!.toLowerCase() == 'recharged'); // usually debit
+    final mPackage = packagePurchaseRegex.firstMatch(body);
+    if (mPackage != null) {
+      final amt = _cleanAmount(mPackage.group(1)!);
+      final dateStr = mPackage.group(3)!.trim();
+      final dt = _tryParseDate(dateStr, smsDate);
       return ParsedTransaction(
         id: _uuid.v4(),
         amount: amt,
-        merchant: merchant,
-        debit: debit,
-        occuredAt: smsDate,
+        merchant: 'Ethio Telecom',
+        debit: true,
+        occuredAt: dt,
+        source: SmsSource.telebirr,
+        transactionRef: txRef,
+        rawText: body,
+      );
+    }
+
+    // 8) Fallback: capture first ETB amount
+    final fallbackAmountRegex = RegExp(
+      r'etb\s*([0-9,]+(?:\.\d+)?)',
+      caseSensitive: false,
+    );
+    final mFallbackAmt = fallbackAmountRegex.firstMatch(body);
+    if (mFallbackAmt != null) {
+      final amt = _cleanAmount(mFallbackAmt.group(1)!);
+      final dateMatch = RegExp(
+        r'on\s+([0-9/:\s]{8,})',
+        caseSensitive: false,
+      ).firstMatch(body);
+      final dt =
+          dateMatch != null
+              ? _tryParseDate(dateMatch.group(1)!, smsDate)
+              : smsDate;
+      return ParsedTransaction(
+        id: _uuid.v4(),
+        amount: amt,
+        merchant: '',
+        debit: true,
+        occuredAt: dt,
         source: SmsSource.telebirr,
         transactionRef: txRef,
         rawText: body,
@@ -923,6 +1115,7 @@ class SmsService {
       currency: "ETB",
       merchant: p.merchant,
       type: p.debit ? TransactionType.EXPENSE : TransactionType.INCOME,
+      description: p.description,
     );
   }
 
