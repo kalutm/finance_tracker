@@ -767,7 +767,6 @@ class SmsService {
       final extractedRef = mReceivedByBank.group(2) ?? txRef;
       final dateStr = mReceivedByBank.group(3)!.trim();
       final bankName = (mReceivedByBank.group(4) ?? '').trim();
-      final recipientName = (mReceivedByBank.group(6) ?? '').trim();
 
       final dt = _tryParseDate(dateStr, smsDate);
 
