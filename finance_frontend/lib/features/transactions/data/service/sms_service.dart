@@ -24,6 +24,8 @@ import 'package:flutter/foundation.dart';
 import 'package:finance_frontend/features/transactions/domain/service/transaction_service.dart';
 import 'package:finance_frontend/features/transactions/data/model/dtos/transaction_create.dart';
 
+enum SmsSource { cbe, telebirr, unknown }
+
 /// Minimal parsed transaction model used inside this service
 class ParsedTransaction {
   final String id; // internal uuid
@@ -31,7 +33,7 @@ class ParsedTransaction {
   final String merchant; // empty if unknown
   final bool debit; // true = expense, false = income
   final DateTime occuredAt;
-  final String source; // e.g., 'cbe_sms' | 'telebirr_sms'
+  final SmsSource source; // e.g., 'cbe_sms' | 'telebirr_sms'
   String? transactionRef; // e.g., CL55OHQFK3 or FT2534... - used for dedupe
   final String rawText;
 
@@ -119,7 +121,8 @@ class SmsService {
     try {
       final mapStr = _prefs.getString(_kSeenTxKey);
       if (mapStr != null) {
-        final Map<String, dynamic> map = jsonDecode(mapStr) as Map<String, dynamic>;
+        final Map<String, dynamic> map =
+            jsonDecode(mapStr) as Map<String, dynamic>;
         _seenCache.addAll(map.keys);
       }
     } catch (_) {
@@ -134,7 +137,8 @@ class SmsService {
     _connectivity.onConnectivityChanged.listen((results) {
       // newer connectivity_plus returns ConnectivityResult (single) — but some APIs may differ
       try {
-        final hasConnection = results.any((c) => c == ConnectivityResult.mobile) ||
+        final hasConnection =
+            results.any((c) => c == ConnectivityResult.mobile) ||
             results.any((c) => c == ConnectivityResult.wifi) ||
             results.any((c) => c == ConnectivityResult.ethernet);
         if (hasConnection) {
@@ -142,9 +146,9 @@ class SmsService {
         }
       } catch (_) {
         // in case results is List<ConnectivityResult> (older/newer plugin variations), handle that
-          final iter = results as Iterable;
-          final has = iter.any((r) => r != ConnectivityResult.none);
-          if (has) _flushRetryQueue();
+        final iter = results as Iterable;
+        final has = iter.any((r) => r != ConnectivityResult.none);
+        if (has) _flushRetryQueue();
       }
     });
   }
@@ -180,27 +184,27 @@ class SmsService {
         (a) => a.name.toLowerCase() == "cbe",
         orElse:
             () => Account(
-                  id: "",
-                  balance: "",
-                  name: "",
-                  type: AccountType.values.first,
-                  currency: "",
-                  active: false,
-                  createdAt: DateTime.now(),
-                ),
+              id: "",
+              balance: "",
+              name: "",
+              type: AccountType.values.first,
+              currency: "",
+              active: false,
+              createdAt: DateTime.now(),
+            ),
       );
       final existingTele = accounts.firstWhere(
         (a) => a.name.toLowerCase() == "telebirr",
         orElse:
             () => Account(
-                  id: "",
-                  balance: "",
-                  name: "",
-                  type: AccountType.values.first,
-                  currency: "",
-                  active: false,
-                  createdAt: DateTime.now(),
-                ),
+              id: "",
+              balance: "",
+              name: "",
+              type: AccountType.values.first,
+              currency: "",
+              active: false,
+              createdAt: DateTime.now(),
+            ),
       );
 
       if (existingCbe.id.isNotEmpty) {
@@ -267,7 +271,7 @@ class SmsService {
       onNewMessage: (SmsMessage message) {
         // Defensive: message.date may be int (ms since epoch) or null
         final smsDate = _smsMessageDateToDateTime(message);
-        _handleSms(message.body ?? '', smsDate);
+        _handleSms(raw: message.body ?? '',smsDate: smsDate, address: message.address);
       },
       listenInBackground: listenInBackground,
     );
@@ -294,7 +298,7 @@ class SmsService {
   // Inbox fallback: public API
   // Call this when app resumes or on user pull-to-refresh.
   // -------------------------
-  Future<void> syncInboxOnResume({int limit = 50}) async {
+  Future<void> syncInboxOnResume() async {
     try {
       final granted = await _telephony.requestPhoneAndSmsPermissions;
       if (granted != true) {
@@ -338,15 +342,19 @@ class SmsService {
       final List<String> unparsedSamples = [];
 
       for (final w in wrapped) {
-        if (w.dateMillis <= lastSyncMillis) continue; // already processed previously
+        if (w.dateMillis <= lastSyncMillis)
+          continue; // already processed previously
 
         final body = w.msg.body ?? '';
+        final address = w.msg.address;
         final smsDate = DateTime.fromMillisecondsSinceEpoch(w.dateMillis);
 
-        final parsed = _parseForBanks(body, smsDate);
+        final parsed = _parseForBanks(body: body, date: smsDate, address: address);
         if (parsed == null) {
           if (unparsedSamples.length < 10) {
-            unparsedSamples.add('date:${smsDate.toIso8601String()} addr:${w.msg.address} body:$body');
+            unparsedSamples.add(
+              'date:${smsDate.toIso8601String()} addr:${w.msg.address} body:$body',
+            );
           }
           continue; // not a transaction message
         }
@@ -355,7 +363,9 @@ class SmsService {
 
         // fast in-memory check + reserve the key to prevent race conditions
         if (_seenCache.contains(dedupeKey)) {
-          debugPrint('SmsService: inbox duplicate (cache) ignored (key=$dedupeKey)');
+          debugPrint(
+            'SmsService: inbox duplicate (cache) ignored (key=$dedupeKey)',
+          );
           if (w.dateMillis > newestProcessed) newestProcessed = w.dateMillis;
           continue;
         }
@@ -381,7 +391,9 @@ class SmsService {
       }
 
       if (unparsedSamples.isNotEmpty) {
-        debugPrint('SmsService: sample unparsed messages (first ${unparsedSamples.length}):');
+        debugPrint(
+          'SmsService: sample unparsed messages (first ${unparsedSamples.length}):',
+        );
         for (final s in unparsedSamples) debugPrint(s);
       }
 
@@ -399,16 +411,16 @@ class SmsService {
   // -------------------------
   // Internal flow
   // -------------------------
-  Future<void> _handleSms(String raw, DateTime smsDate) async {
+  Future<void> _handleSms({required String raw, required DateTime smsDate, String? address}) async {
     if (!_listening) return;
 
     final text = raw.trim();
     if (text.isEmpty) return;
 
     // parse for supported banks
-    final parsed = _parseForBanks(text, smsDate);
+    final parsed = _parseForBanks(body: text, date: smsDate, address: address);
     if (parsed == null) {
-      debugPrint('SmsService: could not parse SMS: $text');
+      debugPrint('SmsService: could not parse SMS or Unknown source: $text');
       return;
     }
 
@@ -489,22 +501,50 @@ class SmsService {
     }
   }
 
-  // -------------------------
-  // Parsing logic (banks)
-  // -------------------------
-  ParsedTransaction? _parseForBanks(String body, DateTime smsDate) {
-    // try CBE first
-    final cbe = _parseCbe(body, smsDate);
-    if (cbe != null) return cbe;
+  SmsSource _detectSource(String body, String? address) {
+  final a = (address??"").toLowerCase();
 
-    // then Telebirr
-    final tele = _parseTelebirr(body, smsDate);
-    if (tele != null) return tele;
+  // signals (address)
+  if (a.contains('cbe')) return SmsSource.cbe;
+  if (a.contains('127')) return SmsSource.telebirr;
 
-    return null;
+  // content signals
+  if (body.contains('Thank you for using telebirr')) {
+    return SmsSource.telebirr;
+  }
+  // content signals
+  if (body.contains('Thank you for Banking with CBE')) {
+    return SmsSource.cbe;
   }
 
-  // Parses CBE sample formats you provided
+  // URLs signals
+  if (body.contains('apps.cbe.com.et')) return SmsSource.cbe;
+
+  return SmsSource.unknown;
+}
+
+  // Parsing logic 
+  ParsedTransaction? _parseForBanks({
+    required String body,
+    required DateTime date,
+    String? address,
+  }) {
+    final source = _detectSource(body, address);
+
+    switch (source) {
+      case SmsSource.cbe:
+        return _parseCbe(body, date);
+
+      case SmsSource.telebirr:
+        return _parseTelebirr(body, date);
+
+      case SmsSource.unknown:
+        // ignore if it is unknown
+        return null;
+    }
+  }
+
+
   ParsedTransaction? _parseCbe(String body, DateTime smsDate) {
     // transactionRef - many messages include FT... or TT... id in the url or text
     final refMatch = RegExp(
@@ -513,10 +553,84 @@ class SmsService {
     ).firstMatch(body);
     final ref = refMatch?.group(0);
 
-    // CBE: "You have transfered ETB 115.00 to Mussie Belay on 07/12/2025 at 13:54:08"
-    final transferRegex = RegExp(
-      r'transfer(?:ed|ed)?\s+etb\s*([0-9,]+(?:\.\d+)?)\s+to\s+([A-Za-z0-9 .,\-()]+?)\s+on\s+([0-9/:\s]+)',
+    // 1) Compact "including Service charge ... and VAT ..." form (Unicode-friendly, dotAll)
+    // Example:
+    // "has been debited with ETB 1004.03 including Service charge ETB3.50 and VAT(15%) ETB0.53."
+    final includingRegex = RegExp(
+      r'debited\s+(?:with\s+)?etb\s*([0-9,]+(?:\.\d+)?)[\s\.,;:\-]*including\b[\s\S]*?service\s*charge(?:\s*(?:of)?)\s*etb\s*([0-9,]+(?:\.\d+)?)(?:[\s\S]*?vat(?:\s*\(\d+%\))?\s*(?:of\s*)?etb\s*([0-9,]+(?:\.\d+)?))?',
       caseSensitive: false,
+      dotAll: true,
+    );
+    final mIncluding = includingRegex.firstMatch(body);
+    if (mIncluding != null) {
+      // In these messages the first amount is already the total (per examples you sent)
+      final amt = _cleanAmount(mIncluding.group(1)!);
+      return ParsedTransaction(
+        id: _uuid.v4(),
+        amount: amt,
+        merchant: '',
+        debit: true,
+        occuredAt: smsDate,
+        source: SmsSource.cbe,
+        transactionRef: ref,
+        rawText: body,
+      );
+    }
+
+    // 2a) Base + charges + explicit total AND it's a transfer (captures merchant + date)
+    // Example:
+    // "debited with ETB200.00 to QUEENS ... on 05/12/2025 ... with a total of ETB211"
+    final baseTotalTransferRegex = RegExp(
+      r'debited\s+(?:with\s+)?etb\s*([0-9,]+(?:\.\d+)?)[\s\S]*?to\s+(.+?)\s+on\s+([0-9/:\s]+)[\s\S]*?(?:with\s+a?\s+total\s+of|total\s+of)\s+etb\s*([0-9,]+(?:\.\d+)?)',
+      caseSensitive: false,
+      dotAll: true,
+    );
+    final mBaseTotalTransfer = baseTotalTransferRegex.firstMatch(body);
+    if (mBaseTotalTransfer != null) {
+      final total = _cleanAmount(mBaseTotalTransfer.group(4)!);
+      final merchant = mBaseTotalTransfer.group(2)!.trim();
+      final dateStr = mBaseTotalTransfer.group(3)!.trim();
+      final dt = _tryParseDate(dateStr, smsDate);
+      return ParsedTransaction(
+        id: _uuid.v4(),
+        amount: total,
+        merchant: merchant,
+        debit: true,
+        occuredAt: dt,
+        source: SmsSource.cbe,
+        transactionRef: ref,
+        rawText: body,
+      );
+    }
+
+    // 2b) Base + charges + explicit total (no transfer/merchant)
+    // Example:
+    // "debited with ETB200.00. Service charge of ETB10 and VAT of ETB1.50 with a total of ETB211."
+    final baseTotalNoTransferRegex = RegExp(
+      r'debited\s+(?:with\s+)?etb\s*([0-9,]+(?:\.\d+)?)[\s\S]*?service\s+charge[\s\S]*?vat[\s\S]*?(?:with\s+a?\s+total\s+of|total\s+of)\s+etb\s*([0-9,]+(?:\.\d+)?)',
+      caseSensitive: false,
+      dotAll: true,
+    );
+    final mBaseTotalNoTransfer = baseTotalNoTransferRegex.firstMatch(body);
+    if (mBaseTotalNoTransfer != null) {
+      final total = _cleanAmount(mBaseTotalNoTransfer.group(2)!);
+      return ParsedTransaction(
+        id: _uuid.v4(),
+        amount: total,
+        merchant: '',
+        debit: true,
+        occuredAt: smsDate,
+        source: SmsSource.cbe,
+        transactionRef: ref,
+        rawText: body,
+      );
+    }
+
+    // 3) Transfer WITHOUT charges or totals (keeps original behaviour, unicode-safe merchant)
+    final transferRegex = RegExp(
+      r'transfer(?:ed)?\s+etb\s*([0-9,]+(?:\.\d+)?)\s+to\s+([\s\S]+?)\s+on\s+([0-9/:\s]+)',
+      caseSensitive: false,
+      dotAll: true,
     );
     final mTransfer = transferRegex.firstMatch(body);
     if (mTransfer != null) {
@@ -531,13 +645,13 @@ class SmsService {
         merchant: merchant,
         debit: true,
         occuredAt: dt,
-        source: 'cbe_sms',
+        source: SmsSource.cbe,
         transactionRef: ref,
         rawText: body,
       );
     }
 
-    // CBE credit messages: "has been Credited with ETB 50.00 from Natnael Tigstu"
+    // 4) CBE credit messages: "has been Credited with ETB 50.00 from Natnael Tigstu"
     final creditRegex = RegExp(
       r'credited\s+with\s+etb\s*([0-9,]+(?:\.\d+)?)(?:\s+from\s+([A-Za-z0-9 .,\-()]+))?',
       caseSensitive: false,
@@ -545,22 +659,26 @@ class SmsService {
     final mCredit = creditRegex.firstMatch(body);
     if (mCredit != null) {
       final amt = _cleanAmount(mCredit.group(1)!);
-      final merchant = (mCredit.group(2) ?? '').trim();
+      final mchnt = (mCredit.group(2) ?? '').trim();
+      final length = mchnt.length;
+      final merchant =
+          mchnt.isNotEmpty ? mchnt.replaceRange(length - 5, null, "") : ""; // this is only temporary (need's fix)
+
       return ParsedTransaction(
         id: _uuid.v4(),
         amount: amt,
         merchant: merchant,
         debit: false,
         occuredAt: smsDate,
-        source: 'cbe_sms',
+        source: SmsSource.cbe,
         transactionRef: ref,
         rawText: body,
       );
     }
 
-    // generic debited: "has been debited with ETB2,000.00" or "has been debited with ETB 210.00"
+    // 5) Generic debited fallback
     final debitedRegex = RegExp(
-      r'debited\s+with\s+etb\s*([0-9,]+(?:\.\d+)?)',
+      r'debited\s+(?:with\s+)?etb\s*([0-9,]+(?:\.\d+)?)',
       caseSensitive: false,
     );
     final mDeb = debitedRegex.firstMatch(body);
@@ -569,15 +687,16 @@ class SmsService {
       return ParsedTransaction(
         id: _uuid.v4(),
         amount: amt,
-        merchant: '', // unknown
+        merchant: '',
         debit: true,
         occuredAt: smsDate,
-        source: 'cbe_sms',
+        source: SmsSource.cbe,
         transactionRef: ref,
         rawText: body,
       );
     }
 
+    // nothing matched
     return null;
   }
 
@@ -604,7 +723,7 @@ class SmsService {
         merchant: merchant,
         debit: true,
         occuredAt: dt,
-        source: 'telebirr_sms',
+        source: SmsSource.telebirr,
         transactionRef: txRef,
         rawText: body,
       );
@@ -627,7 +746,7 @@ class SmsService {
         merchant: merchant,
         debit: true,
         occuredAt: dt,
-        source: 'telebirr_sms',
+        source: SmsSource.telebirr,
         transactionRef: txRef,
         rawText: body,
       );
@@ -650,7 +769,7 @@ class SmsService {
         merchant: merchant,
         debit: false,
         occuredAt: dt,
-        source: 'telebirr_sms',
+        source: SmsSource.telebirr,
         transactionRef: txRef,
         rawText: body,
       );
@@ -673,7 +792,7 @@ class SmsService {
         merchant: merchant,
         debit: debit,
         occuredAt: smsDate,
-        source: 'telebirr_sms',
+        source: SmsSource.telebirr,
         transactionRef: txRef,
         rawText: body,
       );
@@ -734,7 +853,6 @@ class SmsService {
     return base64.encode(utf8.encode(raw));
   }
 
-
   Future<void> _markSeen(String key) async {
     try {
       // fast in-memory add (prevents races)
@@ -746,7 +864,9 @@ class SmsService {
         try {
           final mapStr = _prefs.getString(_kSeenTxKey);
           final Map<String, dynamic> map =
-              mapStr == null ? <String, dynamic>{} : jsonDecode(mapStr) as Map<String, dynamic>;
+              mapStr == null
+                  ? <String, dynamic>{}
+                  : jsonDecode(mapStr) as Map<String, dynamic>;
           final nowIso = DateTime.now().toIso8601String();
           for (final k in _seenCache) {
             if (!map.containsKey(k)) {
@@ -787,7 +907,7 @@ class SmsService {
   // Mapping to your TransactionCreate DTO
   // -------------------------
   TransactionCreate _toTransactionCreate(ParsedTransaction p) {
-    final accountId = p.source == "cbe_sms" ? cbeId : teleId;
+    final accountId = p.source == SmsSource.cbe ? cbeId : teleId;
     if (accountId == null || accountId.isEmpty) {
       // Defensive: if ids are not ready, throw or return a DTO that your service can handle.
       // I recommend throwing so the failure is visible and retries will happen later.
@@ -840,4 +960,3 @@ class _MsgWrapper {
   final int dateMillis;
   _MsgWrapper({required this.msg, required this.dateMillis});
 }
-
