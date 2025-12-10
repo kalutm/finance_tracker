@@ -104,6 +104,35 @@ class SmsService {
   static const _kSeenTxKey = 'sms_seen_tx_refs_v1';
   static const _kLastInboxSyncKey = 'sms_last_inbox_sync_v1';
 
+  // Start inboxing date
+  static const _inboxStartKey = 'sms_inbox_start_date';
+
+  Future<void> setInboxStartDate(DateTime date) async {
+    await _prefs.setInt(_inboxStartKey, date.millisecondsSinceEpoch);
+  }
+
+  DateTime? getInboxStartDate() {
+    final v = _prefs.getInt(_inboxStartKey);
+    if (v == null) return null;
+    return DateTime.fromMillisecondsSinceEpoch(v);
+  }
+
+  // show date picker or not?
+  static const _kSmsOnboardingDone = 'sms_onboarding_done';
+
+  bool isSmsOnboardingDone() {
+    return _prefs.getBool(_kSmsOnboardingDone) ?? false;
+  }
+
+  Future<void> markSmsOnboardingDone() async {
+    await _prefs.setBool(_kSmsOnboardingDone, true);
+  }
+
+  Future<void> resetSmsOnboarding() async {
+    await _prefs.remove(_kSmsOnboardingDone);
+    await _prefs.remove(_inboxStartKey);
+  }
+
   // cbe and telebirr id's
   String? cbeId;
   String? teleId;
@@ -318,9 +347,17 @@ class SmsService {
       final lastSyncMillis = _prefs.getInt(_kLastInboxSyncKey) ?? 0;
       debugPrint('SmsService: syncInboxOnResume (lastSync=$lastSyncMillis)');
 
+      // final startMillis = getInboxStartDate()!.millisecondsSinceEpoch.toString();
+      final startMillis = DateTime(2025, 9).millisecondsSinceEpoch.toString();
+      final stmt = SmsFilter
+    .where(SmsColumn.DATE).greaterThanOrEqualTo(startMillis);
+
+      final filter = stmt;
       // fetch inbox messages
       final List<SmsMessage> inbox = await _telephony.getInboxSms(
         columns: [SmsColumn.ADDRESS, SmsColumn.BODY, SmsColumn.DATE],
+        filter: filter,
+        sortOrder: [OrderBy(SmsColumn.DATE, sort: Sort.DESC)],
       );
 
       if (inbox.isEmpty) {
@@ -813,7 +850,8 @@ class SmsService {
               ? teleRefFromMsg
               : txRef; // txRef was earlier extracted by other heuristics
 
-      var description = 'transfer to - ${bankName.isNotEmpty ? bankName : 'Bank'}';
+      var description =
+          'transfer to - ${bankName.isNotEmpty ? bankName : 'Bank'}';
       if (bankAccount.isNotEmpty) description += ' (acct $bankAccount)';
 
       return ParsedTransaction(
