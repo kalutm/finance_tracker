@@ -1,3 +1,4 @@
+from collections import defaultdict
 from sqlmodel import Session
 from fastapi import Depends
 from app.models.transaction import Transaction
@@ -20,7 +21,7 @@ from app.transactions.exceptions import (
     InvalidAmount,
     TransactionError,
     CanNotUpdateTransaction,
-    InvalidTransferTransaction
+    InvalidTransferTransaction,
 )
 
 
@@ -51,6 +52,87 @@ class TransactionsService:
         txn = self.transaction_repo.save_transaction(session, transaction)
         session.commit()
         return txn
+
+    def create_transactions_bulk(
+        self,
+        session: Session,
+        transactions,
+        user_id: int,
+        chunk_size: int = 500,
+    ):
+        # Validate incoming payload quickly
+        incoming_mids = {t.message_id for t in transactions if t.message_id}
+        if not incoming_mids:
+            return {
+                "inserted": 0,
+                "skipped": len(transactions),
+                "skipped_reasons": {"no_message_id": len(transactions)},
+            }
+
+        # Query DB for *only* message_ids that are in incoming_mids
+        existing_mids = self.transaction_repo.get_transaction_with_message_id(
+            session, incoming_mids, user_id
+        )
+
+        to_insert = []
+        skipped_reasons = defaultdict(int)
+
+        for t in transactions:
+            # basic validation
+            if not t.message_id:
+                skipped_reasons["no_message_id"] += 1
+                continue
+            if t.message_id in existing_mids:
+                skipped_reasons["duplicate"] += 1
+                continue
+            if t.amount <= 0:
+                skipped_reasons["invalid_amount"] += 1
+                continue
+
+            account = self.account_repo.get_account_for_user(
+                session, t.account_id, user_id
+            )
+            if not account:
+                skipped_reasons["invalid_account"] += 1
+                continue
+
+            if t.type == TransactionType.EXPENSE:
+                if account.balance < t.amount:
+                    skipped_reasons["insufficient_funds"] += 1
+                    continue
+                account.balance -= t.amount
+            else:
+                account.balance += t.amount
+
+            entity = Transaction(
+                user_id=user_id, 
+                account_id=t.account_id,
+                amount=t.amount,
+                merchant=t.merchant,
+                currency=t.currency,
+                type=t.type,
+                description=t.description,
+                occurred_at=t.occurred_at,
+                message_id=t.message_id,
+            )
+            to_insert.append(entity)
+
+            inserted = 0
+            for i in range(0, len(to_insert), chunk_size):
+                try:
+
+                    chunk = to_insert[i : i + chunk_size]
+                    self.transaction_repo.bulk_insert(session, chunk)
+                except SQLAlchemyError:
+                    # ignore duplicate transaciton's
+                    continue
+            session.commit()
+
+        return {
+            "inserted": len(to_insert),
+            "skipped": sum(skipped_reasons.values()),
+            "skipped_reasons": dict(skipped_reasons),
+        }
 
     def create_transfer_transaction(
         self, session: Session, transfer_txn: TransferTransactionCreate, user_id: str

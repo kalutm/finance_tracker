@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:finance_frontend/features/transactions/data/model/dtos/transaction_bulk_result.dart';
 import 'package:finance_frontend/features/transactions/data/model/dtos/transaction_create.dart';
 import 'package:finance_frontend/features/transactions/data/model/dtos/transaction_update.dart';
 import 'package:finance_frontend/features/transactions/data/model/dtos/transfer_transaction_create.dart';
@@ -25,4 +26,6 @@ abstract class TransactionService {
   Future<void> deleteTransferTransaction(String transferGroupId);
 
   Future<void> clearCache();
+
+  Future<BulkResult> createBulkTransactions(List<TransactionCreate> transactions);
 }

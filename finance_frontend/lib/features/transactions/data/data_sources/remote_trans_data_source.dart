@@ -3,6 +3,7 @@ import 'dart:developer' as dev_tool;
 import 'package:finance_frontend/core/network/network_client.dart';
 import 'package:finance_frontend/core/network/request.dart';
 import 'package:finance_frontend/features/auth/domain/services/secure_storage_service.dart';
+import 'package:finance_frontend/features/transactions/data/model/dtos/transaction_bulk_result.dart';
 import 'package:finance_frontend/features/transactions/data/model/dtos/transaction_create.dart';
 import 'package:finance_frontend/features/transactions/data/model/dtos/transaction_update.dart';
 import 'package:finance_frontend/features/transactions/data/model/dtos/transfer_transaction_create.dart';
@@ -20,9 +21,8 @@ class RemoteTransDataSource implements TransDataSource {
     required this.client,
     required this.baseUrl,
   });
-  
 
-  get transactionsBaseUrl => "$baseUrl/transactions";
+  String get transactionsBaseUrl => "$baseUrl/transactions";
 
   Future<Map<String, String>> _authHeaders() async {
     final token = await secureStorageService.readString(key: "access_token");
@@ -71,6 +71,48 @@ class RemoteTransDataSource implements TransDataSource {
 
       return TransactionModel.fromFinance(json);
     } on TransactionException {
+      rethrow;
+    }
+  }
+
+  @override
+  Future<BulkResult> createBulkTransactions(
+    List<TransactionCreate> transactions,
+  ) async {
+    try {
+      final headers = await _authHeaders();
+      final body = {
+        "transactions": transactions.map((create) => create.toJson()).toList(),
+      };
+
+      final resp = await client.send(
+        RequestModel(
+          method: "POST",
+          url: Uri.parse("$transactionsBaseUrl/bulk"),
+          headers: headers,
+          body: jsonEncode(body),
+        ),
+      );
+
+      if (resp.statusCode == 201) {
+        final Map<String, dynamic> data = jsonDecode(resp.body);
+        final inserted = data['inserted'] ?? 0;
+        final skipped = data['skipped'] ?? 0;
+        final skippedReasons = Map<String, int>.from(
+          data['skipped_reasons'] ?? {},
+        );
+        return BulkResult(
+          success: true,
+          inserted: inserted,
+          skipped: skipped,
+          skippedReasons: skippedReasons,
+          statusCode: 201,
+        );
+      } else {
+        dev_tool.log('_sendBulk: error: ${resp.body}');
+        throw CouldnotCreateBulkTransactions(resp.statusCode);
+      }
+    } on TransactionException catch (_) {
       rethrow;
     }
   }

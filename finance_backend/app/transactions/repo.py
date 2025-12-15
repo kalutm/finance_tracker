@@ -63,6 +63,16 @@ class TransactionRepo:
             )
         ).all()
 
+    def get_transaction_with_message_id(
+        self, session: Session, incoming_mids, user_id
+    ) -> List[str]:
+        return session.exec(
+            select(Transaction.message_id).where(
+                Transaction.user_id == user_id,
+                Transaction.message_id.in_(list(incoming_mids)),
+            )
+        ).all()
+
     def save_transaction(
         self, session: Session, transaction: Transaction
     ) -> Transaction:
@@ -71,6 +81,9 @@ class TransactionRepo:
         session.refresh(transaction)
 
         return transaction
+
+    def bulk_insert(self, session: Session, transactions: List[Transaction]):
+        session.add_all(transactions)
 
     def delete_transaction(self, session: Session, transaction: Transaction):
         session.delete(transaction)

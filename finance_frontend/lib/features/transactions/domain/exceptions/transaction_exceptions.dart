@@ -25,3 +25,8 @@ class AccountBalanceTnsufficient implements TransactionException {}
 class InvalidInputtedAmount implements TransactionException {}
 
 class InvalidTransferTransaction implements TransactionException {}
+
+class CouldnotCreateBulkTransactions implements TransactionException {
+  final int code;
+  CouldnotCreateBulkTransactions(this.code);
+}

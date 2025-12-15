@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:finance_frontend/features/accounts/domain/service/account_service.dart';
+import 'package:finance_frontend/features/transactions/data/model/dtos/transaction_bulk_result.dart';
 import 'package:finance_frontend/features/transactions/data/model/dtos/transaction_create.dart';
 import 'package:finance_frontend/features/transactions/data/model/dtos/transaction_update.dart';
 import 'package:finance_frontend/features/transactions/data/model/dtos/transfer_transaction_create.dart';
@@ -52,6 +53,14 @@ class FinanceTransactionService implements TransactionService {
     await accountService.getUserAccounts();
 
     return entity;
+  }
+
+  @override
+  Future<BulkResult> createBulkTransactions(List<TransactionCreate> transactions) async {
+    final result = await source.createBulkTransactions(transactions);
+    await getUserTransactions();
+    await accountService.getUserAccounts();
+    return result;
   }
 
   @override

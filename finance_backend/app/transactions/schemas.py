@@ -42,7 +42,10 @@ class TransactionCreate(BaseModel):
     type: TransactionType
     description: Optional[str] = None
     occurred_at: Optional[datetime] = None
+    message_id: Optional[str] = None
 
+class BulkTransactionCreate(BaseModel):
+    transactions: List[TransactionCreate]
 
 class TransferTransactionCreate(BaseModel):
     account_id: int

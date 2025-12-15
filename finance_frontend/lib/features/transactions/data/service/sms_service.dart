@@ -13,7 +13,9 @@ import 'package:finance_frontend/features/accounts/domain/entities/account_type_
 import 'package:finance_frontend/features/accounts/domain/entities/dtos/account_create.dart';
 import 'package:finance_frontend/features/accounts/domain/service/account_service.dart';
 import 'package:finance_frontend/features/auth/domain/services/secure_storage_service.dart';
+import 'package:finance_frontend/features/transactions/data/model/dtos/transaction_bulk_result.dart';
 import 'package:finance_frontend/features/transactions/domain/entities/transaction_type.dart';
+import 'package:finance_frontend/features/transactions/domain/exceptions/transaction_exceptions.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:telephony_fix/telephony.dart';
 import 'package:uuid/uuid.dart';
@@ -37,6 +39,7 @@ class ParsedTransaction {
   String? transactionRef; // e.g., CL55OHQFK3 or FT2534... - used for dedupe
   final String rawText;
   String? description;
+  String? messageId;
 
   ParsedTransaction({
     required this.id,
@@ -45,6 +48,7 @@ class ParsedTransaction {
     required this.debit,
     required this.occuredAt,
     required this.source,
+    this.messageId,
     this.transactionRef,
     required this.rawText,
     this.description,
@@ -333,6 +337,10 @@ class SmsService {
   // Inbox fallback: public API
   // Call this when app resumes or on user pull-to-refresh.
   // -------------------------
+  // Constants
+  final int _kBulkChunkSize = 200;
+  final int _kBulkMaxRetries = 3;
+  final Duration _kRetryBaseDelay = Duration(seconds: 1);
   Future<void> syncInboxOnResume() async {
     try {
       final granted = await _telephony.requestPhoneAndSmsPermissions;
@@ -343,26 +351,27 @@ class SmsService {
         return;
       }
 
-      // fetch last sync millis (defaults to 0 to process all messages once)
       final lastSyncMillis = _prefs.getInt(_kLastInboxSyncKey) ?? 0;
       debugPrint('SmsService: syncInboxOnResume (lastSync=$lastSyncMillis)');
 
-      // final startMillis = getInboxStartDate()!.millisecondsSinceEpoch.toString();
-      final startMillis = DateTime(2025, 9).millisecondsSinceEpoch.toString();
-      final stmt = SmsFilter
-    .where(SmsColumn.DATE).greaterThanOrEqualTo(startMillis);
+      // final startMillis = DateTime(2025, 9).millisecondsSinceEpoch.toString();
+      // final stmt = SmsFilter.where(
+      //   SmsColumn.DATE,
+      // ).greaterThanOrEqualTo(startMillis);
 
-      final filter = stmt;
-      // fetch inbox messages
       final List<SmsMessage> inbox = await _telephony.getInboxSms(
-        columns: [SmsColumn.ADDRESS, SmsColumn.BODY, SmsColumn.DATE],
-        filter: filter,
+        columns: [
+          SmsColumn.ADDRESS,
+          SmsColumn.BODY,
+          SmsColumn.DATE,
+          SmsColumn.ID,
+        ],
+        //filter: stmt,
         sortOrder: [OrderBy(SmsColumn.DATE, sort: Sort.DESC)],
       );
 
       if (inbox.isEmpty) {
         debugPrint('SmsService: inbox empty');
-        // update last sync timestamp if none (avoid scanning repeatedly)
         await _prefs.setInt(
           _kLastInboxSyncKey,
           DateTime.now().millisecondsSinceEpoch,
@@ -370,23 +379,23 @@ class SmsService {
         return;
       }
 
-      // convert/normalize date values and sort ascending (oldest first)
+      // wrap, normalize and sort ascending (oldest first)
       final List<_MsgWrapper> wrapped =
           inbox.map((m) {
             final millis = _smsMessageDateToMillis(m);
             return _MsgWrapper(msg: m, dateMillis: millis);
           }).toList();
-
       wrapped.sort((a, b) => a.dateMillis.compareTo(b.dateMillis));
 
       int newestProcessed = lastSyncMillis;
       int processedCount = 0;
-
       final List<String> unparsedSamples = [];
 
+      // Collect parsed transactions to send in bulk
+      final List<ParsedTransaction> toSend = [];
+
       for (final w in wrapped) {
-        if (w.dateMillis <= lastSyncMillis)
-          continue; // already processed previously
+        if (w.dateMillis <= lastSyncMillis) continue;
 
         final body = w.msg.body ?? '';
         final address = w.msg.address;
@@ -406,34 +415,25 @@ class SmsService {
           continue; // not a transaction message
         }
 
-        final dedupeKey = _dedupeKeyFor(parsed);
+        // Build message_id: prefer native SMS id if available, else fallback to dedupeKey
+        final String messageId =
+            (w.msg.id != null && w.msg.id.toString().isNotEmpty)
+                ? w.msg.id.toString()
+                : _dedupeKeyFor(parsed);
 
-        // fast in-memory check + reserve the key to prevent race conditions
-        if (_seenCache.contains(dedupeKey)) {
+        parsed.messageId = messageId;
+
+        // fast in-memory check + reserve key to avoid duplicates locally
+        if (_seenCache.contains(messageId)) {
           debugPrint(
-            'SmsService: inbox duplicate (cache) ignored (key=$dedupeKey)',
+            'SmsService: inbox duplicate (cache) ignored (key=$messageId)',
           );
           if (w.dateMillis > newestProcessed) newestProcessed = w.dateMillis;
           continue;
         }
-        // reserve immediately (persist will follow in _markSeen)
-        _seenCache.add(dedupeKey);
+        _seenCache.add(messageId);
 
-        // attempt to create (same behavior as realtime: mark seen regardless,
-        // and queue on failure)
-        final sent = await _attemptCreate(parsed);
-        if (sent) {
-          await _markSeen(dedupeKey);
-          processedCount++;
-        } else {
-          _retryQueue.add(parsed);
-          // mark seen to avoid repeated duplicate attempts from same SMS
-          await _markSeen(dedupeKey);
-          debugPrint(
-            'SmsService: inbox message queued for retry (${parsed.id})',
-          );
-        }
-
+        toSend.add(parsed); // collect for bulk send
         if (w.dateMillis > newestProcessed) newestProcessed = w.dateMillis;
       }
 
@@ -444,7 +444,39 @@ class SmsService {
         for (final s in unparsedSamples) debugPrint(s);
       }
 
-      // persist newest processed timestamp so we only process newer messages later
+      // Send in chunks
+      for (var i = 0; i < toSend.length; i += _kBulkChunkSize) {
+        final chunk = toSend.sublist(
+          i,
+          (i + _kBulkChunkSize).clamp(0, toSend.length),
+        );
+        final result = await _sendBulk(chunk);
+
+        if (result.success) {
+          // Mark seen for every item in the chunk (keeps previous behavior)
+          for (final p in chunk) {
+            await _markSeen(p.messageId!);
+          }
+          processedCount += result.inserted;
+          // Log skipped reasons if any
+          if (result.skipped > 0) {
+            debugPrint(
+              'SmsService: some items skipped in bulk: ${result.skippedReasons}',
+            );
+          }
+        } else {
+          // on total failure: queue for retry and mark seen (preserve previous behavior)
+          for (final p in chunk) {
+            _retryQueue.add(p);
+            await _markSeen(p.messageId!);
+          }
+          debugPrint(
+            'SmsService: bulk upload failed for a chunk - queued ${chunk.length} items for retry',
+          );
+        }
+      }
+
+      // persist newest processed timestamp
       await _prefs.setInt(_kLastInboxSyncKey, newestProcessed);
 
       debugPrint(
@@ -453,6 +485,45 @@ class SmsService {
     } catch (e, st) {
       debugPrint('SmsService: syncInboxOnResume failed: $e\n$st');
     }
+  }
+
+  Future<BulkResult> _sendBulk(List<ParsedTransaction> chunk) async {
+    final transactions =
+        chunk.map((parsed) => _toTransactionCreate(parsed)).toList();
+
+    // Try with simple exponential backoff
+    for (int attempt = 0; attempt < _kBulkMaxRetries; attempt++) {
+      try {
+        final resp = await transactionService.createBulkTransactions(
+          transactions,
+        );
+        return resp;
+      } on CouldnotCreateBulkTransactions catch (e) {
+        if (e.code == 400) {
+          return BulkResult(
+            statusCode: 400,
+            success: false,
+            inserted: 0,
+            skipped: chunk.length,
+            skippedReasons: {},
+          );
+        } else{
+          // retry
+        }
+      }
+
+      // backoff delay
+      await Future.delayed(_kRetryBaseDelay * (1 << attempt));
+    }
+
+    // all attempts failed
+    return BulkResult(
+      statusCode: 400,
+      success: false,
+      inserted: 0,
+      skipped: chunk.length,
+      skippedReasons: {},
+    );
   }
 
   // -------------------------
@@ -1153,6 +1224,7 @@ class SmsService {
       merchant: p.merchant,
       type: p.debit ? TransactionType.EXPENSE : TransactionType.INCOME,
       description: p.description,
+      messageId: p.messageId,
     );
   }
 

@@ -10,6 +10,7 @@ from datetime import datetime
 from app.transactions.schemas import (
     TransactionsOut,
     TransactionCreate,
+    BulkTransactionCreate,
     TransactionOut,
     TransferTransactionCreate,
     TransactionPatch,
@@ -23,7 +24,7 @@ from app.transactions.exceptions import (
     InvalidAmount,
     CanNotUpdateTransaction,
     TransactionError,
-    InvalidTransferTransaction
+    InvalidTransferTransaction,
 )
 
 router = APIRouter(prefix="/transactions", tags=["Transaction"])
@@ -110,6 +111,20 @@ def create_transaction(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail={"code": "INVALID_AMOUNT", "message": str(e)},
         )
+
+
+@router.post("/bulk", status_code=status.HTTP_201_CREATED)
+def create_transactions_bulk(
+    payload: BulkTransactionCreate,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+    transaction_service: TransactionsService = Depends(get_transaction_service),
+):
+    return transaction_service.create_transactions_bulk(
+        session,
+        payload.transactions,
+        current_user.id,
+    )
 
 
 @router.post(

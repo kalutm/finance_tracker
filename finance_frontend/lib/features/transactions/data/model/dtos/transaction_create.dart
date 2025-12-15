@@ -9,6 +9,7 @@ class TransactionCreate {
   final String? merchant;
   final TransactionType type;
   final String? description;
+  final String? messageId;
 
   TransactionCreate({
     required this.amount,
@@ -19,6 +20,7 @@ class TransactionCreate {
     this.merchant,
     required this.type,
     this.description,
+    this.messageId,
   });
 
   Map<String, dynamic> toJson() => {
@@ -30,5 +32,6 @@ class TransactionCreate {
     'merchant': merchant,
     'type': type.name,
     'description': description,
+    'message_id': messageId,
   };
 }
