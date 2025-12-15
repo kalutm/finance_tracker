@@ -1,8 +1,11 @@
 from sqlmodel import Session, select
 from app.models.transaction import Transaction
-from sqlalchemy import func
+from sqlalchemy import func, case
 from typing import List, Tuple
 from decimal import Decimal
+from datetime import datetime
+
+from app.models.enums import TransactionType
 
 
 class TransactionRepo:
@@ -91,22 +94,65 @@ class TransactionRepo:
 
     def get_transaction_summary_for_type(
         self, session: Session, type, start_date, end_date, user_id
-    ) -> Decimal:
+    ) -> Tuple[Decimal, int]:
         return session.exec(
-            select(func.coalesce(func.sum(Transaction.amount), 0))
+            select(
+                func.coalesce(func.sum(Transaction.amount), 0),
+                func.count(Transaction.id),
+            )
             .where(Transaction.user_id == user_id)
             .where(Transaction.type == type)
             .where(Transaction.occurred_at.between(start_date, end_date))
         ).one()
 
-    def get_grouped_transaction_totals(
-        self, session, user_id: str, group_field
+    def get_time_series_rows(
+        self, session: Session, granularity, date_from, date_to, user_id
+    ) -> List[Tuple[datetime, Decimal, Decimal]]:
+        trunc = {
+            "day": func.date(Transaction.created_at),
+            "week": func.date_trunc("week", Transaction.created_at),
+            "month": func.date_trunc("month", Transaction.created_at),
+        }[granularity]
+
+        stmt = (
+            select(
+                trunc.label("period"),
+                func.sum(
+                    case((Transaction.type == "income", Transaction.amount), else_=0)
+                ).label("income"),
+                func.sum(
+                    case((Transaction.type == "expense", Transaction.amount), else_=0)
+                ).label("expense"),
+            )
+            .where(
+                Transaction.user_id == user_id,
+                Transaction.occurred_at >= date_from,
+                Transaction.occurred_at < date_to,
+            )
+            .group_by("period")
+            .order_by("period")
+        )
+        return session.exec(stmt).all()
+
+    def get_grouped_transaction_totals_expense(
+        self, session: Session, date_from, date_to, limit, user_id: str, group_field
     ) -> List[Tuple]:
         stmt = (
-            select(group_field, func.sum(Transaction.amount).label("total"))
-            .where(Transaction.user_id == user_id)
+            select(
+                group_field, func.sum(Transaction.amount), func.count(Transaction.id)
+            )
+            .where(
+                Transaction.user_id == user_id,
+                Transaction.type == TransactionType.EXPENSE,
+            )
             .group_by(group_field)
+            .order_by(func.sum(Transaction.amount).desc())
+            .limit(limit)
         )
+        if date_from:
+            stmt = stmt.where(Transaction.occurred_at >= date_from)
+        if date_to:
+            stmt = stmt.where(Transaction.occurred_at < date_to)
         return session.exec(stmt).all()
 
 

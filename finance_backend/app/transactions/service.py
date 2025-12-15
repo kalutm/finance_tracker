@@ -325,29 +325,44 @@ class TransactionsService:
             raise e
 
     def get_transaction_summary(
-        self, session: Session, month: str, user_id: str
+        self, session: Session, month: str, date_from, date_to, user_id: str
     ) -> Dict[str, object]:
-        year, month_num = map(int, month.split("-"))
-        start_date = datetime(year, month_num, 1)
-        end_date = datetime(year, month_num, monthrange(year, month_num)[1], 23, 59, 59)
+        if month:
+            year, m = map(int, month.split("-"))
+            date_from = datetime(year, m, 1)
+            date_to = datetime(year, m + 1, 1) if m < 12 else datetime(year + 1, 1, 1)
 
-        income = self.transaction_repo.get_transaction_summary_for_type(
-            session, TransactionType.INCOME, start_date, end_date, user_id
+        income, i_count = self.transaction_repo.get_transaction_summary_for_type(
+            session, TransactionType.INCOME, date_from, date_to, user_id
         )
-        expense = self.transaction_repo.get_transaction_summary_for_type(
-            session, TransactionType.EXPENSE, start_date, end_date, user_id
+        expense, e_count = self.transaction_repo.get_transaction_summary_for_type(
+            session, TransactionType.EXPENSE, date_from, date_to, user_id
         )
 
         net = income - expense
+        count = i_count + e_count
         return {
-            "month": month,
             "total_income": income,
             "total_expense": expense,
             "net_savings": net,
+            "transactions_count": count 
         }
+    
+    def get_timeseries(self, session: Session, granularity, date_from, date_to, user_id: str) -> List[Dict]:
+        rows = self.transaction_repo.get_time_series_rows(session, granularity, date_from, date_to, user_id)
+        return [
+            {
+            "date": period,
+            "income": income,
+            "expense": expense,
+            "net": income - expense,
+            }
+            for period, income, expense in rows
+        ]
+
 
     def get_transaction_stats(
-        self, session: Session, by: str, user_id: str
+        self, session: Session, by: str, date_from, date_to, limit, user_id: str
     ) -> List[Dict[str, object]]:
         group_field = {
             "category": Transaction.category_id,
@@ -355,16 +370,16 @@ class TransactionsService:
             "type": Transaction.type,
         }[by]
 
-        results = self.transaction_repo.get_grouped_transaction_totals(
-            session, user_id, group_field
+        results = self.transaction_repo.get_grouped_transaction_totals_expense(
+            session, date_from, date_to, limit, user_id, group_field
         )
         if not results:
             return []
 
-        total_sum = sum(Decimal(str(total)) for label, total in results)
+        total_sum = sum(Decimal(str(total)) for label, total, count in results)
 
         enriched = []
-        for group_value, total in results:
+        for group_value, total, count in results:
             name = None
             if by == "category":
                 category = session.get(Category, group_value)
@@ -384,7 +399,7 @@ class TransactionsService:
             )
 
             enriched.append(
-                {"name": name, "total": Decimal(total), "percentage": percentage}
+                {"name": name, "total": Decimal(total), "percentage": percentage, "transaction_count": count}
             )
 
         return enriched

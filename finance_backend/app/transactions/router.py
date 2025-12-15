@@ -162,22 +162,38 @@ def create_transaction(
 
 @router.get("/summary", response_model=TransactionSummaryOut)
 def get_transaction_summary(
-    month: str = Query(..., pattern=r"^\d{4}-\d{2}$", example="2025-11"),
+    month: str | None = Query(None, pattern=r"^\d{4}-\d{2}$"),
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
-    transaction_service: TransactionsService = Depends(get_transaction_service),
+    transaction_service: TransactionsService = Depends(get_transaction_service)
 ):
-    return transaction_service.get_transaction_summary(session, month, current_user.id)
+    return transaction_service.get_transaction_summary(session, month, date_from, date_to, current_user.id)
 
 
 @router.get("/stats", response_model=List[TransactionStatsOut])
 def get_transaction_stats(
     by: str = Query("category", enum=["category", "account", "type"]),
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
+    limit: int = 10,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
     transaction_service: TransactionsService = Depends(get_transaction_service),
 ):
-    return transaction_service.get_transaction_stats(session, by, current_user.id)
+    return transaction_service.get_transaction_stats(session, by, date_from, date_to, limit, current_user.id)
+
+@router.get("/timeseries")
+def get_timeseries(
+    date_from: datetime,
+    date_to: datetime,
+    granularity: str = Query("day", enum=["day", "week", "month"]),
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+    transaction_service: TransactionsService = Depends(get_transaction_service),
+):
+    return transaction_service.get_timeseries(session, granularity, date_from, date_to, current_user.id)
 
 
 @router.get("/{id}", response_model=TransactionOut)

@@ -66,13 +66,14 @@ class TransactionPatch(BaseModel):
 
 
 class TransactionSummaryOut(BaseModel):
-    month: str
     total_income: Decimal
     total_expense: Decimal
     net_savings: Decimal
+    transactions_count: int
 
 
 class TransactionStatsOut(BaseModel):
     name: str
     total: Decimal
     percentage: Decimal
+    transaction_count: int
