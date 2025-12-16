@@ -3,7 +3,9 @@ import 'package:finance_frontend/features/transactions/data/model/transaction_st
 import 'package:finance_frontend/features/transactions/data/model/transaction_summary.dart';
 import 'package:finance_frontend/features/transactions/data/model/transaction_time_series.dart';
 
-class ReportAnalytics {
+class ReportAnalyticsState {}
+
+class ReportAnalytics extends ReportAnalyticsState{
   final TransactionSummary transactionSummary;
   final List<TransactionStats> transactionStats;
   final List<TransactionTimeSeries> transactionTimeSeriess;
@@ -15,4 +17,8 @@ class ReportAnalytics {
     required this.transactionTimeSeriess,
     required this.accountBalances,
   });
+}
+
+class ReportAnalyticsInitial implements ReportAnalyticsState{
+
 }

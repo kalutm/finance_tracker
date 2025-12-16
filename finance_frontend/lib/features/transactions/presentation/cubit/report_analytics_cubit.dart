@@ -4,10 +4,10 @@ import 'package:finance_frontend/features/transactions/data/model/report_analyti
 import 'package:finance_frontend/features/transactions/domain/service/transaction_service.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-class ReportAnalyticsCubit extends Cubit<ReportAnalytics> {
+class ReportAnalyticsCubit extends Cubit<ReportAnalyticsState> {
   final TransactionService transactionsService;
   StreamSubscription<ReportAnalytics>? _reportAnalyticsSub;
-  ReportAnalyticsCubit(this.transactionsService) : super(ReportAnalytics()) {
+  ReportAnalyticsCubit(this.transactionsService) : super(ReportAnalyticsInitial()) {
     _reportAnalyticsSub = transactionsService.reportAnalyticsStream.listen((
       event,
     ) {
