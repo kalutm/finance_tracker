@@ -18,6 +18,10 @@ class CouldnotGenerateTransactionsSummary implements TransactionException {}
 
 class CouldnotGenerateTransactionsStats implements TransactionException {}
 
+class CouldnotGenerateTimeSeries implements TransactionException {}
+
+class CouldnotGetAccountBalances implements TransactionException {}
+
 class CannotUpdateTransferTransactions implements TransactionException {}
 
 class AccountBalanceTnsufficient implements TransactionException {}

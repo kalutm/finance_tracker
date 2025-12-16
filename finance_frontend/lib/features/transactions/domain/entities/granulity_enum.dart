@@ -1,0 +1,1 @@
+enum Granulity {day, week, month}

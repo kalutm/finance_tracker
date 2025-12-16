@@ -162,7 +162,7 @@ def create_transaction(
         )
 
 
-@router.get("/summary", response_model=TransactionSummaryOut)
+@router.get("/summary", response_model=TransactionSummaryOut, status_code=status.HTTP_200_OK)
 def get_transaction_summary(
     month: str | None = Query(None, pattern=r"^\d{4}-\d{2}$"),
     date_from: datetime | None = None,
@@ -176,7 +176,7 @@ def get_transaction_summary(
     )
 
 
-@router.get("/stats", response_model=List[TransactionStatsOut])
+@router.get("/stats", response_model=List[TransactionStatsOut], status_code=status.HTTP_200_OK)
 def get_transaction_stats(
     by: str = Query("category", enum=["category", "account", "type"]),
     is_expense: bool = True,
@@ -192,7 +192,7 @@ def get_transaction_stats(
     )
 
 
-@router.get("/timeseries", response_model=List[TimeSeries])
+@router.get("/timeseries", response_model=List[TimeSeries], status_code=status.HTTP_200_OK)
 def get_timeseries(
     date_from: datetime,
     date_to: datetime,
@@ -206,7 +206,7 @@ def get_timeseries(
     )
 
 
-@router.get("/balances", response_model=AccountBalancesOut)
+@router.get("/balances", response_model=AccountBalancesOut, status_code=status.HTTP_200_OK)
 def get_account_balances(
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),

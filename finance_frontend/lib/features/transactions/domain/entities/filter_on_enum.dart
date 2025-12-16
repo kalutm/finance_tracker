@@ -1,0 +1,1 @@
+enum FilterOn {category, account, type}

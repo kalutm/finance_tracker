@@ -1,9 +1,17 @@
 import 'dart:async';
 import 'package:finance_frontend/features/accounts/domain/service/account_service.dart';
-import 'package:finance_frontend/features/transactions/data/model/dtos/transaction_bulk_result.dart';
+import 'package:finance_frontend/features/transactions/data/model/account_balances.dart';
+import 'package:finance_frontend/features/transactions/data/model/dtos/date_range.dart';
+import 'package:finance_frontend/features/transactions/data/model/dtos/stats_in.dart';
+import 'package:finance_frontend/features/transactions/data/model/dtos/time_series_in.dart';
+import 'package:finance_frontend/features/transactions/data/model/transaction_bulk_result.dart';
 import 'package:finance_frontend/features/transactions/data/model/dtos/transaction_create.dart';
 import 'package:finance_frontend/features/transactions/data/model/dtos/transaction_update.dart';
 import 'package:finance_frontend/features/transactions/data/model/dtos/transfer_transaction_create.dart';
+import 'package:finance_frontend/features/transactions/data/model/report_analytics.dart';
+import 'package:finance_frontend/features/transactions/data/model/transaction_stats.dart';
+import 'package:finance_frontend/features/transactions/data/model/transaction_summary.dart';
+import 'package:finance_frontend/features/transactions/data/model/transaction_time_series.dart';
 import 'package:finance_frontend/features/transactions/domain/data_source/trans_data_source.dart';
 import 'package:finance_frontend/features/transactions/domain/entities/transaction.dart';
 import 'package:finance_frontend/features/transactions/domain/entities/transaction_type.dart';
@@ -18,9 +26,15 @@ class FinanceTransactionService implements TransactionService {
   final List<Transaction> _cachedTransactions = [];
   final StreamController<List<Transaction>> _controller =
       StreamController<List<Transaction>>.broadcast();
+  final StreamController<ReportAnalytics> _reportAnalyticsController =
+      StreamController<ReportAnalytics>.broadcast();
 
   @override
   Stream<List<Transaction>> get transactionsStream => _controller.stream;
+
+  @override
+  Stream<ReportAnalytics> get reportAnalyticsStream =>
+      _reportAnalyticsController.stream;
 
   void _emitCache() {
     try {
@@ -56,7 +70,9 @@ class FinanceTransactionService implements TransactionService {
   }
 
   @override
-  Future<BulkResult> createBulkTransactions(List<TransactionCreate> transactions) async {
+  Future<BulkResult> createBulkTransactions(
+    List<TransactionCreate> transactions,
+  ) async {
     final result = await source.createBulkTransactions(transactions);
     await getUserTransactions();
     await accountService.getUserAccounts();
@@ -156,18 +172,60 @@ class FinanceTransactionService implements TransactionService {
     _emitCache();
 
     // refresh accounts to update balances
-      await accountService.getUserAccounts();
+    await accountService.getUserAccounts();
 
     return entity;
   }
 
+  // Report and analytic's method's
+
+  @override
+  Future<TransactionSummary> getTransactionSummary(
+    String? month,
+    DateRange? range,
+  ) async {
+    if (month != null) {
+      final summaryMap = await source.getTransactionSummaryFromMonth(month);
+      return TransactionSummary.fromJson(summaryMap);
+    } else {
+      final summaryMap = await source.getTransactionSummaryFromDateRange(
+        range!,
+      );
+      return TransactionSummary.fromJson(summaryMap);
+    }
+  }
+
+  @override
+  Future<List<TransactionStats>> getTransactionStats(StatsIn statsIn) async {
+    final statsList = await source.getTransactionStats(statsIn);
+    return statsList.map((s) => TransactionStats.fromJson(s)).toList();
+  }
+
+  @override
+  Future<List<TransactionTimeSeries>> getTransactionTimeSeries(
+    TimeSeriesIn timeSeriesIn,
+  ) async {
+    final timeSeriesList = await source.getTransactionTimeSeries(timeSeriesIn);
+    return timeSeriesList
+        .map((ts) => TransactionTimeSeries.fromJson(ts))
+        .toList();
+  }
+
+  @override
+  Future<AccountBalances> getAccountBalances() async {
+    final (totalBalance, accountsList) = await source.getAccountBalances();
+    final accounts = AccountBalances.accountsFromJson(accountsList);
+    return AccountBalances(totalBalance: totalBalance, accounts: accounts);
+  }
+
+  // helper's
   @override
   Future<void> clearCache() async {
     _cachedTransactions.clear();
     _emitCache();
   }
 
-  // close stream when app disposes 
+  // close stream when app disposes
   void dispose() {
     if (!_controller.isClosed) _controller.close();
   }

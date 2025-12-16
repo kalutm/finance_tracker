@@ -13,7 +13,7 @@ import 'package:finance_frontend/features/accounts/domain/entities/account_type_
 import 'package:finance_frontend/features/accounts/domain/entities/dtos/account_create.dart';
 import 'package:finance_frontend/features/accounts/domain/service/account_service.dart';
 import 'package:finance_frontend/features/auth/domain/services/secure_storage_service.dart';
-import 'package:finance_frontend/features/transactions/data/model/dtos/transaction_bulk_result.dart';
+import 'package:finance_frontend/features/transactions/data/model/transaction_bulk_result.dart';
 import 'package:finance_frontend/features/transactions/domain/entities/transaction_type.dart';
 import 'package:finance_frontend/features/transactions/domain/exceptions/transaction_exceptions.dart';
 import 'package:shared_preferences/shared_preferences.dart';
