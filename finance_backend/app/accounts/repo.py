@@ -30,10 +30,19 @@ class AccountRepository:
         results = session.exec(stmt).all()
         return results, int(total)
 
-    def get_account_for_user(self, session: Session, account_id, user_id) -> Optional[Account]:
+    def get_account_for_user(
+        self, session: Session, account_id, user_id
+    ) -> Optional[Account]:
         return session.exec(
             select(Account).where(Account.id == account_id, Account.user_id == user_id)
         ).first()
+
+    def get_account_balances(self, session: Session, user_id):
+        return session.exec(
+            select(Account.id, Account.name, Account.balance).where(
+                Account.user_id == user_id
+            )
+        ).all()
 
     def save_account(self, session: Session, account: Account) -> Account:
         session.add(account)
@@ -42,7 +51,9 @@ class AccountRepository:
         return account
 
     def get_account_by_id(self, session: Session, id) -> Optional[Account]:
-        return session.exec(select(Account).where(Account.id == id).with_for_update()).first()
+        return session.exec(
+            select(Account).where(Account.id == id).with_for_update()
+        ).first()
 
     def delete_account(self, session: Session, account: Account):
         session.delete(account)
@@ -56,6 +67,7 @@ class AccountRepository:
             .where(Transaction.account_id == account_id)
         )
         return session.exec(count_stmt).one()
+
 
 # FastApi dependency provider
 def get_account_repo() -> AccountRepository:

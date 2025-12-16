@@ -359,6 +359,15 @@ class TransactionsService:
             }
             for period, income, expense in rows
         ]
+    
+    def get_account_balances(self, session: Session, user_id: str) -> Tuple[int, List[Dict]]:
+        rows = self.account_repo.get_account_balances(session, user_id)
+        total = sum(r.balance for r in rows)
+        account_balances = [
+                {"id": r.id, "name": r.name, "balance": r.balance}
+                for r in rows
+            ]
+        return total, account_balances
 
 
     def get_transaction_stats(

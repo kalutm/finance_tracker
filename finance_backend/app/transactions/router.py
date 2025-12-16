@@ -17,6 +17,8 @@ from app.transactions.schemas import (
     TransferTransactionsOut,
     TransactionSummaryOut,
     TransactionStatsOut,
+    TimeSeries,
+    AccountBalancesOut
 )
 from app.transactions.exceptions import (
     InsufficientBalance,
@@ -167,9 +169,11 @@ def get_transaction_summary(
     date_to: datetime | None = None,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
-    transaction_service: TransactionsService = Depends(get_transaction_service)
+    transaction_service: TransactionsService = Depends(get_transaction_service),
 ):
-    return transaction_service.get_transaction_summary(session, month, date_from, date_to, current_user.id)
+    return transaction_service.get_transaction_summary(
+        session, month, date_from, date_to, current_user.id
+    )
 
 
 @router.get("/stats", response_model=List[TransactionStatsOut])
@@ -182,9 +186,12 @@ def get_transaction_stats(
     current_user: User = Depends(get_current_user),
     transaction_service: TransactionsService = Depends(get_transaction_service),
 ):
-    return transaction_service.get_transaction_stats(session, by, date_from, date_to, limit, current_user.id)
+    return transaction_service.get_transaction_stats(
+        session, by, date_from, date_to, limit, current_user.id
+    )
 
-@router.get("/timeseries")
+
+@router.get("/timeseries", response_model=List[TimeSeries])
 def get_timeseries(
     date_from: datetime,
     date_to: datetime,
@@ -193,7 +200,19 @@ def get_timeseries(
     current_user: User = Depends(get_current_user),
     transaction_service: TransactionsService = Depends(get_transaction_service),
 ):
-    return transaction_service.get_timeseries(session, granularity, date_from, date_to, current_user.id)
+    return transaction_service.get_timeseries(
+        session, granularity, date_from, date_to, current_user.id
+    )
+
+
+@router.get("/balances", response_model=AccountBalancesOut)
+def get_account_balances(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+    transaction_service: TransactionsService = Depends(get_transaction_service),
+):
+    total, account_balances = transaction_service.get_account_balances(session, current_user.id)
+    return AccountBalancesOut(total_balance=total, accounts=account_balances)
 
 
 @router.get("/{id}", response_model=TransactionOut)

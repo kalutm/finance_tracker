@@ -77,3 +77,18 @@ class TransactionStatsOut(BaseModel):
     total: Decimal
     percentage: Decimal
     transaction_count: int
+
+class TimeSeries(BaseModel):
+    date: datetime
+    income: Decimal
+    expense: Decimal
+    net: Decimal
+
+class AccountBalance(BaseModel):
+    id: int
+    name: str
+    balance: Decimal
+
+class AccountBalancesOut(BaseModel):
+    total_balance: int
+    accounts: List[AccountBalance]
