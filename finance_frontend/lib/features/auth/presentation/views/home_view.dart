@@ -2,6 +2,7 @@ import 'package:finance_frontend/features/accounts/presentation/views/accounts_w
 import 'package:finance_frontend/features/auth/presentation/components/confirmation_dialog.dart';
 import 'package:finance_frontend/features/categories/presentation/views/categories_wrapper.dart';
 import 'package:finance_frontend/features/settings/presentation/views/settings_view.dart';
+import 'package:finance_frontend/features/transactions/presentation/views/report_and_anlytics_wrapper.dart';
 import 'package:finance_frontend/features/transactions/presentation/views/transactions_view.dart';
 import 'package:flutter/material.dart';
 
@@ -22,6 +23,7 @@ class _HomeState extends State<Home> {
     const AccountsWrapper(),
     const CategoriesWrapper(),
     const SettingsView(),
+    const Reportandanlyticswrappr(),
   ];
 
   void _onItemTapped(int index) {
@@ -102,6 +104,13 @@ class _HomeState extends State<Home> {
               title: 'Settings',
               icon: Icons.settings_rounded,
               index: 3,
+              onTap: _onItemTapped,
+            ),
+            _buildDrawerItem(
+              context,
+              title: 'Report & Anlytics',
+              icon: Icons.pie_chart_outline_rounded,
+              index: 4,
               onTap: _onItemTapped,
             ),
 

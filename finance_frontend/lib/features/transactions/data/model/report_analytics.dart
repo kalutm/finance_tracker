@@ -25,5 +25,6 @@ class ReportAnalytics extends ReportAnalyticsState {
 
 class ReportAnalyticsError extends ReportAnalyticsState {
   final String message;
-  ReportAnalyticsError(this.message);
+  final ReportAnalytics reportAnalytics;
+  ReportAnalyticsError(this.message, this.reportAnalytics);
 }
