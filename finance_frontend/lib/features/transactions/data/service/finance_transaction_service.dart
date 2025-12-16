@@ -1,9 +1,11 @@
 import 'dart:async';
+import 'package:finance_frontend/extensions/date_time_extension.dart';
 import 'package:finance_frontend/features/accounts/domain/service/account_service.dart';
 import 'package:finance_frontend/features/transactions/data/model/account_balances.dart';
 import 'package:finance_frontend/features/transactions/data/model/dtos/date_range.dart';
 import 'package:finance_frontend/features/transactions/data/model/dtos/stats_in.dart';
 import 'package:finance_frontend/features/transactions/data/model/dtos/time_series_in.dart';
+import 'package:finance_frontend/features/transactions/data/model/report_analytics_in.dart';
 import 'package:finance_frontend/features/transactions/data/model/transaction_bulk_result.dart';
 import 'package:finance_frontend/features/transactions/data/model/dtos/transaction_create.dart';
 import 'package:finance_frontend/features/transactions/data/model/dtos/transaction_update.dart';
@@ -13,6 +15,8 @@ import 'package:finance_frontend/features/transactions/data/model/transaction_st
 import 'package:finance_frontend/features/transactions/data/model/transaction_summary.dart';
 import 'package:finance_frontend/features/transactions/data/model/transaction_time_series.dart';
 import 'package:finance_frontend/features/transactions/domain/data_source/trans_data_source.dart';
+import 'package:finance_frontend/features/transactions/domain/entities/filter_on_enum.dart';
+import 'package:finance_frontend/features/transactions/domain/entities/granulity_enum.dart';
 import 'package:finance_frontend/features/transactions/domain/entities/transaction.dart';
 import 'package:finance_frontend/features/transactions/domain/entities/transaction_type.dart';
 import 'package:finance_frontend/features/transactions/domain/service/transaction_service.dart';
@@ -24,6 +28,12 @@ class FinanceTransactionService implements TransactionService {
   FinanceTransactionService(this.accountService, this.source);
 
   final List<Transaction> _cachedTransactions = [];
+  final ReportAnalyticsIn _cachedReportAnalyticsParam = ReportAnalyticsIn(
+    month: DateTime.now().getMonth(),
+    statsIn: StatsIn(filterOn: FilterOn.category, range: DateRange()),
+    timeSeriesIn: TimeSeriesIn(granulity: Granulity.day, range: DateRange()),
+  );
+
   final StreamController<List<Transaction>> _controller =
       StreamController<List<Transaction>>.broadcast();
   final StreamController<ReportAnalytics> _reportAnalyticsController =
@@ -39,6 +49,28 @@ class FinanceTransactionService implements TransactionService {
   void _emitCache() {
     try {
       _controller.add(List.unmodifiable(_cachedTransactions));
+    } catch (_) {}
+  }
+
+  Future<void> _emitReportAndAnalytics() async {
+    final month = _cachedReportAnalyticsParam.month;
+    final range = _cachedReportAnalyticsParam.range;
+    final statsIn = _cachedReportAnalyticsParam.statsIn;
+    final timeSeriesIn = _cachedReportAnalyticsParam.timeSeriesIn;
+
+    final transactionSummary = await getTransactionSummary(month, range);
+    final transactionStats = await getTransactionStats(statsIn);
+    final transactionTimeSeriess = await getTransactionTimeSeries(timeSeriesIn);
+    final accountBalances = await getAccountBalances();
+    try {
+      _reportAnalyticsController.add(
+        ReportAnalytics(
+          transactionSummary: transactionSummary,
+          transactionStats: transactionStats,
+          transactionTimeSeriess: transactionTimeSeriess,
+          accountBalances: accountBalances,
+        ),
+      );
     } catch (_) {}
   }
 
@@ -66,6 +98,8 @@ class FinanceTransactionService implements TransactionService {
     // refresh accounts to update balances
     await accountService.getUserAccounts();
 
+    // refresh all report and analytic's component's
+    await _emitReportAndAnalytics();
     return entity;
   }
 
@@ -96,6 +130,9 @@ class FinanceTransactionService implements TransactionService {
     // refresh accounts to update balances
     await accountService.getUserAccounts();
 
+    // refresh all report and analytic's component's
+    await _emitReportAndAnalytics();
+
     return (outgoing, incoming);
   }
 
@@ -108,6 +145,9 @@ class FinanceTransactionService implements TransactionService {
 
     // refresh accounts to update balances
     await accountService.getUserAccounts();
+
+    // refresh all report and analytic's component's
+    await _emitReportAndAnalytics();
   }
 
   @override
@@ -121,6 +161,9 @@ class FinanceTransactionService implements TransactionService {
 
     // refresh accounts to update balances
     await accountService.getUserAccounts();
+
+    // refresh all report and analytic's component's
+    await _emitReportAndAnalytics();
   }
 
   @override
@@ -174,6 +217,9 @@ class FinanceTransactionService implements TransactionService {
     // refresh accounts to update balances
     await accountService.getUserAccounts();
 
+    // refresh all report and analytic's component's
+    await _emitReportAndAnalytics();
+
     return entity;
   }
 
@@ -184,6 +230,8 @@ class FinanceTransactionService implements TransactionService {
     String? month,
     DateRange? range,
   ) async {
+    _cachedReportAnalyticsParam.month = month;
+    _cachedReportAnalyticsParam.range = range;
     if (month != null) {
       final summaryMap = await source.getTransactionSummaryFromMonth(month);
       return TransactionSummary.fromJson(summaryMap);
@@ -197,6 +245,7 @@ class FinanceTransactionService implements TransactionService {
 
   @override
   Future<List<TransactionStats>> getTransactionStats(StatsIn statsIn) async {
+    _cachedReportAnalyticsParam.statsIn = statsIn;
     final statsList = await source.getTransactionStats(statsIn);
     return statsList.map((s) => TransactionStats.fromJson(s)).toList();
   }
@@ -205,6 +254,7 @@ class FinanceTransactionService implements TransactionService {
   Future<List<TransactionTimeSeries>> getTransactionTimeSeries(
     TimeSeriesIn timeSeriesIn,
   ) async {
+    _cachedReportAnalyticsParam.timeSeriesIn = timeSeriesIn;
     final timeSeriesList = await source.getTransactionTimeSeries(timeSeriesIn);
     return timeSeriesList
         .map((ts) => TransactionTimeSeries.fromJson(ts))
