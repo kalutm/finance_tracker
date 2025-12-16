@@ -22,8 +22,8 @@ class _HomeState extends State<Home> {
     const TransactionsView(),
     const AccountsWrapper(),
     const CategoriesWrapper(),
-    const SettingsView(),
     const Reportandanlyticswrappr(),
+    const SettingsView(),
   ];
 
   void _onItemTapped(int index) {
@@ -101,15 +101,15 @@ class _HomeState extends State<Home> {
             ),
             _buildDrawerItem(
               context,
-              title: 'Settings',
-              icon: Icons.settings_rounded,
+              title: 'Report & Anlytics',
+              icon: Icons.pie_chart_outline_rounded,
               index: 3,
               onTap: _onItemTapped,
             ),
             _buildDrawerItem(
               context,
-              title: 'Report & Anlytics',
-              icon: Icons.pie_chart_outline_rounded,
+              title: 'Settings',
+              icon: Icons.settings_rounded,
               index: 4,
               onTap: _onItemTapped,
             ),

@@ -386,14 +386,17 @@ class RemoteTransDataSource implements TransDataSource {
       final dateFrom = DateRange.toQueryParam(statsIn.range?.start);
       final dateTo = DateRange.toQueryParam(statsIn.range?.end);
 
+      String url =
+          "$transactionsBaseUrl/stats?by=$by&is_expense=${statsIn.onlyExpense}&limit=1000";
+      if (dateFrom != null) {
+        url = "$url&date_from=$dateFrom";
+      }
+      if (dateTo != null) {
+        url = "$url&date_to=$dateTo";
+      }
+
       final res = await client.send(
-        RequestModel(
-          method: "GET",
-          url: Uri.parse(
-            "$transactionsBaseUrl/stats?by=$by&is_expense=${statsIn.onlyExpense}&date_from=$dateFrom&date_to=$dateTo&limit=1000",
-          ),
-          headers: headers,
-        ),
+        RequestModel(method: "GET", url: Uri.parse(url), headers: headers),
       );
 
       final json = _decode(res.body);
