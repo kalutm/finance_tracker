@@ -179,6 +179,7 @@ def get_transaction_summary(
 @router.get("/stats", response_model=List[TransactionStatsOut])
 def get_transaction_stats(
     by: str = Query("category", enum=["category", "account", "type"]),
+    is_expense: bool = True,
     date_from: datetime | None = None,
     date_to: datetime | None = None,
     limit: int = 10,
@@ -187,7 +188,7 @@ def get_transaction_stats(
     transaction_service: TransactionsService = Depends(get_transaction_service),
 ):
     return transaction_service.get_transaction_stats(
-        session, by, date_from, date_to, limit, current_user.id
+        session, by, date_from, date_to, limit, is_expense, current_user.id
     )
 
 

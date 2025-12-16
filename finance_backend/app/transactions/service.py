@@ -371,7 +371,7 @@ class TransactionsService:
 
 
     def get_transaction_stats(
-        self, session: Session, by: str, date_from, date_to, limit, user_id: str
+        self, session: Session, by: str, date_from, date_to, limit, is_expense, user_id: str
     ) -> List[Dict[str, object]]:
         group_field = {
             "category": Transaction.category_id,
@@ -379,8 +379,11 @@ class TransactionsService:
             "type": Transaction.type,
         }[by]
 
-        results = self.transaction_repo.get_grouped_transaction_totals_expense(
-            session, date_from, date_to, limit, user_id, group_field
+        if group_field == Transaction.type:
+            is_expense = None
+
+        results = self.transaction_repo.get_grouped_transaction_totals(
+            session, date_from, date_to, limit, is_expense, user_id, group_field
         )
         if not results:
             return []

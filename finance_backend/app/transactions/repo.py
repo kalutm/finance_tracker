@@ -109,19 +109,19 @@ class TransactionRepo:
         self, session: Session, granularity, date_from, date_to, user_id
     ) -> List[Tuple[datetime, Decimal, Decimal]]:
         trunc = {
-            "day": func.date(Transaction.created_at),
-            "week": func.date_trunc("week", Transaction.created_at),
-            "month": func.date_trunc("month", Transaction.created_at),
+            "day": func.date(Transaction.occurred_at),
+            "week": func.date_trunc("week", Transaction.occurred_at),
+            "month": func.date_trunc("month", Transaction.occurred_at),
         }[granularity]
 
         stmt = (
             select(
                 trunc.label("period"),
                 func.sum(
-                    case((Transaction.type == "income", Transaction.amount), else_=0)
+                    case((Transaction.type == TransactionType.INCOME, Transaction.amount), else_=0)
                 ).label("income"),
                 func.sum(
-                    case((Transaction.type == "expense", Transaction.amount), else_=0)
+                    case((Transaction.type == TransactionType.EXPENSE, Transaction.amount), else_=0)
                 ).label("expense"),
             )
             .where(
@@ -134,8 +134,15 @@ class TransactionRepo:
         )
         return session.exec(stmt).all()
 
-    def get_grouped_transaction_totals_expense(
-        self, session: Session, date_from, date_to, limit, user_id: str, group_field
+    def get_grouped_transaction_totals(
+        self,
+        session: Session,
+        date_from,
+        date_to,
+        limit,
+        is_expense,
+        user_id: str,
+        group_field,
     ) -> List[Tuple]:
         stmt = (
             select(
@@ -143,7 +150,15 @@ class TransactionRepo:
             )
             .where(
                 Transaction.user_id == user_id,
-                Transaction.type == TransactionType.EXPENSE,
+                (
+                    True
+                    if not is_expense
+                    else (
+                        Transaction.type == TransactionType.EXPENSE
+                        if is_expense
+                        else Transaction.type == TransactionType.INCOME
+                    )
+                ),
             )
             .group_by(group_field)
             .order_by(func.sum(Transaction.amount).desc())

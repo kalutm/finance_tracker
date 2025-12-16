@@ -90,5 +90,5 @@ class AccountBalance(BaseModel):
     balance: Decimal
 
 class AccountBalancesOut(BaseModel):
-    total_balance: int
+    total_balance: Decimal
     accounts: List[AccountBalance]
