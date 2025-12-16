@@ -10,7 +10,6 @@ import 'package:finance_frontend/features/transactions/data/model/transaction_bu
 import 'package:finance_frontend/features/transactions/data/model/dtos/transaction_create.dart';
 import 'package:finance_frontend/features/transactions/data/model/dtos/transaction_update.dart';
 import 'package:finance_frontend/features/transactions/data/model/dtos/transfer_transaction_create.dart';
-import 'package:finance_frontend/features/transactions/data/model/report_analytics.dart';
 import 'package:finance_frontend/features/transactions/data/model/transaction_stats.dart';
 import 'package:finance_frontend/features/transactions/data/model/transaction_summary.dart';
 import 'package:finance_frontend/features/transactions/data/model/transaction_time_series.dart';
@@ -26,25 +25,27 @@ class FinanceTransactionService implements TransactionService {
   final TransDataSource source;
 
   FinanceTransactionService(this.accountService, this.source);
-
   final List<Transaction> _cachedTransactions = [];
-  final ReportAnalyticsIn _cachedReportAnalyticsParam = ReportAnalyticsIn(
+  final ReportAnalyticsIn _cachedReportAnalyticsParams = ReportAnalyticsIn(
     month: DateTime.now().getMonth(),
-    statsIn: StatsIn(filterOn: FilterOn.category, range: DateRange()),
-    timeSeriesIn: TimeSeriesIn(granulity: Granulity.day, range: DateRange()),
+    statsIn: StatsIn(filterOn: FilterOn.category),
+    timeSeriesIn: TimeSeriesIn(
+      granulity: Granulity.day,
+      range: DateRange(start: DateTime.now(), end: DateTime.now()),
+    ),
   );
 
   final StreamController<List<Transaction>> _controller =
       StreamController<List<Transaction>>.broadcast();
-  final StreamController<ReportAnalytics> _reportAnalyticsController =
-      StreamController<ReportAnalytics>.broadcast();
+  final StreamController<ReportAnalyticsIn> _reportAnalyticsInController =
+      StreamController<ReportAnalyticsIn>.broadcast();
 
   @override
   Stream<List<Transaction>> get transactionsStream => _controller.stream;
 
   @override
-  Stream<ReportAnalytics> get reportAnalyticsStream =>
-      _reportAnalyticsController.stream;
+  Stream<ReportAnalyticsIn> get reportAnalyticsInStream =>
+      _reportAnalyticsInController.stream;
 
   void _emitCache() {
     try {
@@ -53,23 +54,9 @@ class FinanceTransactionService implements TransactionService {
   }
 
   Future<void> _emitReportAndAnalytics() async {
-    final month = _cachedReportAnalyticsParam.month;
-    final range = _cachedReportAnalyticsParam.range;
-    final statsIn = _cachedReportAnalyticsParam.statsIn;
-    final timeSeriesIn = _cachedReportAnalyticsParam.timeSeriesIn;
-
-    final transactionSummary = await getTransactionSummary(month, range);
-    final transactionStats = await getTransactionStats(statsIn);
-    final transactionTimeSeriess = await getTransactionTimeSeries(timeSeriesIn);
-    final accountBalances = await getAccountBalances();
     try {
-      _reportAnalyticsController.add(
-        ReportAnalytics(
-          transactionSummary: transactionSummary,
-          transactionStats: transactionStats,
-          transactionTimeSeriess: transactionTimeSeriess,
-          accountBalances: accountBalances,
-        ),
+      _reportAnalyticsInController.add(
+        _cachedReportAnalyticsParams
       );
     } catch (_) {}
   }
@@ -100,6 +87,7 @@ class FinanceTransactionService implements TransactionService {
 
     // refresh all report and analytic's component's
     await _emitReportAndAnalytics();
+
     return entity;
   }
 
@@ -226,12 +214,12 @@ class FinanceTransactionService implements TransactionService {
   // Report and analytic's method's
 
   @override
-  Future<TransactionSummary> getTransactionSummary(
+  Future<TransactionSummary> getTransactionSummary([
     String? month,
     DateRange? range,
-  ) async {
-    _cachedReportAnalyticsParam.month = month;
-    _cachedReportAnalyticsParam.range = range;
+  ]) async {
+    _cachedReportAnalyticsParams.month = month;
+    _cachedReportAnalyticsParams.range = range;
     if (month != null) {
       final summaryMap = await source.getTransactionSummaryFromMonth(month);
       return TransactionSummary.fromJson(summaryMap);
@@ -245,7 +233,7 @@ class FinanceTransactionService implements TransactionService {
 
   @override
   Future<List<TransactionStats>> getTransactionStats(StatsIn statsIn) async {
-    _cachedReportAnalyticsParam.statsIn = statsIn;
+    _cachedReportAnalyticsParams.statsIn = statsIn;
     final statsList = await source.getTransactionStats(statsIn);
     return statsList.map((s) => TransactionStats.fromJson(s)).toList();
   }
@@ -254,7 +242,7 @@ class FinanceTransactionService implements TransactionService {
   Future<List<TransactionTimeSeries>> getTransactionTimeSeries(
     TimeSeriesIn timeSeriesIn,
   ) async {
-    _cachedReportAnalyticsParam.timeSeriesIn = timeSeriesIn;
+    _cachedReportAnalyticsParams.timeSeriesIn = timeSeriesIn;
     final timeSeriesList = await source.getTransactionTimeSeries(timeSeriesIn);
     return timeSeriesList
         .map((ts) => TransactionTimeSeries.fromJson(ts))

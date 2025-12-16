@@ -9,6 +9,6 @@ class StatsIn {
   StatsIn({
     this.onlyExpense = true,
     required this.filterOn,
-    required this.range,
+    this.range,
   });
 }

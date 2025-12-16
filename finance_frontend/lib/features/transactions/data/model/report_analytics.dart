@@ -5,7 +5,11 @@ import 'package:finance_frontend/features/transactions/data/model/transaction_ti
 
 class ReportAnalyticsState {}
 
-class ReportAnalytics extends ReportAnalyticsState{
+class ReportAnalyticsInitial extends ReportAnalyticsState {}
+
+class ReportAnalyticsLoading extends ReportAnalyticsState {}
+
+class ReportAnalytics extends ReportAnalyticsState {
   final TransactionSummary transactionSummary;
   final List<TransactionStats> transactionStats;
   final List<TransactionTimeSeries> transactionTimeSeriess;
@@ -19,6 +23,7 @@ class ReportAnalytics extends ReportAnalyticsState{
   });
 }
 
-class ReportAnalyticsInitial implements ReportAnalyticsState{
-
+class ReportAnalyticsError extends ReportAnalyticsState {
+  final String message;
+  ReportAnalyticsError(this.message);
 }
