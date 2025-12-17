@@ -14,6 +14,8 @@ class CouldnotDeleteTransaction implements TransactionException {}
 
 class CouldnotDeleteTransferTransaction implements TransactionException {}
 
+class CouldnotListTransactionsForReport implements TransactionException {}
+
 class CouldnotGenerateTransactionsSummary implements TransactionException {}
 
 class CouldnotGenerateTransactionsStats implements TransactionException {}

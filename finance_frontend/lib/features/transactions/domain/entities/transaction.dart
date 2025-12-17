@@ -1,3 +1,4 @@
+import 'package:decimal/decimal.dart';
 import 'package:finance_frontend/features/transactions/domain/entities/transaction_type.dart';
 
 class Transaction {
@@ -28,4 +29,6 @@ class Transaction {
     required this.createdAt,
     required this.occuredAt,
   });
+
+  Decimal get amountValue => Decimal.parse(amount);
 }

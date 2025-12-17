@@ -1,0 +1,1 @@
+enum ReportAnalyticsIsLoading {all, listTransaction, transactionSummary, transactionStats, transactionTimeSeriess, accountBalances}

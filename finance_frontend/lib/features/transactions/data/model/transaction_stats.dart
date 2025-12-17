@@ -1,3 +1,5 @@
+import 'package:decimal/decimal.dart';
+
 class TransactionStats {
   final String name;
   final String total;
@@ -10,6 +12,9 @@ class TransactionStats {
     required this.percentage,
     required this.transactionCount,
   });
+
+  Decimal get totalValue => Decimal.parse(total);
+  Decimal get percentageValue => Decimal.parse(percentage);
 
   factory TransactionStats.fromJson(Map<String, dynamic> json) {
     return TransactionStats(

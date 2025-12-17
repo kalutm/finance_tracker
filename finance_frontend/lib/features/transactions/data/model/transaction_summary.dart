@@ -1,3 +1,5 @@
+import 'package:decimal/decimal.dart';
+
 class TransactionSummary {
   final String totalIncome;
   final String totalExpense;
@@ -10,6 +12,11 @@ class TransactionSummary {
     required this.netSavings,
     required this.transactionsCount,
   });
+
+  Decimal get totalIncomeValue => Decimal.parse(totalIncome);
+  Decimal get totalExpenseValue => Decimal.parse(totalExpense);
+  Decimal get netSavingsValue => Decimal.parse(netSavings);
+
 
   factory TransactionSummary.fromJson(Map<String, dynamic> json) {
     return TransactionSummary(

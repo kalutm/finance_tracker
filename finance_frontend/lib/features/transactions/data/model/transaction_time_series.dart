@@ -1,3 +1,5 @@
+import 'package:decimal/decimal.dart';
+
 class TransactionTimeSeries {
   final DateTime date;
   final String income;
@@ -10,6 +12,11 @@ class TransactionTimeSeries {
     required this.expense,
     required this.net,
   });
+
+  
+  Decimal get incomeValue => Decimal.parse(income);
+  Decimal get expenseValue => Decimal.parse(expense);
+  Decimal get netValue => Decimal.parse(net);
 
   factory TransactionTimeSeries.fromJson(Map<String, dynamic> json) {
     return TransactionTimeSeries(

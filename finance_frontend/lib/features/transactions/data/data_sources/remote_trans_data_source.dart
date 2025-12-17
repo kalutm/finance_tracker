@@ -6,6 +6,7 @@ import 'package:finance_frontend/features/auth/domain/services/secure_storage_se
 import 'package:finance_frontend/features/transactions/data/model/dtos/date_range.dart';
 import 'package:finance_frontend/features/transactions/data/model/dtos/stats_in.dart';
 import 'package:finance_frontend/features/transactions/data/model/dtos/time_series_in.dart';
+import 'package:finance_frontend/features/transactions/data/model/list_transactions_in.dart';
 import 'package:finance_frontend/features/transactions/data/model/transaction_bulk_result.dart';
 import 'package:finance_frontend/features/transactions/data/model/dtos/transaction_create.dart';
 import 'package:finance_frontend/features/transactions/data/model/dtos/transaction_update.dart';
@@ -340,6 +341,54 @@ class RemoteTransDataSource implements TransDataSource {
 
   // Report and analytic's mehtod's
   @override
+  Future<List<TransactionModel>> listTransactionsForReport(
+    ListTransactionsIn listTransactionsIn,
+  ) async {
+    try {
+      final headers = await _authHeaders();
+      final dateFrom = DateRange.toQueryParam(listTransactionsIn.range?.start);
+      final dateTo = DateRange.toQueryParam(listTransactionsIn.range?.end);
+      final categoryId = listTransactionsIn.categoryId;
+      final accountId = listTransactionsIn.accountId;
+      final type = listTransactionsIn.type;
+      final page = listTransactionsIn.page;
+      final perPage = listTransactionsIn.perPage;
+
+      final uri = Uri.parse("$transactionsBaseUrl/list").replace(
+        queryParameters: {
+          if (dateFrom != null) 'date_from': dateFrom,
+          if (dateTo != null) 'date_to': dateTo,
+          if (categoryId != null) 'category_id': categoryId.toString(),
+          if (accountId != null) 'account_id': accountId.toString(),
+          if (type != null) 'type': type.name,
+          if (page != null) 'page': page.toString(),
+          if (perPage != null) 'per_page': perPage.toString(),
+        },
+      );
+
+      final res = await client.send(
+        RequestModel(method: "GET", url: uri, headers: headers),
+      );
+
+      final decoded = _decode(res.body);
+
+      if (res.statusCode != 200) {
+        final json = _toMap(decoded);
+        final detail = json["detail"];
+        dev_tool.log("ERROR: $detail");
+        throw CouldnotListTransactionsForReport();
+      }
+
+      final transactions = _toListOfMap(decoded);
+      return transactions
+          .map((transaction) => TransactionModel.fromFinance(transaction))
+          .toList();
+    } on TransactionException catch (_) {
+      rethrow;
+    }
+  }
+
+  @override
   Future<Map<String, dynamic>> getTransactionSummaryFromMonth(
     String month,
   ) async {
@@ -410,20 +459,22 @@ class RemoteTransDataSource implements TransDataSource {
     try {
       final headers = await _authHeaders();
       final by = statsIn.filterOn.name;
+      final isExpense = statsIn.onlyExpense;
       final dateFrom = DateRange.toQueryParam(statsIn.range?.start);
       final dateTo = DateRange.toQueryParam(statsIn.range?.end);
 
-      String url =
-          "$transactionsBaseUrl/stats?by=$by&is_expense=${statsIn.onlyExpense}&limit=1000";
-      if (dateFrom != null) {
-        url = "$url&date_from=$dateFrom";
-      }
-      if (dateTo != null) {
-        url = "$url&date_to=$dateTo";
-      }
+      final uri = Uri.parse("$transactionsBaseUrl/stats").replace(
+        queryParameters: {
+          'by': by,
+          'is_expense': isExpense,
+          if (dateFrom != null) 'date_from': dateFrom,
+          if (dateTo != null) 'date_to': dateTo,
+          'limit': 1000.toString(),
+        },
+      );
 
       final res = await client.send(
-        RequestModel(method: "GET", url: Uri.parse(url), headers: headers),
+        RequestModel(method: "GET", url: uri, headers: headers),
       );
 
       final decoded = _decode(res.body);

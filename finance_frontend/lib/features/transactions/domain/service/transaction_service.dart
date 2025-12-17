@@ -4,6 +4,7 @@ import 'package:finance_frontend/features/transactions/data/model/account_balanc
 import 'package:finance_frontend/features/transactions/data/model/dtos/date_range.dart';
 import 'package:finance_frontend/features/transactions/data/model/dtos/stats_in.dart';
 import 'package:finance_frontend/features/transactions/data/model/dtos/time_series_in.dart';
+import 'package:finance_frontend/features/transactions/data/model/list_transactions_in.dart';
 import 'package:finance_frontend/features/transactions/data/model/report_analytics_in.dart';
 import 'package:finance_frontend/features/transactions/data/model/transaction_bulk_result.dart';
 import 'package:finance_frontend/features/transactions/data/model/dtos/transaction_create.dart';
@@ -44,6 +45,9 @@ abstract class TransactionService {
   );
 
   // Report and Analytic's method's
+  Future<List<Transaction>> listTransactionsForReport(
+    ListTransactionsIn listTransactionsIn,
+  );
   Future<TransactionSummary> getTransactionSummary([
     String? month,
     DateRange? range,

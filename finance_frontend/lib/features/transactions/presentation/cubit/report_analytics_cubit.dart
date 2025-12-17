@@ -2,21 +2,29 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:finance_frontend/extensions/date_time_extension.dart';
+import 'package:finance_frontend/features/transactions/data/model/account_balances.dart';
 import 'package:finance_frontend/features/transactions/data/model/dtos/date_range.dart';
 import 'package:finance_frontend/features/transactions/data/model/dtos/stats_in.dart';
 import 'package:finance_frontend/features/transactions/data/model/dtos/time_series_in.dart';
+import 'package:finance_frontend/features/transactions/data/model/list_transactions_in.dart';
 import 'package:finance_frontend/features/transactions/data/model/report_analytics.dart';
 import 'package:finance_frontend/features/transactions/data/model/report_analytics_in.dart';
+import 'package:finance_frontend/features/transactions/data/model/transaction_stats.dart';
+import 'package:finance_frontend/features/transactions/data/model/transaction_summary.dart';
+import 'package:finance_frontend/features/transactions/data/model/transaction_time_series.dart';
 import 'package:finance_frontend/features/transactions/domain/entities/filter_on_enum.dart';
 import 'package:finance_frontend/features/transactions/domain/entities/granulity_enum.dart';
+import 'package:finance_frontend/features/transactions/domain/entities/transaction.dart';
 import 'package:finance_frontend/features/transactions/domain/exceptions/transaction_exceptions.dart';
 import 'package:finance_frontend/features/transactions/domain/service/transaction_service.dart';
+import 'package:finance_frontend/features/transactions/presentation/cubit/report_analytics_loading_enum.dart';
+import 'package:finance_frontend/features/transactions/presentation/cubit/report_analytics_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class ReportAnalyticsCubit extends Cubit<ReportAnalyticsState> {
   final TransactionService transactionsService;
   StreamSubscription<ReportAnalyticsIn>? _reportAnalyticsInSub;
-  late ReportAnalytics _cachedReportAnalytics;
+  ReportAnalytics? _cachedReportAnalytics;
 
   ReportAnalyticsCubit(this.transactionsService)
     : super(ReportAnalyticsInitial()) {
@@ -28,6 +36,7 @@ class ReportAnalyticsCubit extends Cubit<ReportAnalyticsState> {
 
     loadReportAnalytics(
       ReportAnalyticsIn(
+        listTransactionsIn: ListTransactionsIn(),
         month: DateTime.now().getMonth(),
         statsIn: StatsIn(filterOn: FilterOn.category),
         timeSeriesIn: TimeSeriesIn(
@@ -42,25 +51,51 @@ class ReportAnalyticsCubit extends Cubit<ReportAnalyticsState> {
   }
 
   Future<void> loadReportAnalytics(ReportAnalyticsIn reportAnalyticsIn) async {
-    emit(ReportAnalyticsLoading());
+    emit(ReportAnalyticsPartLoading(ReportAnalyticsIsLoading.all, _cachedReportAnalytics,));
     try {
-      final transactionSummary = await transactionsService
-          .getTransactionSummary(reportAnalyticsIn.month);
-      final transactionStats = await transactionsService.getTransactionStats(
-        reportAnalyticsIn.statsIn,
-      );
-      final transactionTimeSeriess = await transactionsService
-          .getTransactionTimeSeries(reportAnalyticsIn.timeSeriesIn);
-      final accountBalances = await transactionsService.getAccountBalances();
+      final results = await Future.wait([
+        transactionsService.listTransactionsForReport(
+          reportAnalyticsIn.listTransactionsIn,
+        ),
+        transactionsService.getTransactionSummary(reportAnalyticsIn.month),
+        transactionsService.getTransactionStats(reportAnalyticsIn.statsIn),
+        transactionsService.getTransactionTimeSeries(
+          reportAnalyticsIn.timeSeriesIn,
+        ),
+        transactionsService.getAccountBalances(),
+      ]);
 
       final reportAnalytics = ReportAnalytics(
-        transactionSummary: transactionSummary,
-        transactionStats: transactionStats,
-        transactionTimeSeriess: transactionTimeSeriess,
-        accountBalances: accountBalances,
+        transactions: results[0] as List<Transaction>,
+        transactionSummary: results[1] as TransactionSummary,
+        transactionStats: results[2] as List<TransactionStats>,
+        transactionTimeSeriess: results[3] as List<TransactionTimeSeries>,
+        accountBalances: results[4] as AccountBalances,
       );
       _cachedReportAnalytics = reportAnalytics;
-      emit(reportAnalytics);
+      emit(ReportAnalyticsLoaded(reportAnalytics));
+    } catch (e) {
+      emit(ReportAnalyticsError(_mapErrorToMessage(e), _cachedReportAnalytics));
+    }
+  }
+
+  Future<void> getTransactionsForReport(
+    ListTransactionsIn listTransactionsIn,
+  ) async {
+    try {
+      emit(ReportAnalyticsPartLoading(ReportAnalyticsIsLoading.listTransaction, _cachedReportAnalytics,));
+      final transactions = await transactionsService.listTransactionsForReport(
+        listTransactionsIn,
+      );
+      final reportAnalytics = ReportAnalytics(
+        transactions: transactions,
+        transactionSummary: _cachedReportAnalytics!.transactionSummary,
+        transactionStats: _cachedReportAnalytics!.transactionStats,
+        transactionTimeSeriess: _cachedReportAnalytics!.transactionTimeSeriess,
+        accountBalances: _cachedReportAnalytics!.accountBalances,
+      );
+      _cachedReportAnalytics = reportAnalytics;
+      emit(ReportAnalyticsLoaded(reportAnalytics));
     } catch (e) {
       emit(ReportAnalyticsError(_mapErrorToMessage(e), _cachedReportAnalytics));
     }
@@ -68,17 +103,18 @@ class ReportAnalyticsCubit extends Cubit<ReportAnalyticsState> {
 
   Future<void> getTransactionSummary(String? month, DateRange? range) async {
     try {
-      emit(ReportAnalyticsLoading());
+      emit(ReportAnalyticsPartLoading(ReportAnalyticsIsLoading.transactionSummary, _cachedReportAnalytics,));
       final transactionSummary = await transactionsService
           .getTransactionSummary(month, range);
       final reportAnalytics = ReportAnalytics(
+        transactions: _cachedReportAnalytics!.transactions,
         transactionSummary: transactionSummary,
-        transactionStats: _cachedReportAnalytics.transactionStats,
-        transactionTimeSeriess: _cachedReportAnalytics.transactionTimeSeriess,
-        accountBalances: _cachedReportAnalytics.accountBalances,
+        transactionStats: _cachedReportAnalytics!.transactionStats,
+        transactionTimeSeriess: _cachedReportAnalytics!.transactionTimeSeriess,
+        accountBalances: _cachedReportAnalytics!.accountBalances,
       );
       _cachedReportAnalytics = reportAnalytics;
-      emit(reportAnalytics);
+      emit(ReportAnalyticsLoaded(reportAnalytics));
     } catch (e) {
       emit(ReportAnalyticsError(_mapErrorToMessage(e), _cachedReportAnalytics));
     }
@@ -86,18 +122,19 @@ class ReportAnalyticsCubit extends Cubit<ReportAnalyticsState> {
 
   Future<void> getTransactionStats(StatsIn statsIn) async {
     try {
-      emit(ReportAnalyticsLoading());
+      emit(ReportAnalyticsPartLoading(ReportAnalyticsIsLoading.transactionStats, _cachedReportAnalytics));
       final transactionStats = await transactionsService.getTransactionStats(
         statsIn,
       );
       final reportAnalytics = ReportAnalytics(
-        transactionSummary: _cachedReportAnalytics.transactionSummary,
+        transactions: _cachedReportAnalytics!.transactions,
+        transactionSummary: _cachedReportAnalytics!.transactionSummary,
         transactionStats: transactionStats,
-        transactionTimeSeriess: _cachedReportAnalytics.transactionTimeSeriess,
-        accountBalances: _cachedReportAnalytics.accountBalances,
+        transactionTimeSeriess: _cachedReportAnalytics!.transactionTimeSeriess,
+        accountBalances: _cachedReportAnalytics!.accountBalances,
       );
       _cachedReportAnalytics = reportAnalytics;
-      emit(reportAnalytics);
+      emit(ReportAnalyticsLoaded(reportAnalytics));
     } catch (e) {
       emit(ReportAnalyticsError(_mapErrorToMessage(e), _cachedReportAnalytics));
     }
@@ -105,17 +142,18 @@ class ReportAnalyticsCubit extends Cubit<ReportAnalyticsState> {
 
   Future<void> getTransactionTimeSeries(TimeSeriesIn timeSeriesIn) async {
     try {
-      emit(ReportAnalyticsLoading());
+      emit(ReportAnalyticsPartLoading(ReportAnalyticsIsLoading.transactionTimeSeriess, _cachedReportAnalytics));
       final transactionTimeSeriess = await transactionsService
           .getTransactionTimeSeries(timeSeriesIn);
       final reportAnalytics = ReportAnalytics(
-        transactionSummary: _cachedReportAnalytics.transactionSummary,
-        transactionStats: _cachedReportAnalytics.transactionStats,
+        transactions: _cachedReportAnalytics!.transactions,
+        transactionSummary: _cachedReportAnalytics!.transactionSummary,
+        transactionStats: _cachedReportAnalytics!.transactionStats,
         transactionTimeSeriess: transactionTimeSeriess,
-        accountBalances: _cachedReportAnalytics.accountBalances,
+        accountBalances: _cachedReportAnalytics!.accountBalances,
       );
       _cachedReportAnalytics = reportAnalytics;
-      emit(reportAnalytics);
+      emit(ReportAnalyticsLoaded(reportAnalytics));
     } catch (e) {
       emit(ReportAnalyticsError(_mapErrorToMessage(e), _cachedReportAnalytics));
     }
@@ -123,16 +161,17 @@ class ReportAnalyticsCubit extends Cubit<ReportAnalyticsState> {
 
   Future<void> getAccountBalances() async {
     try {
-      emit(ReportAnalyticsLoading());
+      emit(ReportAnalyticsPartLoading(ReportAnalyticsIsLoading.accountBalances, _cachedReportAnalytics));
       final accountBalances = await transactionsService.getAccountBalances();
       final reportAnalytics = ReportAnalytics(
-        transactionSummary: _cachedReportAnalytics.transactionSummary,
-        transactionStats: _cachedReportAnalytics.transactionStats,
-        transactionTimeSeriess: _cachedReportAnalytics.transactionTimeSeriess,
+        transactions: _cachedReportAnalytics!.transactions,
+        transactionSummary: _cachedReportAnalytics!.transactionSummary,
+        transactionStats: _cachedReportAnalytics!.transactionStats,
+        transactionTimeSeriess: _cachedReportAnalytics!.transactionTimeSeriess,
         accountBalances: accountBalances,
       );
       _cachedReportAnalytics = reportAnalytics;
-      emit(reportAnalytics);
+      emit(ReportAnalyticsLoaded(reportAnalytics));
     } catch (e) {
       emit(ReportAnalyticsError(_mapErrorToMessage(e), _cachedReportAnalytics));
     }
@@ -145,6 +184,8 @@ class ReportAnalyticsCubit extends Cubit<ReportAnalyticsState> {
       return "Couldn't generate transaction Stat's please try again later";
     if (e is CouldnotGenerateTimeSeries)
       return "Couldn't generate transaction TimeSeries's please try again later";
+    if (e is CouldnotListTransactionsForReport)
+      return "Couldn't list transaction's for Report & Anlytics please try again later";
     if (e is SocketException)
       return 'No Internet connection!, please try connecting to the internet';
     return e.toString();

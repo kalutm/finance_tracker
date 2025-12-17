@@ -1,5 +1,5 @@
-import 'package:finance_frontend/features/transactions/data/model/report_analytics.dart';
 import 'package:finance_frontend/features/transactions/presentation/cubit/report_analytics_cubit.dart';
+import 'package:finance_frontend/features/transactions/presentation/cubit/report_analytics_state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
@@ -12,31 +12,31 @@ class ReportAndAnlyticsView extends StatelessWidget {
       appBar: AppBar(title: Text("Report & Anlytics")),
       body: BlocConsumer<ReportAnalyticsCubit, ReportAnalyticsState>(
         builder: (context, state) {
-          if (state is ReportAnalytics || state is ReportAnalyticsError) {
+          if (state is ReportAnalyticsLoaded || state is ReportAnalyticsError) {
             final transactionSummary =
-                state is ReportAnalytics
-                    ? state.transactionSummary
+                state is ReportAnalyticsLoaded
+                    ? state.data.transactionSummary
                     : (state as ReportAnalyticsError)
                         .reportAnalytics
-                        .transactionSummary;
+                        ?.transactionSummary;
             final transactionStats =
-                state is ReportAnalytics
-                    ? state.transactionStats
+                state is ReportAnalyticsLoaded
+                    ? state.data.transactionStats
                     : (state as ReportAnalyticsError)
                         .reportAnalytics
-                        .transactionStats;
+                        ?.transactionStats;
             final transactionTimeSeriess =
-                state is ReportAnalytics
-                    ? state.transactionTimeSeriess
+                state is ReportAnalyticsLoaded
+                    ? state.data.transactionTimeSeriess
                     : (state as ReportAnalyticsError)
                         .reportAnalytics
-                        .transactionTimeSeriess;
+                        ?.transactionTimeSeriess;
             final accountBalances =
-                state is ReportAnalytics
-                    ? state.accountBalances
+                state is ReportAnalyticsLoaded
+                    ? state.data.accountBalances
                     : (state as ReportAnalyticsError)
                         .reportAnalytics
-                        .accountBalances;
+                        ?.accountBalances;
             return SingleChildScrollView(
               padding: const EdgeInsets.all(12.0),
               child: Column(
@@ -51,11 +51,11 @@ class ReportAndAnlyticsView extends StatelessWidget {
                         "Transaction Summary->",
                         style: Theme.of(context).textTheme.titleSmall,
                       ),
-                      Text("Total Income: ${transactionSummary.totalIncome}"),
-                      Text("Total Expense: ${transactionSummary.totalExpense}"),
-                      Text("Net Savings: ${transactionSummary.netSavings}"),
+                      Text("Total Income: ${transactionSummary?.totalIncome}"),
+                      Text("Total Expense: ${transactionSummary?.totalExpense}"),
+                      Text("Net Savings: ${transactionSummary?.netSavings}"),
                       Text(
-                        "Transactions Count: ${transactionSummary.transactionsCount}",
+                        "Transactions Count: ${transactionSummary?.transactionsCount}",
                       ),
                     ],
                   ),
@@ -67,7 +67,7 @@ class ReportAndAnlyticsView extends StatelessWidget {
                       scrollDirection: Axis.horizontal,
                       children:
                           transactionStats
-                              .map(
+                              ?.map(
                                 (ts) => SizedBox(
                                   width: 260,
                                   child: Card(
@@ -83,7 +83,7 @@ class ReportAndAnlyticsView extends StatelessWidget {
                                   ),
                                 ),
                               )
-                              .toList(),
+                              .toList() ?? [],
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -94,7 +94,7 @@ class ReportAndAnlyticsView extends StatelessWidget {
                       scrollDirection: Axis.horizontal,
                       children:
                           transactionTimeSeriess
-                              .map(
+                              ?.map(
                                 (ts) => SizedBox(
                                   width: 260,
                                   child: Card(
@@ -108,7 +108,7 @@ class ReportAndAnlyticsView extends StatelessWidget {
                                   ),
                                 ),
                               )
-                              .toList(),
+                              .toList() ?? [],
                     ),
                   ),
                   const SizedBox(height: 12),
@@ -116,7 +116,7 @@ class ReportAndAnlyticsView extends StatelessWidget {
                     "Net worth:",
                     style: Theme.of(context).textTheme.titleSmall,
                   ),
-                  Text(accountBalances.totalBalance),
+                  Text("${accountBalances?.totalBalance}"),
                   const SizedBox(height: 12),
                   // Accounts horizontal list with fixed height
                   SizedBox(
@@ -124,7 +124,7 @@ class ReportAndAnlyticsView extends StatelessWidget {
                     child: ListView(
                       scrollDirection: Axis.horizontal,
                       children:
-                          accountBalances.accounts
+                          accountBalances?.accounts
                               .map(
                                 (ts) => SizedBox(
                                   width: 260,
@@ -138,7 +138,7 @@ class ReportAndAnlyticsView extends StatelessWidget {
                                   ),
                                 ),
                               )
-                              .toList(),
+                              .toList()?? [],
                     ),
                   ),
                 ],

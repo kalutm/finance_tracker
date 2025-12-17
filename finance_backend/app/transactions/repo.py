@@ -49,6 +49,38 @@ class TransactionRepo:
         transactions = session.exec(stmt).all()
         return transactions, total
 
+    def list_user_transactions_for_report(
+        self,
+        session: Session,
+        account_id,
+        category_id,
+        type,
+        date_from,
+        date_to,
+        page,
+        per_page,
+        user_id,
+    ) -> List[Transaction]:
+        stmt = select(Transaction).where(Transaction.user_id == user_id)
+        if date_from:
+            stmt = stmt.where(Transaction.occurred_at >= date_from)
+        if date_to:
+            stmt = stmt.where(Transaction.occurred_at <= date_to)
+        if category_id:
+            stmt = stmt.where(Transaction.category_id == category_id)
+        if account_id:
+            stmt = stmt.where(Transaction.account_id == account_id)
+        if type:
+            stmt = stmt.where(Transaction.type == type)
+
+        stmt = (
+            stmt.order_by(Transaction.occurred_at.desc())
+            .offset((page - 1) * per_page)
+            .limit(per_page)
+        )
+
+        return session.exec(stmt).all()
+
     def get_transaction_for_user(self, session: Session, id, user_id) -> Transaction:
         return session.exec(
             select(Transaction).where(

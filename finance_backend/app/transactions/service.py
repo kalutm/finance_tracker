@@ -105,7 +105,7 @@ class TransactionsService:
                 account.balance += t.amount
 
             entity = Transaction(
-                user_id=user_id, 
+                user_id=user_id,
                 account_id=t.account_id,
                 amount=t.amount,
                 merchant=t.merchant,
@@ -217,6 +217,30 @@ class TransactionsService:
             type,
             start,
             end,
+        )
+
+    def get_user_transactions_for_report(
+        self,
+        session: Session,
+        account_id,
+        category_id,
+        type,
+        date_from,
+        date_to,
+        page,
+        per_page,
+        user_id,
+    ) -> List[Transaction]:
+        return self.transaction_repo.list_user_transactions_for_report(
+            session,
+            account_id,
+            category_id,
+            type,
+            date_from,
+            date_to,
+            page,
+            per_page,
+            user_id,
         )
 
     def get_transaction(self, session: Session, id, user_id) -> Transaction:
@@ -345,33 +369,44 @@ class TransactionsService:
             "total_income": income,
             "total_expense": expense,
             "net_savings": net,
-            "transactions_count": count 
+            "transactions_count": count,
         }
-    
-    def get_timeseries(self, session: Session, granularity, date_from, date_to, user_id: str) -> List[Dict]:
-        rows = self.transaction_repo.get_time_series_rows(session, granularity, date_from, date_to, user_id)
+
+    def get_timeseries(
+        self, session: Session, granularity, date_from, date_to, user_id: str
+    ) -> List[Dict]:
+        rows = self.transaction_repo.get_time_series_rows(
+            session, granularity, date_from, date_to, user_id
+        )
         return [
             {
-            "date": period,
-            "income": income,
-            "expense": expense,
-            "net": income - expense,
+                "date": period,
+                "income": income,
+                "expense": expense,
+                "net": income - expense,
             }
             for period, income, expense in rows
         ]
-    
-    def get_account_balances(self, session: Session, user_id: str) -> Tuple[int, List[Dict]]:
+
+    def get_account_balances(
+        self, session: Session, user_id: str
+    ) -> Tuple[int, List[Dict]]:
         rows = self.account_repo.get_account_balances(session, user_id)
         total = sum(r.balance for r in rows)
         account_balances = [
-                {"id": r.id, "name": r.name, "balance": r.balance}
-                for r in rows
-            ]
+            {"id": r.id, "name": r.name, "balance": r.balance} for r in rows
+        ]
         return total, account_balances
 
-
     def get_transaction_stats(
-        self, session: Session, by: str, date_from, date_to, limit, is_expense, user_id: str
+        self,
+        session: Session,
+        by: str,
+        date_from,
+        date_to,
+        limit,
+        is_expense,
+        user_id: str,
     ) -> List[Dict[str, object]]:
         group_field = {
             "category": Transaction.category_id,
@@ -411,7 +446,12 @@ class TransactionsService:
             )
 
             enriched.append(
-                {"name": name, "total": Decimal(total), "percentage": percentage, "transaction_count": count}
+                {
+                    "name": name,
+                    "total": Decimal(total),
+                    "percentage": percentage,
+                    "transaction_count": count,
+                }
             )
 
         return enriched

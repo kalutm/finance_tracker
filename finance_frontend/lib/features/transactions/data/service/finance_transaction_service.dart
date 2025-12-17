@@ -5,6 +5,7 @@ import 'package:finance_frontend/features/transactions/data/model/account_balanc
 import 'package:finance_frontend/features/transactions/data/model/dtos/date_range.dart';
 import 'package:finance_frontend/features/transactions/data/model/dtos/stats_in.dart';
 import 'package:finance_frontend/features/transactions/data/model/dtos/time_series_in.dart';
+import 'package:finance_frontend/features/transactions/data/model/list_transactions_in.dart';
 import 'package:finance_frontend/features/transactions/data/model/report_analytics_in.dart';
 import 'package:finance_frontend/features/transactions/data/model/transaction_bulk_result.dart';
 import 'package:finance_frontend/features/transactions/data/model/dtos/transaction_create.dart';
@@ -26,7 +27,8 @@ class FinanceTransactionService implements TransactionService {
 
   FinanceTransactionService(this.accountService, this.source);
   final List<Transaction> _cachedTransactions = [];
-  final ReportAnalyticsIn _cachedReportAnalyticsParams = ReportAnalyticsIn(
+  ReportAnalyticsIn _cachedReportAnalyticsParams = ReportAnalyticsIn(
+    listTransactionsIn: ListTransactionsIn(),
     month: DateTime.now().getMonth(),
     statsIn: StatsIn(filterOn: FilterOn.category),
     timeSeriesIn: TimeSeriesIn(
@@ -53,10 +55,14 @@ class FinanceTransactionService implements TransactionService {
     } catch (_) {}
   }
 
-  Future<void> _emitReportAndAnalytics() async {
-    try {
-      _reportAnalyticsInController.add(_cachedReportAnalyticsParams);
-    } catch (_) {}
+  Timer? _debounceTimer;
+  void _emitReportAndAnalytics() {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 300), () {
+      try {
+        _reportAnalyticsInController.add(_cachedReportAnalyticsParams);
+      } catch (_) {}
+    });
   }
 
   @override
@@ -84,7 +90,7 @@ class FinanceTransactionService implements TransactionService {
     await accountService.getUserAccounts();
 
     // refresh all report and analytic's component's
-    await _emitReportAndAnalytics();
+    _emitReportAndAnalytics();
 
     return entity;
   }
@@ -117,7 +123,7 @@ class FinanceTransactionService implements TransactionService {
     await accountService.getUserAccounts();
 
     // refresh all report and analytic's component's
-    await _emitReportAndAnalytics();
+    _emitReportAndAnalytics();
 
     return (outgoing, incoming);
   }
@@ -133,7 +139,7 @@ class FinanceTransactionService implements TransactionService {
     await accountService.getUserAccounts();
 
     // refresh all report and analytic's component's
-    await _emitReportAndAnalytics();
+    _emitReportAndAnalytics();
   }
 
   @override
@@ -149,7 +155,7 @@ class FinanceTransactionService implements TransactionService {
     await accountService.getUserAccounts();
 
     // refresh all report and analytic's component's
-    await _emitReportAndAnalytics();
+    _emitReportAndAnalytics();
   }
 
   @override
@@ -204,20 +210,44 @@ class FinanceTransactionService implements TransactionService {
     await accountService.getUserAccounts();
 
     // refresh all report and analytic's component's
-    await _emitReportAndAnalytics();
+    _emitReportAndAnalytics();
 
     return entity;
   }
 
   // Report and analytic's method's
+  @override
+  Future<List<Transaction>> listTransactionsForReport(
+    ListTransactionsIn listTransactionsIn,
+  ) async {
+    final reportAnalyticsIn = ReportAnalyticsIn(
+      listTransactionsIn: listTransactionsIn,
+      month: _cachedReportAnalyticsParams.month,
+      range: _cachedReportAnalyticsParams.range,
+      statsIn: _cachedReportAnalyticsParams.statsIn,
+      timeSeriesIn: _cachedReportAnalyticsParams.timeSeriesIn,
+    );
+    _cachedReportAnalyticsParams = reportAnalyticsIn;
+    final listTransaction = await source.listTransactionsForReport(
+      listTransactionsIn,
+    );
+    return listTransaction.map((tModel) => tModel.toEntity()).toList();
+  }
 
   @override
   Future<TransactionSummary> getTransactionSummary([
     String? month,
     DateRange? range,
   ]) async {
-    _cachedReportAnalyticsParams.month = month;
-    _cachedReportAnalyticsParams.range = range;
+    final reportAnalyticsIn = ReportAnalyticsIn(
+      listTransactionsIn: _cachedReportAnalyticsParams.listTransactionsIn,
+      month: month,
+      range: range,
+      statsIn: _cachedReportAnalyticsParams.statsIn,
+      timeSeriesIn: _cachedReportAnalyticsParams.timeSeriesIn,
+    );
+    _cachedReportAnalyticsParams = reportAnalyticsIn;
+
     if (month != null) {
       final summaryMap = await source.getTransactionSummaryFromMonth(month);
       return TransactionSummary.fromJson(summaryMap);
@@ -231,7 +261,14 @@ class FinanceTransactionService implements TransactionService {
 
   @override
   Future<List<TransactionStats>> getTransactionStats(StatsIn statsIn) async {
-    _cachedReportAnalyticsParams.statsIn = statsIn;
+    final reportAnalyticsIn = ReportAnalyticsIn(
+      listTransactionsIn: _cachedReportAnalyticsParams.listTransactionsIn,
+      month: _cachedReportAnalyticsParams.month,
+      range: _cachedReportAnalyticsParams.range,
+      statsIn: statsIn,
+      timeSeriesIn: _cachedReportAnalyticsParams.timeSeriesIn,
+    );
+    _cachedReportAnalyticsParams = reportAnalyticsIn;
     final statsList = await source.getTransactionStats(statsIn);
     return statsList.map((s) => TransactionStats.fromJson(s)).toList();
   }
@@ -240,7 +277,14 @@ class FinanceTransactionService implements TransactionService {
   Future<List<TransactionTimeSeries>> getTransactionTimeSeries(
     TimeSeriesIn timeSeriesIn,
   ) async {
-    _cachedReportAnalyticsParams.timeSeriesIn = timeSeriesIn;
+    final reportAnalyticsIn = ReportAnalyticsIn(
+      listTransactionsIn: _cachedReportAnalyticsParams.listTransactionsIn,
+      month: _cachedReportAnalyticsParams.month,
+      range: _cachedReportAnalyticsParams.range,
+      statsIn: _cachedReportAnalyticsParams.statsIn,
+      timeSeriesIn: timeSeriesIn,
+    );
+  _cachedReportAnalyticsParams = reportAnalyticsIn;
     final timeSeriesList = await source.getTransactionTimeSeries(timeSeriesIn);
     return timeSeriesList
         .map((ts) => TransactionTimeSeries.fromJson(ts))
@@ -264,5 +308,7 @@ class FinanceTransactionService implements TransactionService {
   // close stream when app disposes
   void dispose() {
     if (!_controller.isClosed) _controller.close();
+    if (!_reportAnalyticsInController.isClosed) _reportAnalyticsInController.close();
+      _debounceTimer?.cancel();
   }
 }

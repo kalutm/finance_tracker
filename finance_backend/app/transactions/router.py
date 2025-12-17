@@ -161,6 +161,32 @@ def create_transaction(
             detail={"code": "INVALID_AMOUNT", "message": str(e)},
         )
 
+@router.get("/list", response_model=List[TransactionOut], status_code=status.HTTP_200_OK)
+def list_transactions_for_report(
+    date_from: datetime | None = None,
+    date_to: datetime | None = None,
+    category_id: int | None = None,
+    account_id: int | None = None,
+    type: TransactionType | None = None,
+    page: int = 1,
+    per_page: int = 20,
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user),
+    transaction_service: TransactionsService = Depends(get_transaction_service)
+):
+    transactions = transaction_service.get_user_transactions_for_report(
+        session,
+        account_id,
+        category_id,
+        type,
+        date_from,
+        date_to,
+        page,
+        per_page,
+        current_user.id,
+    )
+    transaction_outs = [TransactionOut.model_validate(transaction) for transaction in transactions]    
+    return transaction_outs
 
 @router.get("/summary", response_model=TransactionSummaryOut, status_code=status.HTTP_200_OK)
 def get_transaction_summary(
