@@ -35,12 +35,30 @@ class RemoteTransDataSource implements TransDataSource {
     };
   }
 
-  Map<String, dynamic> _decode(String body) {
+  dynamic _decode(String body) {
     try {
-      return jsonDecode(body) as Map<String, dynamic>;
+      return jsonDecode(body);
     } catch (_) {
       return <String, dynamic>{};
     }
+  }
+
+  Map<String, dynamic> _toMap(dynamic decoded) {
+    if (decoded is Map) return Map<String, dynamic>.from(decoded);
+    return <String, dynamic>{};
+  }
+
+  List<Map<String, dynamic>> _toListOfMap(dynamic decoded) {
+    if (decoded is List) {
+      try {
+        return decoded
+            .map((e) => Map<String, dynamic>.from(e as Map<String, dynamic>))
+            .toList();
+      } catch (_) {
+        return <Map<String, dynamic>>[];
+      }
+    }
+    return <Map<String, dynamic>>[];
   }
 
   @override
@@ -57,7 +75,8 @@ class RemoteTransDataSource implements TransDataSource {
         ),
       );
 
-      final json = _decode(res.body);
+      final decoded = _decode(res.body);
+      final json = _toMap(decoded);
 
       if (res.statusCode != 201) {
         final detail = json["detail"];
@@ -136,7 +155,8 @@ class RemoteTransDataSource implements TransDataSource {
         ),
       );
 
-      final json = _decode(res.body);
+      final decoded = _decode(res.body);
+      final json = _toMap(decoded);
 
       if (res.statusCode != 201) {
         final detail = json["detail"];
@@ -174,7 +194,8 @@ class RemoteTransDataSource implements TransDataSource {
       );
 
       if (res.statusCode != 204) {
-        final json = _decode(res.body);
+        final decoded = _decode(res.body);
+        final json = _toMap(decoded);
         final detail = json["detail"];
 
         if (res.statusCode == 400 &&
@@ -202,7 +223,8 @@ class RemoteTransDataSource implements TransDataSource {
       );
 
       if (res.statusCode != 204) {
-        final json = _decode(res.body);
+        final decoded = _decode(res.body);
+        final json = _toMap(decoded);
         final detail = json["detail"];
 
         if (res.statusCode == 400 &&
@@ -232,7 +254,8 @@ class RemoteTransDataSource implements TransDataSource {
         ),
       );
 
-      final json = _decode(res.body);
+      final decoded = _decode(res.body);
+      final json = _toMap(decoded);
 
       if (res.statusCode != 200) {
         dev_tool.log("ERROR: ${json["detail"]}");
@@ -258,7 +281,8 @@ class RemoteTransDataSource implements TransDataSource {
         ),
       );
 
-      final json = _decode(res.body);
+      final decoded = _decode(res.body);
+      final json = _toMap(decoded);
 
       if (res.statusCode != 200) {
         dev_tool.log("ERROR: ${json["detail"]}");
@@ -290,7 +314,8 @@ class RemoteTransDataSource implements TransDataSource {
         ),
       );
 
-      final json = _decode(res.body);
+      final decoded = _decode(res.body);
+      final json = _toMap(decoded);
 
       if (res.statusCode != 200) {
         final detail = json["detail"];
@@ -328,7 +353,8 @@ class RemoteTransDataSource implements TransDataSource {
         ),
       );
 
-      final json = _decode(res.body);
+      final decoded = _decode(res.body);
+      final json = _toMap(decoded);
 
       if (res.statusCode != 200) {
         final detail = json["detail"];
@@ -362,7 +388,8 @@ class RemoteTransDataSource implements TransDataSource {
         ),
       );
 
-      final json = _decode(res.body);
+      final decoded = _decode(res.body);
+      final json = _toMap(decoded);
 
       if (res.statusCode != 200) {
         final detail = json["detail"];
@@ -399,15 +426,15 @@ class RemoteTransDataSource implements TransDataSource {
         RequestModel(method: "GET", url: Uri.parse(url), headers: headers),
       );
 
-      final json = _decode(res.body);
+      final decoded = _decode(res.body);
 
       if (res.statusCode != 200) {
+        final json = _toMap(decoded);
         final detail = json["detail"];
         dev_tool.log("ERROR: $detail");
         throw CouldnotGenerateTransactionsStats();
       }
-
-      return json as List<Map<String, dynamic>>;
+      return _toListOfMap(decoded);
     } on TransactionException catch (_) {
       rethrow;
     }
@@ -433,15 +460,16 @@ class RemoteTransDataSource implements TransDataSource {
         ),
       );
 
-      final json = _decode(res.body);
+      final decoded = _decode(res.body);
 
       if (res.statusCode != 200) {
+        final json = _toMap(decoded);
         final detail = json["detail"];
         dev_tool.log("ERROR: $detail");
         throw CouldnotGenerateTimeSeries();
       }
 
-      return json as List<Map<String, dynamic>>;
+      return _toListOfMap(decoded);
     } on TransactionException catch (_) {
       rethrow;
     }
@@ -460,7 +488,8 @@ class RemoteTransDataSource implements TransDataSource {
         ),
       );
 
-      final json = _decode(res.body);
+      final decoded = _decode(res.body);
+      final json = _toMap(decoded);
 
       if (res.statusCode != 200) {
         final detail = json["detail"];
@@ -468,10 +497,10 @@ class RemoteTransDataSource implements TransDataSource {
         throw CouldnotGetAccountBalances();
       }
 
-      return (
-        json['total_balance'] as String,
-        json['accounts'] as List<Map<String, dynamic>>,
-      );
+      final total = json['total_balance'];
+      final accountsRaw = json['accounts'] ?? [];
+
+      return (total != null ? total.toString() : '', _toListOfMap(accountsRaw));
     } on TransactionException catch (_) {
       rethrow;
     }

@@ -17,6 +17,7 @@ class ReportAnalyticsCubit extends Cubit<ReportAnalyticsState> {
   final TransactionService transactionsService;
   StreamSubscription<ReportAnalyticsIn>? _reportAnalyticsInSub;
   late ReportAnalytics _cachedReportAnalytics;
+
   ReportAnalyticsCubit(this.transactionsService)
     : super(ReportAnalyticsInitial()) {
     _reportAnalyticsInSub = transactionsService.reportAnalyticsInStream.listen((
@@ -31,7 +32,10 @@ class ReportAnalyticsCubit extends Cubit<ReportAnalyticsState> {
         statsIn: StatsIn(filterOn: FilterOn.category),
         timeSeriesIn: TimeSeriesIn(
           granulity: Granulity.day,
-          range: DateRange(start: DateTime.now(), end: DateTime.now()),
+          range: DateRange(
+            start: DateTime(2025, 12, 1),
+            end: DateTime(2025, 12, 18),
+          ),
         ),
       ),
     );
@@ -143,7 +147,7 @@ class ReportAnalyticsCubit extends Cubit<ReportAnalyticsState> {
       return "Couldn't generate transaction TimeSeries's please try again later";
     if (e is SocketException)
       return 'No Internet connection!, please try connecting to the internet';
-    return "Error! please try again";
+    return e.toString();
   }
 
   @override

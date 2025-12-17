@@ -118,16 +118,28 @@ class TransactionRepo:
             select(
                 trunc.label("period"),
                 func.sum(
-                    case((Transaction.type == TransactionType.INCOME, Transaction.amount), else_=0)
+                    case(
+                        (
+                            Transaction.type == TransactionType.INCOME,
+                            Transaction.amount,
+                        ),
+                        else_=0,
+                    )
                 ).label("income"),
                 func.sum(
-                    case((Transaction.type == TransactionType.EXPENSE, Transaction.amount), else_=0)
+                    case(
+                        (
+                            Transaction.type == TransactionType.EXPENSE,
+                            Transaction.amount,
+                        ),
+                        else_=0,
+                    )
                 ).label("expense"),
             )
             .where(
                 Transaction.user_id == user_id,
                 Transaction.occurred_at >= date_from,
-                Transaction.occurred_at < date_to,
+                Transaction.occurred_at <= date_to,
             )
             .group_by("period")
             .order_by("period")
@@ -167,7 +179,7 @@ class TransactionRepo:
         if date_from:
             stmt = stmt.where(Transaction.occurred_at >= date_from)
         if date_to:
-            stmt = stmt.where(Transaction.occurred_at < date_to)
+            stmt = stmt.where(Transaction.occurred_at <= date_to)
         return session.exec(stmt).all()
 
 

@@ -55,9 +55,7 @@ class FinanceTransactionService implements TransactionService {
 
   Future<void> _emitReportAndAnalytics() async {
     try {
-      _reportAnalyticsInController.add(
-        _cachedReportAnalyticsParams
-      );
+      _reportAnalyticsInController.add(_cachedReportAnalyticsParams);
     } catch (_) {}
   }
 
