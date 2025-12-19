@@ -66,6 +66,11 @@ class FinanceTransactionService implements TransactionService {
   }
 
   @override
+  void refreshReportAndAnalytics() {
+    _emitReportAndAnalytics();
+  }
+
+  @override
   Future<List<Transaction>> getUserTransactions() async {
     final transactions = await source.getUserTransactions();
     final entities = transactions.map((t) => t.toEntity()).toList();

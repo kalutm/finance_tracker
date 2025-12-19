@@ -52,7 +52,7 @@ class AppTheme {
       elevation: 2,
       titleTextStyle: _textTheme.headlineSmall?.copyWith(color: Colors.white),
     ),
-    cardTheme: CardTheme(
+    cardTheme: CardThemeData(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     ),
@@ -98,7 +98,7 @@ class AppTheme {
       elevation: 2,
       titleTextStyle: _textTheme.headlineSmall?.copyWith(color: Colors.white),
     ),
-    cardTheme: CardTheme(
+    cardTheme: CardThemeData(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       color: _darkSurfaceColor,

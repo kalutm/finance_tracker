@@ -57,4 +57,5 @@ abstract class TransactionService {
     TimeSeriesIn timeSeriesIn,
   );
   Future<AccountBalances> getAccountBalances();
+  void refreshReportAndAnalytics();
 }

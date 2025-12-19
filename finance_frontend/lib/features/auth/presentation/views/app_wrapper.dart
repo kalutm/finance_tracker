@@ -9,6 +9,7 @@ import 'package:finance_frontend/features/auth/presentation/views/home_view.dart
 import 'package:finance_frontend/features/categories/presentation/blocs/categories/categories_bloc.dart';
 import 'package:finance_frontend/features/transactions/presentation/bloc/transaction_form/transaction_form_bloc.dart';
 import 'package:finance_frontend/features/transactions/presentation/bloc/transactions/transactions_bloc.dart';
+import 'package:finance_frontend/features/transactions/presentation/cubits/report_analytics_cubit.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -43,17 +44,32 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
             return MultiBlocProvider(
               providers: [
                 BlocProvider(
-                  create: (context) => AccountsBloc(ref.read(accountServiceProvider)),
-                ),
-                BlocProvider(
-                  create: (context) => TransactionsBloc(ref.read(transactionServiceProvider)),
+                  create:
+                      (context) =>
+                          AccountsBloc(ref.read(accountServiceProvider)),
                 ),
                 BlocProvider(
                   create:
-                      (context) => TransactionFormBloc(ref.read(transactionServiceProvider)),
+                      (context) => TransactionsBloc(
+                        ref.read(transactionServiceProvider),
+                      ),
                 ),
                 BlocProvider(
-                  create: (context) => CategoriesBloc(ref.read(categoryServiceProvider)),
+                  create:
+                      (context) => TransactionFormBloc(
+                        ref.read(transactionServiceProvider),
+                      ),
+                ),
+                BlocProvider(
+                  create:
+                      (context) =>
+                          CategoriesBloc(ref.read(categoryServiceProvider)),
+                ),
+                BlocProvider(
+                  create:
+                      (context) => ReportAnalyticsCubit(
+                        ref.read(transactionServiceProvider),
+                      ),
                 ),
               ],
               child: const Home(),
@@ -65,9 +81,7 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
           } else {
             return Scaffold(
               body: Center(
-                child: CircularProgressIndicator(
-                  padding: EdgeInsets.all(20),
-                ),
+                child: CircularProgressIndicator(padding: EdgeInsets.all(20)),
               ),
             );
           }
@@ -91,9 +105,7 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
             } else if (state.exception is CouldnotLogIn) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(
-                    "Login Failed: ${state.exception.toString()}",
-                  ),
+                  content: Text("Login Failed: ${state.exception.toString()}"),
                 ),
               );
             } else if (state.exception is CouldnotRegister) {
@@ -112,8 +124,7 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
                   ),
                 ),
               );
-            } else if (state.exception
-                is CouldnotSendEmailVerificatonLink) {
+            } else if (state.exception is CouldnotSendEmailVerificatonLink) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
@@ -132,9 +143,7 @@ class _AppWrapperState extends ConsumerState<AppWrapper> {
             } else if (state.exception is CouldnotDeleteUser) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(
-                    "Couldnot delete user please try again later",
-                  ),
+                  content: Text("Couldnot delete user please try again later"),
                 ),
               );
             } else if (state.exception is SocketException) {

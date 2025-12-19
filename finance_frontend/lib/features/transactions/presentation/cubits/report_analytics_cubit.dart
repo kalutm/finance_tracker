@@ -17,8 +17,8 @@ import 'package:finance_frontend/features/transactions/domain/entities/granulity
 import 'package:finance_frontend/features/transactions/domain/entities/transaction.dart';
 import 'package:finance_frontend/features/transactions/domain/exceptions/transaction_exceptions.dart';
 import 'package:finance_frontend/features/transactions/domain/service/transaction_service.dart';
-import 'package:finance_frontend/features/transactions/presentation/cubit/report_analytics_loading_enum.dart';
-import 'package:finance_frontend/features/transactions/presentation/cubit/report_analytics_state.dart';
+import 'package:finance_frontend/features/transactions/presentation/cubits/report_analytics_loading_enum.dart';
+import 'package:finance_frontend/features/transactions/presentation/cubits/report_analytics_state.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 class ReportAnalyticsCubit extends Cubit<ReportAnalyticsState> {
@@ -50,6 +50,10 @@ class ReportAnalyticsCubit extends Cubit<ReportAnalyticsState> {
     );
   }
 
+  void refreshReportAndAnalytics() {
+    transactionsService.refreshReportAndAnalytics();
+  }
+
   Future<void> loadReportAnalytics(ReportAnalyticsIn reportAnalyticsIn) async {
     emit(ReportAnalyticsPartLoading(ReportAnalyticsIsLoading.all, _cachedReportAnalytics,));
     try {
@@ -75,6 +79,7 @@ class ReportAnalyticsCubit extends Cubit<ReportAnalyticsState> {
       _cachedReportAnalytics = reportAnalytics;
       emit(ReportAnalyticsLoaded(reportAnalytics));
     } catch (e) {
+      print("ERRORRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR$e");
       emit(ReportAnalyticsError(_mapErrorToMessage(e), _cachedReportAnalytics));
     }
   }
@@ -101,7 +106,7 @@ class ReportAnalyticsCubit extends Cubit<ReportAnalyticsState> {
     }
   }
 
-  Future<void> getTransactionSummary(String? month, DateRange? range) async {
+  Future<void> getTransactionSummary(String? month, [DateRange? range]) async {
     try {
       emit(ReportAnalyticsPartLoading(ReportAnalyticsIsLoading.transactionSummary, _cachedReportAnalytics,));
       final transactionSummary = await transactionsService

@@ -1,5 +1,5 @@
 import 'package:finance_frontend/features/transactions/data/model/report_analytics.dart';
-import 'package:finance_frontend/features/transactions/presentation/cubit/report_analytics_loading_enum.dart';
+import 'package:finance_frontend/features/transactions/presentation/cubits/report_analytics_loading_enum.dart';
 
 class ReportAnalyticsState {}
 
