@@ -1,19 +1,8 @@
-// -------------------------------------------------------------------------
-// DEPENDENCY INSTRUCTIONS:
-// Add to pubspec.yaml:
-//   syncfusion_flutter_charts: ^24.0.0
-//   intl: ^0.19.0
-// -------------------------------------------------------------------------
-
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 
-// -------------------------------------------------------------------------
-// PROJECT IMPORTS
-// -------------------------------------------------------------------------
-import 'package:finance_frontend/themes/app_theme.dart';
 import 'package:finance_frontend/features/transactions/presentation/cubits/report_analytics_cubit.dart';
 import 'package:finance_frontend/features/transactions/presentation/cubits/report_analytics_state.dart';
 import 'package:finance_frontend/features/transactions/presentation/cubits/report_analytics_loading_enum.dart';
