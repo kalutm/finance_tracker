@@ -34,17 +34,17 @@ class ReportAnalyticsCubit extends Cubit<ReportAnalyticsState> {
       await loadReportAnalytics(reportAnalyticsIn);
     });
 
+    final today = DateTime.now();
+    final todaysMonthRange = DateRange(start: DateTime(today.year, today.month, 1), end: DateTime(today.year, today.month + 1, 0));
+
     loadReportAnalytics(
       ReportAnalyticsIn(
-        listTransactionsIn: ListTransactionsIn(),
-        month: DateTime.now().getMonth(),
+        listTransactionsIn: ListTransactionsIn(range: todaysMonthRange),
+        month: today.getMonth(),
         statsIn: StatsIn(filterOn: FilterOn.category),
         timeSeriesIn: TimeSeriesIn(
           granulity: Granulity.day,
-          range: DateRange(
-            start: DateTime(2025, 12, 1),
-            end: DateTime(2025, 12, 18),
-          ),
+          range: todaysMonthRange
         ),
       ),
     );
@@ -79,7 +79,6 @@ class ReportAnalyticsCubit extends Cubit<ReportAnalyticsState> {
       _cachedReportAnalytics = reportAnalytics;
       emit(ReportAnalyticsLoaded(reportAnalytics));
     } catch (e) {
-      print("ERRORRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR$e");
       emit(ReportAnalyticsError(_mapErrorToMessage(e), _cachedReportAnalytics));
     }
   }

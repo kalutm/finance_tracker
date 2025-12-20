@@ -466,10 +466,9 @@ class RemoteTransDataSource implements TransDataSource {
       final uri = Uri.parse("$transactionsBaseUrl/stats").replace(
         queryParameters: {
           'by': by,
-          'is_expense': isExpense,
+          'is_expense': isExpense.toString(),
           if (dateFrom != null) 'date_from': dateFrom,
           if (dateTo != null) 'date_to': dateTo,
-          'limit': 1000.toString(),
         },
       );
 

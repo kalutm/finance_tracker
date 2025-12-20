@@ -71,17 +71,18 @@ class TransactionModel {
     Map<String, dynamic> json,
   ) => TransactionModel(
     id: (json['id'] as int).toString(),
-    amount: json['amount'] as String,
-    isOutGoing:
-        json['is_outgoing'] != null ? (json['is_outgoing'] as bool) : null,
     accountId: (json['account_id'] as int).toString(),
     categoryId:
         json['category_id'] != null
             ? (json['category_id'] as int).toString()
             : null,
-    currency: json['currency'] as String,
-    merchant: json['merchant'] != null ? (json['merchant'] as String) : null,
-    type: TransactionType.values.byName(json['type'] as String),
+    amount: json['amount'] as String,
+     merchant: json['merchant'] != null ? (json['merchant'] as String) : null,
+     currency: json['currency'] as String,
+     type: TransactionType.values.byName(json['type'] as String),
+    isOutGoing:
+        json['is_outgoing'] != null ? (json['is_outgoing'] as bool) : null,
+    
     description:
         json['description'] != null ? (json['description'] as String) : null,
     transferGroupId:

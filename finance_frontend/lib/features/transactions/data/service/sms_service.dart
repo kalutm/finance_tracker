@@ -312,7 +312,7 @@ class SmsService {
           address: message.address,
         );
       },
-      listenInBackground: listenInBackground,
+      listenInBackground: false,
     );
 
     _listening = true;

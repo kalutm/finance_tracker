@@ -169,7 +169,7 @@ def list_transactions_for_report(
     account_id: int | None = None,
     type: TransactionType | None = None,
     page: int = 1,
-    per_page: int = 20,
+    per_page: int = 1000,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
     transaction_service: TransactionsService = Depends(get_transaction_service)
@@ -208,7 +208,7 @@ def get_transaction_stats(
     is_expense: bool = True,
     date_from: datetime | None = None,
     date_to: datetime | None = None,
-    limit: int = 10,
+    limit: int = 1000,
     session: Session = Depends(get_session),
     current_user: User = Depends(get_current_user),
     transaction_service: TransactionsService = Depends(get_transaction_service),
