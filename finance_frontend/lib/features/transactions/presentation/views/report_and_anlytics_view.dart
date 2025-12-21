@@ -365,7 +365,7 @@ class _SummaryCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+        boxShadow: [BoxShadow(color: Colors.black.withAlpha(13), blurRadius: 10)],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -407,7 +407,7 @@ class _TimeSeriesSection extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8)],
+        boxShadow: [BoxShadow(color: Colors.black.withAlpha(8), blurRadius: 8)],
       ),
       child: Column(
         children: [
@@ -436,7 +436,7 @@ class _TimeSeriesSection extends StatelessWidget {
                   xValueMapper: (TransactionTimeSeries data, _) => data.date,
                   yValueMapper: (TransactionTimeSeries data, _) => double.tryParse(data.income) ?? 0,
                   name: 'Income',
-                  color: Colors.green.withOpacity(0.3),
+                  color: Colors.green.withAlpha(77),
                   borderColor: Colors.green,
                   // FIX: Interaction moved here
                   onPointTap: (ChartPointDetails details) {
@@ -448,7 +448,7 @@ class _TimeSeriesSection extends StatelessWidget {
                   xValueMapper: (TransactionTimeSeries data, _) => data.date,
                   yValueMapper: (TransactionTimeSeries data, _) => double.tryParse(data.expense) ?? 0,
                   name: 'Expense',
-                  color: Colors.red.withOpacity(0.3),
+                  color: Colors.red.withAlpha(77),
                   borderColor: Colors.red,
                   // FIX: Interaction moved here
                   onPointTap: (ChartPointDetails details) {
@@ -516,7 +516,7 @@ class _CategoryStatsSection extends StatelessWidget {
       decoration: BoxDecoration(
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.03), blurRadius: 8)],
+        boxShadow: [BoxShadow(color: Colors.black.withAlpha(8), blurRadius: 8)],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -580,7 +580,7 @@ class _AccountBalancesSection extends StatelessWidget {
                 decoration: BoxDecoration(
                   color: theme.cardColor,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: theme.dividerColor.withOpacity(0.3)),
+                  border: Border.all(color: theme.dividerColor.withAlpha(77)),
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -638,7 +638,7 @@ class _TransactionsSliverList extends StatelessWidget {
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             decoration: BoxDecoration(color: theme.cardColor, borderRadius: BorderRadius.circular(12)),
             child: ListTile(
-              leading: CircleAvatar(backgroundColor: color.withOpacity(0.1), child: Icon(icon, color: color, size: 20)),
+              leading: CircleAvatar(backgroundColor: color.withAlpha(26), child: Icon(icon, color: color, size: 20)),
               title: Text(tx.description ?? (tx.merchant ?? 'Unknown'), style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600), maxLines: 1),
               subtitle: Text(DateFormat.MMMEd().format(tx.occuredAt), style: theme.textTheme.bodySmall),
               trailing: Text(fmt.format(amountVal.abs()), style: theme.textTheme.titleMedium?.copyWith(color: color, fontWeight: FontWeight.bold)),
