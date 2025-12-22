@@ -60,7 +60,6 @@ class _CategoriesPageState extends State<CategoriesView> {
         ),
       ],
       child: Scaffold(
-        appBar: AppBar(title: const Text('Categories')),
         body: SafeArea(child: _buildBody(context)),
         floatingActionButton: FloatingActionButton(
           onPressed: () => _openCreateSheet(context),

@@ -9,7 +9,6 @@ class SettingsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Settings")),
       body: BlocSelector<SettingsCubit, SettingsState, bool>(
         selector: (state) => state is SettingsStateDark,
         builder: (context, isDarkMode) {

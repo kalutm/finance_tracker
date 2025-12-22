@@ -101,7 +101,7 @@ class _HomeState extends State<Home> {
             ),
             _buildDrawerItem(
               context,
-              title: 'Report & Anlytics',
+              title: 'Report & Analytics',
               icon: Icons.pie_chart_outline_rounded,
               index: 3,
               onTap: _onItemTapped,
@@ -202,11 +202,13 @@ class _HomeState extends State<Home> {
       case 0:
         return 'Transactions';
       case 1:
-        return 'Accounts Overview';
+        return 'Accounts';
       case 2:
         return 'Categories';
       case 3:
-        return 'Settings';
+        return "Report & Analytics";
+      case 4:
+        return "Settings";
       default:
         return 'Finance Tracker';
     }

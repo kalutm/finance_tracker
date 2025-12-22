@@ -35,12 +35,6 @@ class AccountsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          "Your Accounts",
-          style: Theme.of(context).textTheme.headlineSmall,
-        ),
-      ),
       body: BlocConsumer<AccountsBloc, AccountsState>(
         listener: (context, state) {
           if (state is AccountOperationFailure) {

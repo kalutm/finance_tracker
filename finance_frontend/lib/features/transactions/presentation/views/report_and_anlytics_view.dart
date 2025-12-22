@@ -40,7 +40,7 @@ class _ReportAndAnlyticsViewState extends State<ReportAndAnlyticsView> {
     );
   }
 
-  void _refreshAllForMonth() {
+  Future<void> _refreshAllForMonth() async {
     final cubit = context.read<ReportAnalyticsCubit>();
     // Prevent infinite loading if already busy
     if (cubit.state is ReportAnalyticsPartLoading) return;
@@ -59,11 +59,7 @@ class _ReportAndAnlyticsViewState extends State<ReportAndAnlyticsView> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Report & Analytics'),
-        actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _refreshAllForMonth)
-        ],
-        bottom: PreferredSize(
+        title: PreferredSize(
           preferredSize: const Size.fromHeight(60),
           child: _MonthSelector(
             selectedDate: _selectedMonth,
@@ -90,84 +86,87 @@ class _ReportAndAnlyticsViewState extends State<ReportAndAnlyticsView> {
             return const Center(child: CircularProgressIndicator());
           }
 
-          return CustomScrollView(
-            physics: const BouncingScrollPhysics(),
-            slivers: [
-              // 1. Top: Monthly Net Flow (Income - Expense)
-              SliverToBoxAdapter(
-                child: _MonthlyNetFlowHeader(summary: data.transactionSummary),
-              ),
-
-              // 2. Income/Expense Cards
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                sliver: SliverToBoxAdapter(
-                  child: _SummaryCardsRow(summary: data.transactionSummary),
+          return RefreshIndicator(
+            onRefresh: _refreshAllForMonth,
+            child: CustomScrollView(
+              physics: const BouncingScrollPhysics(),
+              slivers: [
+                // 1. Top: Monthly Net Flow (Income - Expense)
+                SliverToBoxAdapter(
+                  child: _MonthlyNetFlowHeader(summary: data.transactionSummary),
                 ),
-              ),
-
-              // 3. Cash Flow Chart
-              SliverPadding(
-                padding: const EdgeInsets.all(16),
-                sliver: SliverToBoxAdapter(
-                  child: _TimeSeriesSection(
-                    timeSeriesList: data.transactionTimeSeriess,
-                    granularity: _granularity,
-                    onGranularityChanged: (g) {
-                      setState(() => _granularity = g);
-                      context.read<ReportAnalyticsCubit>().getTransactionTimeSeries(
-                        TimeSeriesIn(granulity: g, range: _getMonthRange(_selectedMonth))
-                      );
-                    },
-                    onDateTap: (date) {
-                      // Prevent refetch if currently loading
-                      if (state is! ReportAnalyticsPartLoading) {
-                        context.read<ReportAnalyticsCubit>().getTransactionsForReport(
-                          ListTransactionsIn(range: DateRange(start: date, end: date))
+            
+                // 2. Income/Expense Cards
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  sliver: SliverToBoxAdapter(
+                    child: _SummaryCardsRow(summary: data.transactionSummary),
+                  ),
+                ),
+            
+                // 3. Cash Flow Chart
+                SliverPadding(
+                  padding: const EdgeInsets.all(16),
+                  sliver: SliverToBoxAdapter(
+                    child: _TimeSeriesSection(
+                      timeSeriesList: data.transactionTimeSeriess,
+                      granularity: _granularity,
+                      onGranularityChanged: (g) {
+                        setState(() => _granularity = g);
+                        context.read<ReportAnalyticsCubit>().getTransactionTimeSeries(
+                          TimeSeriesIn(granulity: g, range: _getMonthRange(_selectedMonth))
                         );
-                      }
-                    },
+                      },
+                      onDateTap: (date) {
+                        // Prevent refetch if currently loading
+                        if (state is! ReportAnalyticsPartLoading) {
+                          context.read<ReportAnalyticsCubit>().getTransactionsForReport(
+                            ListTransactionsIn(range: DateRange(start: date, end: date))
+                          );
+                        }
+                      },
+                    ),
                   ),
                 ),
-              ),
-
-              // 4. Category Breakdown
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                sliver: SliverToBoxAdapter(
-                  child: _CategoryStatsSection(stats: data.transactionStats),
-                ),
-              ),
-
-              // 5. Net Worth & Account Balances (RELOCATED HERE)
-              SliverPadding(
-                padding: const EdgeInsets.all(16),
-                sliver: SliverToBoxAdapter(
-                  child: _AccountBalancesSection(balances: data.accountBalances),
-                ),
-              ),
-
-              // 6. Monthly Transactions List
-              SliverPadding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                sliver: SliverToBoxAdapter(
-                  child: Text(
-                    "Transactions for ${DateFormat.MMMM().format(_selectedMonth)}", 
-                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            
+                // 4. Category Breakdown
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  sliver: SliverToBoxAdapter(
+                    child: _CategoryStatsSection(stats: data.transactionStats),
                   ),
                 ),
-              ),
-
-              if (isListLoading)
-                const SliverToBoxAdapter(child: LinearProgressIndicator()),
-
-              SliverOpacity(
-                opacity: isListLoading ? 0.5 : 1.0,
-                sliver: _TransactionsSliverList(transactions: data.transactions),
-              ),
-              
-              const SliverPadding(padding: EdgeInsets.only(bottom: 60)),
-            ],
+            
+                // 5. Net Worth & Account Balances (RELOCATED HERE)
+                SliverPadding(
+                  padding: const EdgeInsets.all(16),
+                  sliver: SliverToBoxAdapter(
+                    child: _AccountBalancesSection(balances: data.accountBalances),
+                  ),
+                ),
+            
+                // 6. Monthly Transactions List
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  sliver: SliverToBoxAdapter(
+                    child: Text(
+                      "Transactions for ${DateFormat.MMMM().format(_selectedMonth)}", 
+                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+            
+                if (isListLoading)
+                  const SliverToBoxAdapter(child: LinearProgressIndicator()),
+            
+                SliverOpacity(
+                  opacity: isListLoading ? 0.5 : 1.0,
+                  sliver: _TransactionsSliverList(transactions: data.transactions),
+                ),
+                
+                const SliverPadding(padding: EdgeInsets.only(bottom: 60)),
+              ],
+            ),
           );
         },
       ),
