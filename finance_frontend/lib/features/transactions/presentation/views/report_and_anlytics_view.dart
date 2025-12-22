@@ -30,65 +30,27 @@ class ReportAndAnlyticsView extends StatefulWidget {
 class _ReportAndAnlyticsViewState extends State<ReportAndAnlyticsView> {
   DateTime _selectedMonth = DateTime.now();
   Granulity _granularity = Granulity.day;
-  late ScrollController _scrollController;
 
-  @override
-  void initState() {
-    super.initState();
-    _scrollController = ScrollController();
-  }
-
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
-
-  // --- Date Helpers ---
   String _formatMonthParam(DateTime date) => DateFormat('yyyy-MM').format(date);
 
   DateRange _getMonthRange(DateTime date) {
-    final start = DateTime(date.year, date.month, 1);
-    final end = DateTime(date.year, date.month + 1, 0);
-    return DateRange(start: start, end: end);
-  }
-
-  // --- Interactions ---
-  void _onMonthChanged(int offset) {
-    setState(() {
-      _selectedMonth = DateTime(_selectedMonth.year, _selectedMonth.month + offset);
-    });
-    _refreshAllForMonth();
-  }
-
-  void _onDatePicked(DateTime picked) {
-    setState(() => _selectedMonth = picked);
-    _refreshAllForMonth();
+    return DateRange(
+      start: DateTime(date.year, date.month, 1),
+      end: DateTime(date.year, date.month + 1, 0),
+    );
   }
 
   void _refreshAllForMonth() {
     final cubit = context.read<ReportAnalyticsCubit>();
-    final monthStr = _formatMonthParam(_selectedMonth);
-    final monthRange = _getMonthRange(_selectedMonth);
+    // Prevent infinite loading if already busy
+    if (cubit.state is ReportAnalyticsPartLoading) return;
 
-    cubit.getTransactionSummary(monthStr, monthRange);
-    cubit.getTransactionStats(StatsIn(filterOn: FilterOn.category, range: monthRange, onlyExpense: true));
-    cubit.getTransactionTimeSeries(TimeSeriesIn(granulity: _granularity, range: monthRange));
-    cubit.getTransactionsForReport(ListTransactionsIn(range: monthRange));
+    final range = _getMonthRange(_selectedMonth);
+    cubit.getTransactionSummary(_formatMonthParam(_selectedMonth), range);
+    cubit.getTransactionStats(StatsIn(filterOn: FilterOn.category, range: range));
+    cubit.getTransactionTimeSeries(TimeSeriesIn(granulity: _granularity, range: range));
+    cubit.getTransactionsForReport(ListTransactionsIn(range: range));
     cubit.getAccountBalances();
-  }
-
-  void _onGranularityChanged(Granulity newGranularity) {
-    if (_granularity == newGranularity) return;
-    setState(() => _granularity = newGranularity);
-    context.read<ReportAnalyticsCubit>().getTransactionTimeSeries(TimeSeriesIn(
-      granulity: newGranularity,
-      range: _getMonthRange(_selectedMonth),
-    ));
-  }
-
-  Future<void> _onPullRefresh() async {
-    _refreshAllForMonth();
   }
 
   @override
@@ -96,163 +58,116 @@ class _ReportAndAnlyticsViewState extends State<ReportAndAnlyticsView> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
-        title: const Text('Reports & Analytics'),
+        title: const Text('Report & Analytics'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.more_vert),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Export functionality coming soon')),
-              );
-            },
-          )
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _refreshAllForMonth)
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(60),
           child: _MonthSelector(
             selectedDate: _selectedMonth,
-            onPrev: () => _onMonthChanged(-1),
-            onNext: () => _onMonthChanged(1),
-            onTapDate: () async {
-               final picked = await showDatePicker(
-                context: context,
-                initialDate: _selectedMonth,
-                firstDate: DateTime(2020),
-                lastDate: DateTime.now().add(const Duration(days: 365)),
-              );
-              if (picked != null) _onDatePicked(picked);
+            onChanged: (date) {
+              setState(() => _selectedMonth = date);
+              _refreshAllForMonth();
             },
           ),
         ),
       ),
-      body: BlocConsumer<ReportAnalyticsCubit, ReportAnalyticsState>(
-        listener: (context, state) {
-          if (state is ReportAnalyticsError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.message), action: SnackBarAction(label: 'Retry', onPressed: _onPullRefresh)),
-            );
-          }
-        },
+      body: BlocBuilder<ReportAnalyticsCubit, ReportAnalyticsState>(
         builder: (context, state) {
-          if (state is ReportAnalyticsInitial) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
           ReportAnalytics? data;
-          bool isSummaryLoading = false;
-          bool isStatsLoading = false;
-          bool isTimeSeriesLoading = false;
-          bool isBalancesLoading = false;
           bool isListLoading = false;
 
           if (state is ReportAnalyticsLoaded) {
             data = state.data;
           } else if (state is ReportAnalyticsPartLoading) {
             data = state.existing;
-            isSummaryLoading = state.partial == ReportAnalyticsIsLoading.transactionSummary || state.partial == ReportAnalyticsIsLoading.all;
-            isStatsLoading = state.partial == ReportAnalyticsIsLoading.transactionStats || state.partial == ReportAnalyticsIsLoading.all;
-            isTimeSeriesLoading = state.partial == ReportAnalyticsIsLoading.transactionTimeSeriess || state.partial == ReportAnalyticsIsLoading.all;
-            isBalancesLoading = state.partial == ReportAnalyticsIsLoading.accountBalances || state.partial == ReportAnalyticsIsLoading.all;
             isListLoading = state.partial == ReportAnalyticsIsLoading.listTransaction || state.partial == ReportAnalyticsIsLoading.all;
-          } else if (state is ReportAnalyticsError) {
-            data = state.reportAnalytics;
           }
 
           if (data == null) {
-            return Center(
-              child: FilledButton.icon(onPressed: _onPullRefresh, icon: const Icon(Icons.refresh), label: const Text('Reload')),
-            );
+            return const Center(child: CircularProgressIndicator());
           }
 
-          return RefreshIndicator(
-            onRefresh: _onPullRefresh,
-            child: CustomScrollView(
-              controller: _scrollController,
-              slivers: [
-                // 1. Summary Cards
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: _SectionLoader(
-                      isLoading: isSummaryLoading,
-                      child: _SummaryCardsRow(summary: data.transactionSummary),
-                    ),
+          return CustomScrollView(
+            physics: const BouncingScrollPhysics(),
+            slivers: [
+              // 1. Top: Monthly Net Flow (Income - Expense)
+              SliverToBoxAdapter(
+                child: _MonthlyNetFlowHeader(summary: data.transactionSummary),
+              ),
+
+              // 2. Income/Expense Cards
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                sliver: SliverToBoxAdapter(
+                  child: _SummaryCardsRow(summary: data.transactionSummary),
+                ),
+              ),
+
+              // 3. Cash Flow Chart
+              SliverPadding(
+                padding: const EdgeInsets.all(16),
+                sliver: SliverToBoxAdapter(
+                  child: _TimeSeriesSection(
+                    timeSeriesList: data.transactionTimeSeriess,
+                    granularity: _granularity,
+                    onGranularityChanged: (g) {
+                      setState(() => _granularity = g);
+                      context.read<ReportAnalyticsCubit>().getTransactionTimeSeries(
+                        TimeSeriesIn(granulity: g, range: _getMonthRange(_selectedMonth))
+                      );
+                    },
+                    onDateTap: (date) {
+                      // Prevent refetch if currently loading
+                      if (state is! ReportAnalyticsPartLoading) {
+                        context.read<ReportAnalyticsCubit>().getTransactionsForReport(
+                          ListTransactionsIn(range: DateRange(start: date, end: date))
+                        );
+                      }
+                    },
                   ),
                 ),
+              ),
 
-                // 2. Time Series Chart
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: _SectionLoader(
-                      isLoading: isTimeSeriesLoading,
-                      child: _TimeSeriesSection(
-                        timeSeriesList: data.transactionTimeSeriess,
-                        granularity: _granularity,
-                        onGranularityChanged: _onGranularityChanged,
-                        onDateTap: (date) {
-                          context.read<ReportAnalyticsCubit>().getTransactionsForReport(
-                            ListTransactionsIn(range: DateRange(start: date, end: date))
-                          );
-                        },
-                      ),
-                    ),
+              // 4. Category Breakdown
+              SliverPadding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                sliver: SliverToBoxAdapter(
+                  child: _CategoryStatsSection(stats: data.transactionStats),
+                ),
+              ),
+
+              // 5. Net Worth & Account Balances (RELOCATED HERE)
+              SliverPadding(
+                padding: const EdgeInsets.all(16),
+                sliver: SliverToBoxAdapter(
+                  child: _AccountBalancesSection(balances: data.accountBalances),
+                ),
+              ),
+
+              // 6. Monthly Transactions List
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                sliver: SliverToBoxAdapter(
+                  child: Text(
+                    "Transactions for ${DateFormat.MMMM().format(_selectedMonth)}", 
+                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
                   ),
                 ),
+              ),
 
-                // 3. Stats & Balances
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        _SectionLoader(
-                          isLoading: isStatsLoading,
-                          child: _CategoryStatsSection(
-                            stats: data.transactionStats,
-                            onCategoryTap: (catName) {
-                               // Drill down logic placeholder
-                            },
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        _SectionLoader(
-                          isLoading: isBalancesLoading,
-                          child: _AccountBalancesSection(balances: data.accountBalances),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+              if (isListLoading)
+                const SliverToBoxAdapter(child: LinearProgressIndicator()),
 
-                // 4. List Header
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                    child: Text(
-                      "Transactions (${data.transactions.length})",
-                      style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                ),
-
-                // 5. Loading indicator for list (Standard Flutter way)
-                if (isListLoading)
-                   const SliverToBoxAdapter(
-                     child: LinearProgressIndicator(minHeight: 2),
-                   ),
-
-                // 6. Transaction List (Standard Flutter Opacity)
-                SliverOpacity(
-                  opacity: isListLoading ? 0.5 : 1.0,
-                  sliver: _TransactionsSliverList(transactions: data.transactions),
-                ),
-                
-                const SliverPadding(padding: EdgeInsets.only(bottom: 40)),
-              ],
-            ),
+              SliverOpacity(
+                opacity: isListLoading ? 0.5 : 1.0,
+                sliver: _TransactionsSliverList(transactions: data.transactions),
+              ),
+              
+              const SliverPadding(padding: EdgeInsets.only(bottom: 60)),
+            ],
           );
         },
       ),
@@ -260,121 +175,31 @@ class _ReportAndAnlyticsViewState extends State<ReportAndAnlyticsView> {
   }
 }
 
-// -------------------------------------------------------------------------
-// PRIVATE WIDGETS
-// -------------------------------------------------------------------------
+/// helper widget's
 
-class _SectionLoader extends StatelessWidget {
-  final bool isLoading;
-  final Widget child;
-  const _SectionLoader({required this.isLoading, required this.child});
-
-  @override
-  Widget build(BuildContext context) {
-    if (!isLoading) return child;
-    return Stack(
-      children: [
-        Opacity(opacity: 0.5, child: IgnorePointer(child: child)),
-        Positioned.fill(child: Center(child: CircularProgressIndicator(strokeWidth: 2))),
-      ],
-    );
-  }
-}
-
-class _MonthSelector extends StatelessWidget {
-  final DateTime selectedDate;
-  final VoidCallback onPrev;
-  final VoidCallback onNext;
-  final VoidCallback onTapDate;
-
-  const _MonthSelector({required this.selectedDate, required this.onPrev, required this.onNext, required this.onTapDate});
+class _MonthlyNetFlowHeader extends StatelessWidget {
+  final TransactionSummary summary;
+  const _MonthlyNetFlowHeader({required this.summary});
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final net = double.tryParse(summary.netSavings) ?? 0.0;
+    
     return Container(
-      color: theme.scaffoldBackgroundColor,
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
+      child: Column(
         children: [
-          IconButton(onPressed: onPrev, icon: const Icon(Icons.chevron_left)),
-          InkWell(
-            onTap: onTapDate,
-            borderRadius: BorderRadius.circular(8),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: Row(
-                children: [
-                  Text(DateFormat.yMMMM().format(selectedDate), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.calendar_month, size: 18),
-                ],
-              ),
+          Text("Monthly Net Flow", style: theme.textTheme.bodyMedium?.copyWith(color: theme.hintColor)),
+          const SizedBox(height: 4),
+          Text(
+            "ETB ${summary.netSavings}",
+            style: theme.textTheme.headlineMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: net >= 0 ? Colors.green : Colors.redAccent,
             ),
           ),
-          IconButton(onPressed: onNext, icon: const Icon(Icons.chevron_right)),
-        ],
-      ),
-    );
-  }
-}
-
-class _SummaryCardsRow extends StatelessWidget {
-  final TransactionSummary summary;
-  const _SummaryCardsRow({required this.summary});
-
-  @override
-  Widget build(BuildContext context) {
-    final income = double.tryParse(summary.totalIncome) ?? 0.0;
-    final expense = double.tryParse(summary.totalExpense) ?? 0.0;
-    final net = double.tryParse(summary.netSavings) ?? 0.0;
-    final fmt = NumberFormat.simpleCurrency(name: 'ETB', decimalDigits: 0);
-
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      child: Row(
-        children: [
-          _SummaryCard(title: 'Income', amount: fmt.format(income), icon: Icons.arrow_downward, color: Colors.green),
-          const SizedBox(width: 12),
-          _SummaryCard(title: 'Expense', amount: fmt.format(expense), icon: Icons.arrow_upward, color: Colors.red),
-          const SizedBox(width: 12),
-          _SummaryCard(title: 'Net Savings', amount: fmt.format(net), icon: Icons.account_balance_wallet, color: Theme.of(context).primaryColor),
-          const SizedBox(width: 12),
-          _SummaryCard(title: 'Count', amount: '${summary.transactionsCount}', icon: Icons.receipt_long, color: Colors.orange),
-        ],
-      ),
-    );
-  }
-}
-
-class _SummaryCard extends StatelessWidget {
-  final String title;
-  final String amount;
-  final IconData icon;
-  final Color color;
-
-  const _SummaryCard({required this.title, required this.amount, required this.icon, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Container(
-      width: 150,
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withAlpha(13), blurRadius: 10)],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: color),
-          const SizedBox(height: 12),
-          Text(title, style: theme.textTheme.bodySmall),
-          const SizedBox(height: 4),
-          Text(amount, style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
         ],
       ),
     );
@@ -387,160 +212,89 @@ class _TimeSeriesSection extends StatelessWidget {
   final ValueChanged<Granulity> onGranularityChanged;
   final ValueChanged<DateTime> onDateTap;
 
-  const _TimeSeriesSection({required this.timeSeriesList, required this.granularity, required this.onGranularityChanged, required this.onDateTap});
+  const _TimeSeriesSection({
+    required this.timeSeriesList,
+    required this.granularity,
+    required this.onGranularityChanged,
+    required this.onDateTap,
+  });
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    
-    if (timeSeriesList.isEmpty) {
-      return Container(
-        height: 200,
-        decoration: BoxDecoration(color: theme.cardColor, borderRadius: BorderRadius.circular(12)),
-        alignment: Alignment.center,
-        child: const Text("No chart data"),
-      );
-    }
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withAlpha(8), blurRadius: 8)],
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text("Cash Flow", style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-              _GranularitySwitch(current: granularity, onChanged: onGranularityChanged),
-            ],
-          ),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 250,
-            child: SfCartesianChart(
-              margin: EdgeInsets.zero,
-              plotAreaBorderWidth: 0,
-              primaryXAxis: DateTimeAxis(
-                majorGridLines: const MajorGridLines(width: 0),
-                dateFormat: granularity == Granulity.month ? DateFormat.MMM() : DateFormat.Md(),
-              ),
-              primaryYAxis: NumericAxis(isVisible: false),
-              tooltipBehavior: TooltipBehavior(enable: true),
-              series: <CartesianSeries>[
-                SplineAreaSeries<TransactionTimeSeries, DateTime>(
-                  dataSource: timeSeriesList,
-                  xValueMapper: (TransactionTimeSeries data, _) => data.date,
-                  yValueMapper: (TransactionTimeSeries data, _) => double.tryParse(data.income) ?? 0,
-                  name: 'Income',
-                  color: Colors.green.withAlpha(77),
-                  borderColor: Colors.green,
-                  // FIX: Interaction moved here
-                  onPointTap: (ChartPointDetails details) {
-                    if (details.pointIndex != null) onDateTap(timeSeriesList[details.pointIndex!].date);
-                  },
-                ),
-                SplineAreaSeries<TransactionTimeSeries, DateTime>(
-                  dataSource: timeSeriesList,
-                  xValueMapper: (TransactionTimeSeries data, _) => data.date,
-                  yValueMapper: (TransactionTimeSeries data, _) => double.tryParse(data.expense) ?? 0,
-                  name: 'Expense',
-                  color: Colors.red.withAlpha(77),
-                  borderColor: Colors.red,
-                  // FIX: Interaction moved here
-                  onPointTap: (ChartPointDetails details) {
-                    if (details.pointIndex != null) onDateTap(timeSeriesList[details.pointIndex!].date);
-                  },
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _GranularitySwitch extends StatelessWidget {
-  final Granulity current;
-  final ValueChanged<Granulity> onChanged;
-
-  const _GranularitySwitch({required this.current, required this.onChanged});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Row(
-      children: Granulity.values.map((g) {
-        final isSelected = g == current;
-        return GestureDetector(
-          onTap: () => onChanged(g),
-          child: Container(
-            margin: const EdgeInsets.only(left: 4),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: isSelected ? theme.primaryColor : Colors.transparent,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: isSelected ? Colors.transparent : theme.dividerColor),
-            ),
-            child: Text(
-              g.name.toUpperCase(),
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: isSelected ? Colors.white : theme.hintColor,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
-}
-
-class _CategoryStatsSection extends StatelessWidget {
-  final List<TransactionStats> stats;
-  final ValueChanged<String> onCategoryTap;
-
-  const _CategoryStatsSection({required this.stats, required this.onCategoryTap});
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    if (stats.isEmpty) return const SizedBox.shrink();
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withAlpha(8), blurRadius: 8)],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text("Spending by Category", style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-          const SizedBox(height: 16),
-          SizedBox(
-            height: 200,
-            child: SfCircularChart(
-              series: <CircularSeries>[
-                DoughnutSeries<TransactionStats, String>(
-                  dataSource: stats,
-                  xValueMapper: (TransactionStats data, _) => data.name,
-                  yValueMapper: (TransactionStats data, _) => double.tryParse(data.total) ?? 0,
-                  dataLabelSettings: const DataLabelSettings(isVisible: false),
-                  onPointTap: (ChartPointDetails details) {
-                    if (details.pointIndex != null) onCategoryTap(stats[details.pointIndex!].name);
-                  },
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text("Cash Flow", style: theme.textTheme.titleSmall),
+                // Only Day and Week
+                Row(
+                  children: [Granulity.day, Granulity.week].map((g) {
+                    final isSelected = granularity == g;
+                    return Padding(
+                      padding: const EdgeInsets.only(left: 8.0),
+                      child: ChoiceChip(
+                        label: Text(g.name.toUpperCase(), style: theme.textTheme.labelSmall?.copyWith(color: isSelected ? Colors.white : null)),
+                        selected: isSelected,
+                        onSelected: (_) => onGranularityChanged(g),
+                        selectedColor: theme.primaryColor,
+                      ),
+                    );
+                  }).toList(),
                 )
               ],
-              legend: Legend(isVisible: true, position: LegendPosition.right, overflowMode: LegendItemOverflowMode.wrap),
             ),
-          ),
-        ],
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 200,
+              child: SfCartesianChart(
+                margin: EdgeInsets.zero,
+                plotAreaBorderWidth: 0,
+                primaryXAxis: DateTimeAxis(
+                  majorGridLines: const MajorGridLines(width: 0),
+                  // Fix for Interval: Uses Days, but set interval to 7 for weeks
+                  intervalType: DateTimeIntervalType.days,
+                  interval: granularity == Granulity.week ? 7 : 1, 
+                  dateFormat: granularity == Granulity.day ? DateFormat.d() : DateFormat.Md(),
+                  labelStyle: theme.textTheme.bodySmall,
+                ),
+                primaryYAxis: NumericAxis(isVisible: false),
+                series: <CartesianSeries>[
+                  ColumnSeries<TransactionTimeSeries, DateTime>(
+                    name: 'Income',
+                    dataSource: timeSeriesList,
+                    xValueMapper: (data, _) => data.date,
+                    yValueMapper: (data, _) => double.tryParse(data.income) ?? 0,
+                    color: Colors.green.withAlpha(179),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                    onPointTap: (details) {
+                      if (details.pointIndex != null && details.pointIndex! >= 0 && details.pointIndex! < timeSeriesList.length) {
+                        onDateTap(timeSeriesList[details.pointIndex!].date);
+                      }
+                    },
+                  ),
+                  ColumnSeries<TransactionTimeSeries, DateTime>(
+                    name: 'Expense',
+                    dataSource: timeSeriesList,
+                    xValueMapper: (data, _) => data.date,
+                    yValueMapper: (data, _) => double.tryParse(data.expense) ?? 0,
+                    color: Colors.redAccent.withAlpha(179),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(4)),
+                    onPointTap: (details) {
+                      if (details.pointIndex != null && details.pointIndex! >= 0 && details.pointIndex! < timeSeriesList.length) {
+                        onDateTap(timeSeriesList[details.pointIndex!].date);
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -553,43 +307,37 @@ class _AccountBalancesSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final fmt = NumberFormat.simpleCurrency(name: 'ETB', decimalDigits: 0);
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text("Accounts", style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-            Text("Total: ${fmt.format(double.tryParse(balances.totalBalance) ?? 0)}", style: theme.textTheme.bodyMedium?.copyWith(color: theme.primaryColor, fontWeight: FontWeight.bold)),
+            Text("Net Worth", style: theme.textTheme.titleSmall),
+            Text("ETB ${balances.totalBalance}", 
+                 style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold, color: theme.primaryColor)),
           ],
         ),
         const SizedBox(height: 12),
         SizedBox(
           height: 90,
-          child: ListView.separated(
+          child: ListView.builder(
             scrollDirection: Axis.horizontal,
             itemCount: balances.accounts.length,
-            separatorBuilder: (_, __) => const SizedBox(width: 12),
-            itemBuilder: (context, index) {
-              final acc = balances.accounts[index];
-              return Container(
-                width: 130,
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: theme.cardColor,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: theme.dividerColor.withAlpha(77)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(acc.name, style: theme.textTheme.bodyMedium, maxLines: 1, overflow: TextOverflow.ellipsis),
-                    const SizedBox(height: 4),
-                    Text(fmt.format(double.tryParse(acc.balance) ?? 0), style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
-                  ],
+            itemBuilder: (context, i) {
+              final acc = balances.accounts[i];
+              return Card(
+                child: Container(
+                  width: 150,
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(acc.name, style: theme.textTheme.labelSmall, maxLines: 1, overflow: TextOverflow.ellipsis),
+                      Text("ETB ${acc.balance}", style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold)),
+                    ],
+                  ),
                 ),
               );
             },
@@ -600,6 +348,145 @@ class _AccountBalancesSection extends StatelessWidget {
   }
 }
 
+class _SummaryCardsRow extends StatelessWidget {
+  final TransactionSummary summary;
+  const _SummaryCardsRow({required this.summary});
+
+  @override
+  Widget build(BuildContext context) {
+    final fmt = NumberFormat.compactCurrency(symbol: 'ETB ');
+    return Row(
+      children: [
+        Expanded(
+          child: _SummaryCard(
+            label: "Income",
+            value: fmt.format(double.parse(summary.totalIncome)),
+            color: Colors.green,
+            icon: Icons.south_west,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: _SummaryCard(
+            label: "Expense",
+            value: fmt.format(double.parse(summary.totalExpense)),
+            color: Colors.redAccent,
+            icon: Icons.north_east,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MonthSelector extends StatelessWidget {
+  final DateTime selectedDate;
+  final ValueChanged<DateTime> onChanged;
+
+  const _MonthSelector({required this.selectedDate, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back_ios, size: 18),
+            onPressed: () => onChanged(DateTime(selectedDate.year, selectedDate.month - 1)),
+          ),
+          Text(
+            DateFormat.yMMMM().format(selectedDate),
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+          IconButton(
+            icon: const Icon(Icons.arrow_forward_ios, size: 18),
+            onPressed: () => onChanged(DateTime(selectedDate.year, selectedDate.month + 1)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SummaryCard extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color color;
+  final IconData icon;
+
+  const _SummaryCard({required this.label, required this.value, required this.color, required this.icon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(height: 8),
+            Text(label, style: Theme.of(context).textTheme.bodySmall),
+            Text(value, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CategoryStatsSection extends StatelessWidget {
+  final List<TransactionStats> stats;
+  const _CategoryStatsSection({required this.stats});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final fmt = NumberFormat.simpleCurrency(name: 'ETB ');
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("Spending by Category", style: theme.textTheme.titleSmall),
+            const SizedBox(height: 16),
+            ...stats.map((s) {
+              final double percent = double.tryParse(s.percentage.replaceAll('%', '')) ?? 0;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: Column(
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(s.name, style: theme.textTheme.bodyMedium),
+                        Text("${fmt.format(double.parse(s.total))} (${s.percentage})", 
+                             style: theme.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold)),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    LinearProgressIndicator(
+                      value: percent / 100,
+                      backgroundColor: theme.dividerColor.withAlpha(26),
+                      color: theme.colorScheme.secondary,
+                      borderRadius: BorderRadius.circular(4),
+                    )
+                  ],
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+
 class _TransactionsSliverList extends StatelessWidget {
   final List<Transaction> transactions;
   const _TransactionsSliverList({required this.transactions});
@@ -607,41 +494,28 @@ class _TransactionsSliverList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final fmt = NumberFormat.simpleCurrency(name: 'ETB');
-
-    if (transactions.isEmpty) {
-      return SliverToBoxAdapter(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Center(child: Text("No transactions found", style: theme.textTheme.bodyMedium)),
-        ),
-      );
-    }
-
     return SliverList(
       delegate: SliverChildBuilderDelegate(
         (context, index) {
           final tx = transactions[index];
-          final amountVal = tx.amountValue.toDouble();
-          
           final isExpense = tx.type == TransactionType.EXPENSE;
-          final isTransfer = tx.type == TransactionType.TRANSFER;
-          
-          Color color = isExpense ? Colors.red : Colors.green;
-          IconData icon = isExpense ? Icons.arrow_outward : Icons.arrow_downward;
-          if (isTransfer) {
-            color = Colors.blue;
-            icon = Icons.swap_horiz;
-          }
-
-          return Container(
+          return Card(
             margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            decoration: BoxDecoration(color: theme.cardColor, borderRadius: BorderRadius.circular(12)),
             child: ListTile(
-              leading: CircleAvatar(backgroundColor: color.withAlpha(26), child: Icon(icon, color: color, size: 20)),
-              title: Text(tx.description ?? (tx.merchant ?? 'Unknown'), style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600), maxLines: 1),
-              subtitle: Text(DateFormat.MMMEd().format(tx.occuredAt), style: theme.textTheme.bodySmall),
-              trailing: Text(fmt.format(amountVal.abs()), style: theme.textTheme.titleMedium?.copyWith(color: color, fontWeight: FontWeight.bold)),
+              leading: CircleAvatar(
+                backgroundColor: theme.primaryColor.withAlpha(26),
+                child: Icon(isExpense ? Icons.shopping_bag : Icons.account_balance_wallet, 
+                      color: theme.primaryColor, size: 20),
+              ),
+              title: Text(tx.description ?? tx.merchant ?? "Transaction", style: theme.textTheme.bodyMedium),
+              subtitle: Text(DateFormat.yMMMd().format(tx.occuredAt), style: theme.textTheme.bodySmall),
+              trailing: Text(
+                "${isExpense ? '-' : '+'} ${tx.amountValue}",
+                style: theme.textTheme.titleSmall?.copyWith(
+                  color: isExpense ? Colors.redAccent : Colors.green,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ),
           );
         },
