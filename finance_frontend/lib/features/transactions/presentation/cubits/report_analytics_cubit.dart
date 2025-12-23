@@ -25,6 +25,7 @@ class ReportAnalyticsCubit extends Cubit<ReportAnalyticsState> {
   final TransactionService transactionsService;
   StreamSubscription<ReportAnalyticsIn>? _reportAnalyticsInSub;
   ReportAnalytics? _cachedReportAnalytics;
+  DateTime today = DateTime.now();
 
   ReportAnalyticsCubit(this.transactionsService)
     : super(ReportAnalyticsInitial()) {
@@ -34,14 +35,13 @@ class ReportAnalyticsCubit extends Cubit<ReportAnalyticsState> {
       await loadReportAnalytics(reportAnalyticsIn);
     });
 
-    final today = DateTime.now();
     final todaysMonthRange = DateRange(start: DateTime(today.year, today.month, 1), end: DateTime(today.year, today.month + 1, 0));
 
     loadReportAnalytics(
       ReportAnalyticsIn(
         listTransactionsIn: ListTransactionsIn(range: todaysMonthRange),
         month: today.getMonth(),
-        statsIn: StatsIn(filterOn: FilterOn.category),
+        statsIn: StatsIn(filterOn: FilterOn.category, range: todaysMonthRange),
         timeSeriesIn: TimeSeriesIn(
           granulity: Granulity.day,
           range: todaysMonthRange
@@ -88,9 +88,14 @@ class ReportAnalyticsCubit extends Cubit<ReportAnalyticsState> {
   ) async {
     try {
       emit(ReportAnalyticsPartLoading(ReportAnalyticsIsLoading.listTransaction, _cachedReportAnalytics,));
+      final date = listTransactionsIn.range?.start;
+      if(date != null){
+        today = date;
+      }
       final transactions = await transactionsService.listTransactionsForReport(
         listTransactionsIn,
       );
+
       final reportAnalytics = ReportAnalytics(
         transactions: transactions,
         transactionSummary: _cachedReportAnalytics!.transactionSummary,
@@ -108,6 +113,10 @@ class ReportAnalyticsCubit extends Cubit<ReportAnalyticsState> {
   Future<void> getTransactionSummary(String? month, [DateRange? range]) async {
     try {
       emit(ReportAnalyticsPartLoading(ReportAnalyticsIsLoading.transactionSummary, _cachedReportAnalytics,));
+      final date = range?.start;
+      if(date != null){
+        today = date;
+      }
       final transactionSummary = await transactionsService
           .getTransactionSummary(month, range);
       final reportAnalytics = ReportAnalytics(
@@ -127,6 +136,10 @@ class ReportAnalyticsCubit extends Cubit<ReportAnalyticsState> {
   Future<void> getTransactionStats(StatsIn statsIn) async {
     try {
       emit(ReportAnalyticsPartLoading(ReportAnalyticsIsLoading.transactionStats, _cachedReportAnalytics));
+      final date = statsIn.range?.start;
+      if(date != null){
+        today = date;
+      }
       final transactionStats = await transactionsService.getTransactionStats(
         statsIn,
       );
@@ -147,6 +160,10 @@ class ReportAnalyticsCubit extends Cubit<ReportAnalyticsState> {
   Future<void> getTransactionTimeSeries(TimeSeriesIn timeSeriesIn) async {
     try {
       emit(ReportAnalyticsPartLoading(ReportAnalyticsIsLoading.transactionTimeSeriess, _cachedReportAnalytics));
+      final date = timeSeriesIn.range.start;
+      if(date != null){
+        today = date;
+      }
       final transactionTimeSeriess = await transactionsService
           .getTransactionTimeSeries(timeSeriesIn);
       final reportAnalytics = ReportAnalytics(

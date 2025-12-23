@@ -28,7 +28,7 @@ class ReportAndAnlyticsView extends StatefulWidget {
 }
 
 class _ReportAndAnlyticsViewState extends State<ReportAndAnlyticsView> {
-  DateTime _selectedMonth = DateTime.now();
+  late DateTime _selectedMonth;
   Granulity _granularity = Granulity.day;
 
   String _formatMonthParam(DateTime date) => DateFormat('yyyy-MM').format(date);
@@ -51,6 +51,12 @@ class _ReportAndAnlyticsViewState extends State<ReportAndAnlyticsView> {
     cubit.getTransactionTimeSeries(TimeSeriesIn(granulity: _granularity, range: range));
     cubit.getTransactionsForReport(ListTransactionsIn(range: range));
     cubit.getAccountBalances();
+  }
+
+  @override
+  void initState() {
+    _selectedMonth = context.read<ReportAnalyticsCubit>().today;
+    super.initState();
   }
 
   @override
