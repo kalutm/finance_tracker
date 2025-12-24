@@ -31,10 +31,10 @@ class _AppBootstrapState extends ConsumerState<_AppBootstrap>
 
     // Schedule service init/start after first frame so "ref" is available
     Future.microtask(() async {
-      //final smsService = ref.read(smsServiceProvider);
-      //await smsService.init(); // loads prefs, creates accounts if needed
-      //smsService.start(listenInBackground: true); // try realtime listener
-      //await smsService.syncInboxOnResume(); // initial inbox sync
+      final smsService = ref.read(smsServiceProvider);
+      await smsService.init(); // loads prefs, creates accounts if needed
+      smsService.start(listenInBackground: true); // try realtime listener
+      await smsService.syncInboxOnResume(); // initial inbox sync
     });
   }
 
@@ -48,8 +48,7 @@ class _AppBootstrapState extends ConsumerState<_AppBootstrap>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       final smsService = ref.read(smsServiceProvider);
-      // Fire-and-forget; the method is defensive.
-      //smsService.syncInboxOnResume();
+      smsService.syncInboxOnResume();
     }
   }
 

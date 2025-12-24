@@ -312,7 +312,16 @@ class SmsService {
           address: message.address,
         );
       },
-      listenInBackground: false,
+      onBackgroundMessage: (SmsMessage message) {
+        // Defensive: message.date may be int (ms since epoch) or null
+        final smsDate = _smsMessageDateToDateTime(message);
+        _handleSms(
+          raw: message.body ?? '',
+          smsDate: smsDate,
+          address: message.address,
+        );
+      },
+      listenInBackground: listenInBackground,
     );
 
     _listening = true;
