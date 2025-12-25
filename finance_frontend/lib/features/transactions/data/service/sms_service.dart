@@ -1,11 +1,3 @@
-// sms_service.dart
-//
-// Drop this file into your project (suggested path):
-// lib/features/transactions/services/sms_service.dart
-//
-// Real-time listener + Inbox fallback integrated.
-// See comments for usage.
-
 import 'dart:async';
 import 'dart:convert';
 import 'package:finance_frontend/features/accounts/domain/entities/account.dart';
@@ -21,14 +13,11 @@ import 'package:telephony_fix/telephony.dart';
 import 'package:uuid/uuid.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/foundation.dart';
-
-// Import your project's transaction service + DTOs
 import 'package:finance_frontend/features/transactions/domain/service/transaction_service.dart';
 import 'package:finance_frontend/features/transactions/data/model/dtos/transaction_create.dart';
 
 enum SmsSource { cbe, telebirr, unknown }
 
-/// Minimal parsed transaction model used inside this service
 class ParsedTransaction {
   final String id; // internal uuid
   final String amount;
@@ -68,13 +57,6 @@ class ParsedTransaction {
   }
 }
 
-/// SMSService public API
-///
-/// Usage:
-/// final smsService = SmsService(transactionService: yourTransactionService);
-/// await smsService.init();
-/// smsService.onParsedTransaction = (parsed) async { return true; };
-/// smsService.start();
 class SmsService {
   final Telephony _telephony = Telephony.instance;
   final TransactionService transactionService;
@@ -516,7 +498,7 @@ class SmsService {
             skipped: chunk.length,
             skippedReasons: {},
           );
-        } else{
+        } else {
           // retry
         }
       }
