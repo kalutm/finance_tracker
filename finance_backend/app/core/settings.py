@@ -15,6 +15,7 @@ class Settings(BaseSettings):
 
     # Database
     DATABASE_URL: str = Field(..., env="DATABASE_URL")
+    ALEMBIC_DATABASE_URL: str = Field(..., env="ALEMBIC_DATABASE_URL")
     TEST_DATABASE_URL: str = Field(..., env="TEST_DATABASE_URL")
 
     # Api Url

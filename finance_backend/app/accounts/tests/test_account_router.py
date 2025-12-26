@@ -2,7 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 from unittest.mock import Mock
 from uuid import UUID
-from app.main import app
+from finance_backend.main import app
 from app.accounts.service import AccountService, get_account_service
 from app.models.account import Account
 from app.models.enums import AccountType

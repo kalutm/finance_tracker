@@ -19,7 +19,7 @@ from app.core.settings import settings
 # access to the values within the .ini file in use.
 config = context.config
 
-DATABASEURL = settings.DATABASE_URL
+DATABASEURL = settings.ALEMBIC_DATABASE_URL
 
 config.set_main_option("sqlalchemy.url", DATABASEURL)
 # Interpret the config file for Python logging.

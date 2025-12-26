@@ -2,7 +2,7 @@ import pytest
 from fastapi.testclient import TestClient
 from uuid import UUID
 from unittest.mock import Mock
-from app.main import app
+from finance_backend.main import app
 from app.categories.service import CategoriesService, get_categories_service
 from app.models.category import Category
 from app.models.enums import CategoryType
