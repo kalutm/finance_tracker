@@ -5,9 +5,9 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)
 ![Postgres](https://img.shields.io/badge/postgres-%23316192.svg?style=for-the-badge&logo=postgresql&logoColor=white)
 
-**FinanceTracker** is a comprehensive personal finance management application featuring a **Flutter** frontend and a **FastAPI** backend. It allows users to track accounts, categorize transactions, and visualize financial data with a clean, responsive UI.
+**FinanceTracker** is a comprehensive personal finance management application featuring a **Flutter** frontend and a **FastAPI** backend. It allows users to track accounts, automate transaction recording via SMS, categorize spending, and visualize financial health with detailed analytics.
 
-This project was built to demonstrate full-stack capabilities, focusing on **Clean Architecture**, **State Management (BLoC)**, and secure **Authentication flows**.
+This project was built to demonstrate full-stack capabilities, focusing on **Clean Architecture**, **State Management (BLoC)**, Automated Parsing Services and secure **Authentication flows**.
 
 ---
 
@@ -33,21 +33,40 @@ This project follows a **Feature-First** architecture with a separation of conce
 
 ### 📱 Frontend (Flutter)
 * **State Management:** BLoC (Business Logic Component) & Cubit.
-    * *AuthCubit, AccountsBloc, TransactionsBloc, CategoriesBloc.*
+    * *AuthCubit, AccountsBloc, TransactionsBloc, CategoriesBloc, ReportAnalyticsCubit.*
 * **Architecture:** Clean Architecture (Repository Pattern + Service Layer).
+* **Automation:** Foreground and Background services to listen for and parse incoming SMS messages.
 * **UI/UX:** Custom complex forms, filtering logic, and financial charting.
+* **Data Visualization:** Interactive charting and statistical aggregation.
 * **Local Storage:** Secure storage for JWTs and Shared Preferences for caching.
 
 ### ⚙️ Backend (FastAPI)
 * **Authentication:** Full JWT implementation (Access + Refresh token rotation).
 * **Database:** PostgreSQL with SQLModel (ORM).
 * **Performance:** Pagination, Search implementation, and data caching.
-* **Background Tasks:** Scheduled jobs for monthly summaries.
 * **Migrations:** Database version control using Alembic.
 
 ---
 
 ## ✨ Key Features
+
+### 🤖 Smart SMS Parsing
+* Auto-Detection: Automatically listens for incoming transaction SMS messages.
+
+* Sync on Open: Scans inbox upon app launch to catch up on missed transactions.
+
+* Parser Engine: Intelligent regex parsing specifically tuned for Telebirr and CBE (Commercial Bank of Ethiopia).
+
+* Seamless Persistence: Converts raw SMS text into structured Transaction entities automatically.
+
+### 📈 Reports & Analytics
+* Cash Flow Analysis: Interactive bar charts comparing daily/weekly Income vs Expenses.
+
+* Net Worth Overview: Real-time calculation of total assets across all accounts.
+
+* Category Breakdown: Visual progress bars showing spending distribution by category.
+
+* Monthly Filtering: Drill down into specific months to see historical financial performance.
 
 ### 👤 Secure Authentication
 * User registration and secure login.
@@ -77,6 +96,8 @@ This project follows a **Feature-First** architecture with a separation of conce
 | :--- | :--- | :--- |
 | **Framework** | Flutter / Dart | UI & Logic |
 | **State Mgmt** | flutter_bloc | BLoC pattern implementation |
+| **SMS** | telephony_fix | Reading & Listening to SMS |
+| **Charts** | syncfusion_flutter_charts | Analytics visualization |
 | **Networking** | http | API communication |
 | **Storage** | flutter_secure_storage | Storing Access/Refresh Tokens |
 | **Caching** | shared_preferences | Local settings caching |
