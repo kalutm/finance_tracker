@@ -17,7 +17,7 @@ This project was built to demonstrate full-stack capabilities, focusing on **Cle
 ![Screen_Recording_20251203_080959(1)](https://github.com/user-attachments/assets/a47e6245-bbce-4375-8937-38840f3d6b8e)
 
 ### UI Screenshots
-| Authentication/Login | Authentication/Register | Accounts Overview |
+| Authentication/Login | Authentication/Register | Accounts |
 |:---:|:---:|:---:|
 | <img src="https://github.com/user-attachments/assets/1c78a5f9-f563-4d00-b186-3aa5aacbe865" width="200"> | <img src="https://github.com/user-attachments/assets/be9f84ae-c1aa-493b-9636-217671635693" width="200"> | <img src="https://github.com/user-attachments/assets/00b007f2-7bc7-4d67-ae56-9812a9144cc8" width="200"> |
 
@@ -25,6 +25,9 @@ This project was built to demonstrate full-stack capabilities, focusing on **Cle
 |:---:|:---:|
 | <img src="https://github.com/user-attachments/assets/8d23ed92-b012-43db-a18f-a8e5c22ea378" width="200"> | <img src="https://github.com/user-attachments/assets/1ad24213-9112-4338-bf84-1f534ba16a5c" width="200"> |
 
+| Report & Analytics | Report & Analytics/Monthly Transactions |
+|:---:|:---:|
+| <img src="https://github.com/user-attachments/assets/de3bfd00-ac5e-4726-88c6-79ffaeb77048" width="200"> | <img src="https://github.com/user-attachments/assets/8fbc7e02-0484-4091-894a-080d9b4db53f" width="200"> |
 ---
 
 ## 🚀 Architecture & Technical Highlights
