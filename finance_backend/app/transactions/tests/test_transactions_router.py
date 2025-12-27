@@ -3,7 +3,7 @@ from unittest.mock import Mock
 from fastapi.testclient import TestClient
 from uuid import UUID
 from decimal import Decimal
-from finance_backend.main import app
+from finance_backend.app.main import app
 from app.transactions.service import TransactionsService, get_transaction_service
 from app.models.transaction import Transaction, TransactionType
 from app.transactions.exceptions import InsufficientBalance, InvalidAmount

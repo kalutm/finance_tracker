@@ -2,7 +2,7 @@ import pytest
 from types import SimpleNamespace
 from fastapi.testclient import TestClient
 from app.tests.conftest import override_get_current_user
-from finance_backend.main import app
+from finance_backend.app.main import app
 from app.auth import service
 
 client = TestClient(app)

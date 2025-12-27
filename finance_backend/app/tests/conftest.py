@@ -4,7 +4,7 @@ from sqlmodel import SQLModel, create_engine, Session
 from sqlalchemy.orm import sessionmaker
 from uuid import UUID, uuid4
 
-from finance_backend.main import app
+from finance_backend.app.main import app
 from app import models
 from app.models.user import User
 from app.core.settings import settings
