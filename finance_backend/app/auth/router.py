@@ -58,9 +58,10 @@ def register(
             user_data={"sub": user_data.email},
             delta=timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
         )
-        background.add_task(
-            send_verification_email, user_data.email, verification_token
-        )
+        # commented for now (till i get a domain)
+        # background.add_task(
+        #     send_verification_email, user_data.email, verification_token
+        # )
         return TokenOut(acc_jwt=access, ref_jwt=refresh, token_type="bearer")
     except UserAlreadyExists as e:
         raise HTTPException(status_code=400, detail=str(e))

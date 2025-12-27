@@ -57,6 +57,8 @@ class UserService:
             # upgrade google-only to local+google
             existing_google.password_hash = hashed
             existing_google.provider = Provider.LOCAL_GOOGLE
+            # auto verify all user's (until i get a domain to send email's via servie's)
+            existing_google.is_verified = True
             try:
                 session.commit()
                 session.refresh(existing_google)
@@ -68,7 +70,8 @@ class UserService:
             )
 
         # Case 2 no existing google user -> create a new local user
-        user = User(email=email, password_hash=hashed, provider=Provider.LOCAL)
+        # auto verify all user's (is_verified = True) (until i get a domain to send email's via servie's)
+        user = User(email=email, password_hash=hashed, provider=Provider.LOCAL, is_verified=True)
         try:
             self.repo.save_user(session, user)
         except IntegrityError:

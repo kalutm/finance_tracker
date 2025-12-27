@@ -20,8 +20,7 @@ class Settings(BaseSettings):
 
     # Api Url
     API_BASE_URL_MOBILE: str = Field(..., env="API_BASE_URL_MOBILE")
-
-    # Email settings (example)
+    # Email settings
     MAIL_USERNAME: str = Field(..., env="MAIL_USERNAME")
     MAIL_PASSWORD: str = Field(..., env="MAIL_PASSWORD")
 
